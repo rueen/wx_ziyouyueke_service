@@ -1,0 +1,63 @@
+# 依赖包
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 环境变量
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 日志文件
+logs/
+*.log
+
+# 运行时文件
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# 覆盖率报告
+coverage/
+.nyc_output/
+
+# 依赖锁定文件（可选）
+package-lock.json
+yarn.lock
+
+# IDE 配置文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 上传文件目录
+uploads/
+
+# 临时文件
+tmp/
+temp/
+
+# 构建输出
+dist/
+build/
+
+# PM2 配置
+ecosystem.config.js
+
+# 测试文件
+test-results/ 

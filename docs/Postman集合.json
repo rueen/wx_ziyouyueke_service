@@ -1,0 +1,210 @@
+{
+  "info": {
+    "name": "微信约课系统API",
+    "description": "微信小程序约课系统后端API接口集合",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "基础接口",
+      "item": [
+        {
+          "name": "健康检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "检查服务运行状态"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "H5端接口",
+      "item": [
+        {
+          "name": "认证模块",
+          "item": [
+            {
+              "name": "用户登录",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"wx_login_code_from_wechat\",\n  \"userInfo\": {\n    \"nickname\": \"张三\",\n    \"avatarUrl\": \"https://example.com/avatar.jpg\",\n    \"gender\": 1\n  },\n  \"coach_id\": 123\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/h5/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "h5", "auth", "login"]
+                },
+                "description": "微信小程序用户登录/注册"
+              },
+              "response": []
+            },
+            {
+              "name": "用户登出",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/h5/auth/logout",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "h5", "auth", "logout"]
+                },
+                "description": "用户登出"
+              },
+              "response": []
+            },
+            {
+              "name": "刷新Token",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"{{token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/h5/auth/refresh",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "h5", "auth", "refresh"]
+                },
+                "description": "刷新用户Token"
+              },
+              "response": []
+            },
+            {
+              "name": "验证Token",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/h5/auth/verify",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "h5", "auth", "verify"]
+                },
+                "description": "验证Token有效性并获取用户信息"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "管理端接口",
+      "item": [
+        {
+          "name": "健康检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "health"]
+            },
+            "description": "检查管理端接口状态"
+          },
+          "response": []
+        },
+        {
+          "name": "管理端功能（开发中）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users"]
+            },
+            "description": "管理端功能开发中示例"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// 可以在这里添加全局前置脚本",
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// 自动提取登录接口返回的token",
+          "if (pm.response.json() && pm.response.json().data && pm.response.json().data.token) {",
+          "    pm.environment.set('token', pm.response.json().data.token);",
+          "    pm.globals.set('token', pm.response.json().data.token);",
+          "}",
+          "",
+          "// 检查响应状态",
+          "pm.test('Status code is success', function () {",
+          "    pm.response.to.have.status(200);",
+          "});",
+          "",
+          "pm.test('Response has success field', function () {",
+          "    pm.expect(pm.response.json()).to.have.property('success');",
+          "});"
+        ]
+      }
+    }
+  ]
+} 
