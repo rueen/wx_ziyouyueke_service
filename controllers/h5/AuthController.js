@@ -16,6 +16,11 @@ class AuthController {
   static login = asyncHandler(async (req, res) => {
     const { code, userInfo, coach_id } = req.body;
 
+    // 参数验证
+    if (!code || typeof code !== 'string') {
+      return ResponseUtil.validationError(res, '缺少微信授权码或格式不正确');
+    }
+
     // 获取微信用户信息
     const wechatUserInfo = await wechatUtil.getOpenIdByCode(code);
     const { openid, unionid } = wechatUserInfo;

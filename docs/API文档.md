@@ -566,9 +566,64 @@ Authorization: Bearer <token>
 
 **接口地址**: `GET /api/h5/relations/my-coaches`
 
-**接口描述**: 获取当前用户绑定的教练列表
+**接口描述**: 获取当前学员绑定的教练列表，包含课程统计信息
 
 **认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| page | number | 否 | 1 | 页码 |
+| limit | number | 否 | 20 | 每页数量 |
+
+**请求示例**:
+```
+GET /api/h5/relations/my-coaches?page=1&limit=10
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "获取我的教练列表成功",
+  "data": {
+    "coaches": [
+      {
+        "id": 1,
+        "student_id": 1,
+        "coach_id": 123,
+        "remaining_lessons": 8,
+        "relation_status": 1,
+        "student_remark": "我的主教练",
+        "createdAt": "2025-05-01T10:00:00.000Z",
+        "coach": {
+          "id": 123,
+          "nickname": "张教练",
+          "avatar_url": "https://example.com/coach.jpg",
+          "phone": "13800138000",
+          "intro": "专业网球教练",
+          "gender": 1
+        },
+        "lesson_stats": {
+          "total_lessons": 12,
+          "completed_lessons": 4,
+          "upcoming_lessons": 2,
+          "remaining_lessons": 8
+        }
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 1,
+      "total_count": 2,
+      "limit": 10
+    }
+  },
+  "timestamp": 1638360000000
+}
+```
 
 #### 4. 获取我的学员列表
 
@@ -606,22 +661,579 @@ Authorization: Bearer <token>
 
 以下接口正在开发中：
 
-#### 教练相关模块 (`/api/h5/coach`)
-- `GET /api/h5/coach/list` - 获取教练列表
-- `GET /api/h5/coach/:id` - 获取教练详情
-- `GET /api/h5/coach/:id/schedule` - 获取教练课程安排
+### 教练相关模块 (`/api/h5/coach`)
 
-#### 学员相关模块 (`/api/h5/student`)
-- `GET /api/h5/student/bookings` - 获取学员预约记录
-- `GET /api/h5/student/coaches` - 获取绑定的教练列表
+#### 1. 获取教练列表
 
-#### 课程管理模块 (`/api/h5/courses`)
-- `POST /api/h5/courses` - 预约课程
-- `GET /api/h5/courses` - 获取课程列表
-- `GET /api/h5/courses/:id` - 获取课程详情
-- `PUT /api/h5/courses/:id/confirm` - 确认课程
-- `PUT /api/h5/courses/:id/cancel` - 取消课程
-- `PUT /api/h5/courses/:id/complete` - 完成课程
+**接口地址**: `GET /api/h5/coach/list`
+
+**接口描述**: 获取系统中的教练列表，支持搜索和筛选
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| page | number | 否 | 1 | 页码 |
+| limit | number | 否 | 10 | 每页数量 |
+| keyword | string | 否 | "" | 关键词搜索（昵称） |
+| gender | number | 否 | "" | 性别筛选：1-男，2-女 |
+| sort_by | string | 否 | "id" | 排序字段 |
+| sort_order | string | 否 | "DESC" | 排序方向：ASC/DESC |
+
+**请求示例**:
+```
+GET /api/h5/coach/list?page=1&limit=10&keyword=张&gender=1
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "获取教练列表成功",
+  "data": {
+    "coaches": [
+      {
+        "id": 2,
+        "nickname": "张教练",
+        "avatar_url": "https://example.com/avatar.jpg",
+        "gender": 1,
+        "intro": "专业网球教练",
+        "register_time": "2025-06-01T10:00:00.000Z",
+        "last_login_time": "2025-06-02T08:00:00.000Z",
+        "stats": {
+          "student_count": 15,
+          "completed_lessons": 120,
+          "available_slots": 6
+        }
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 3,
+      "total_count": 25,
+      "limit": 10
+    }
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 2. 获取教练详情
+
+**接口地址**: `GET /api/h5/coach/:id`
+
+**接口描述**: 获取指定教练的详细信息
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | number | 是 | 教练ID（路径参数） |
+
+**请求示例**:
+```
+GET /api/h5/coach/123
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "获取教练详情成功",
+  "data": {
+    "id": 123,
+    "nickname": "张教练",
+    "avatar_url": "https://example.com/avatar.jpg",
+    "gender": 1,
+    "intro": "专业网球教练，10年教学经验",
+    "phone": "13800138000",
+    "register_time": "2025-06-01T10:00:00.000Z",
+    "last_login_time": "2025-06-02T08:00:00.000Z",
+    "stats": {
+      "student_count": 15,
+      "completed_lessons": 120,
+      "total_lessons": 125,
+      "completion_rate": "96.0"
+    }
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 3. 获取教练课程安排
+
+**接口地址**: `GET /api/h5/coach/:id/schedule`
+
+**接口描述**: 获取指定教练的课程安排和时间模板
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | number | 是 | 教练ID（路径参数） |
+| start_date | string | 否 | 开始日期（YYYY-MM-DD） |
+| end_date | string | 否 | 结束日期（YYYY-MM-DD） |
+| status | number | 否 | 课程状态筛选 |
+
+**请求示例**:
+```
+GET /api/h5/coach/123/schedule?start_date=2025-06-01&end_date=2025-06-07
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "获取教练课程安排成功",
+  "data": {
+    "coach": {
+      "id": 123,
+      "nickname": "张教练",
+      "avatar_url": "https://example.com/avatar.jpg"
+    },
+    "schedules": {
+      "2025-06-02": [
+        {
+          "id": 1,
+          "booking_date": "2025-06-02",
+          "start_time": "09:00",
+          "end_time": "10:00",
+          "booking_status": 2,
+          "student": {
+            "id": 1,
+            "nickname": "小明",
+            "avatar_url": "https://example.com/student.jpg",
+            "phone": "13900139000"
+          }
+        }
+      ]
+    },
+    "time_templates": [
+      {
+        "id": 1,
+        "day_of_week": 1,
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_active": true
+      }
+    ]
+  },
+  "timestamp": 1638360000000
+}
+```
+
+### 学员相关模块 (`/api/h5/student`)
+
+#### 1. 获取学员预约记录
+
+**接口地址**: `GET /api/h5/student/bookings`
+
+**接口描述**: 获取当前学员的预约记录
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| page | number | 否 | 1 | 页码 |
+| limit | number | 否 | 10 | 每页数量 |
+| status | number | 否 | "" | 状态筛选：1-待确认，2-已确认，3-进行中，4-已完成，5-已取消 |
+| start_date | string | 否 | "" | 开始日期（YYYY-MM-DD） |
+| end_date | string | 否 | "" | 结束日期（YYYY-MM-DD） |
+| coach_id | number | 否 | "" | 教练ID筛选 |
+
+**请求示例**:
+```
+GET /api/h5/student/bookings?page=1&limit=10&status=2
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "获取预约记录成功",
+  "data": {
+    "bookings": [
+      {
+        "id": 1,
+        "booking_date": "2025-06-02",
+        "start_time": "09:00",
+        "end_time": "10:00",
+        "booking_status": 2,
+        "notes": "想学正手",
+        "created_at": "2025-06-01T15:00:00.000Z",
+        "coach": {
+          "id": 123,
+          "nickname": "张教练",
+          "avatar_url": "https://example.com/coach.jpg",
+          "phone": "13800138000"
+        }
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 5,
+      "total_count": 45,
+      "limit": 10
+    },
+    "status_counts": {
+      "pending": 3,
+      "confirmed": 8,
+      "in_progress": 1,
+      "completed": 32,
+      "cancelled": 1
+    }
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 2. 获取学员统计信息
+
+**接口地址**: `GET /api/h5/student/stats`
+
+**接口描述**: 获取当前学员的统计信息
+
+**认证**: 需要
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "获取学员统计信息成功",
+  "data": {
+    "total_bookings": 45,
+    "completed_bookings": 32,
+    "cancelled_bookings": 1,
+    "total_coaches": 2,
+    "remaining_lessons": 15,
+    "monthly_completed": 8,
+    "completion_rate": "71.1"
+  },
+  "timestamp": 1638360000000
+}
+```
+
+### 课程管理模块 (`/api/h5/courses`)
+
+#### 1. 预约课程
+
+**接口地址**: `POST /api/h5/courses`
+
+**接口描述**: 创建新的课程预约
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| coach_id | number | 是 | 教练ID |
+| booking_date | string | 是 | 预约日期（YYYY-MM-DD） |
+| start_time | string | 是 | 开始时间（HH:mm） |
+| end_time | string | 是 | 结束时间（HH:mm） |
+| notes | string | 否 | 备注信息 |
+
+**请求示例**:
+```json
+{
+  "coach_id": 123,
+  "booking_date": "2025-06-03",
+  "start_time": "14:00",
+  "end_time": "15:00",
+  "notes": "想练习发球"
+}
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "预约成功",
+  "data": {
+    "booking_id": 456,
+    "booking_status": 1,
+    "remaining_lessons": 7
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 2. 获取课程列表
+
+**接口地址**: `GET /api/h5/courses`
+
+**接口描述**: 获取课程列表（学员或教练视角）
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| page | number | 否 | 1 | 页码 |
+| limit | number | 否 | 10 | 每页数量 |
+| status | number | 否 | "" | 状态筛选 |
+| coach_id | number | 否 | "" | 教练筛选（学员视角） |
+| start_date | string | 否 | "" | 开始日期 |
+| end_date | string | 否 | "" | 结束日期 |
+| role | string | 否 | "student" | 角色视角：student/coach |
+
+**请求示例**:
+```
+GET /api/h5/courses?page=1&limit=10&role=student&status=2
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "获取课程列表成功",
+  "data": {
+    "courses": [
+      {
+        "id": 456,
+        "booking_date": "2025-06-03",
+        "start_time": "14:00",
+        "end_time": "15:00",
+        "booking_status": 2,
+        "notes": "想练习发球",
+        "created_at": "2025-06-02T10:00:00.000Z",
+        "student": {
+          "id": 1,
+          "nickname": "小明",
+          "avatar_url": "https://example.com/student.jpg",
+          "phone": "13900139000"
+        },
+        "coach": {
+          "id": 123,
+          "nickname": "张教练",
+          "avatar_url": "https://example.com/coach.jpg",
+          "phone": "13800138000"
+        }
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 3,
+      "total_count": 25,
+      "limit": 10
+    }
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 3. 获取课程详情
+
+**接口地址**: `GET /api/h5/courses/:id`
+
+**接口描述**: 获取指定课程的详细信息
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | number | 是 | 课程ID（路径参数） |
+
+**请求示例**:
+```
+GET /api/h5/courses/456
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "获取课程详情成功",
+  "data": {
+    "id": 456,
+    "booking_date": "2025-06-03",
+    "start_time": "14:00",
+    "end_time": "15:00",
+    "booking_status": 2,
+    "notes": "想练习发球",
+    "feedback": null,
+    "rating": null,
+    "created_at": "2025-06-02T10:00:00.000Z",
+    "confirmed_at": "2025-06-02T11:00:00.000Z",
+    "student": {
+      "id": 1,
+      "nickname": "小明",
+      "avatar_url": "https://example.com/student.jpg",
+      "phone": "13900139000",
+      "gender": 1
+    },
+    "coach": {
+      "id": 123,
+      "nickname": "张教练",
+      "avatar_url": "https://example.com/coach.jpg",
+      "phone": "13800138000",
+      "gender": 1,
+      "intro": "专业网球教练"
+    }
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 4. 确认课程
+
+**接口地址**: `PUT /api/h5/courses/:id/confirm`
+
+**接口描述**: 教练确认课程预约
+
+**认证**: 需要（仅教练）
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | number | 是 | 课程ID（路径参数） |
+
+**请求示例**:
+```
+PUT /api/h5/courses/456/confirm
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "课程确认成功",
+  "data": {
+    "booking_id": 456,
+    "booking_status": 2
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 5. 开始课程
+
+**接口地址**: `PUT /api/h5/courses/:id/start`
+
+**接口描述**: 教练标记课程开始
+
+**认证**: 需要（仅教练）
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | number | 是 | 课程ID（路径参数） |
+
+**请求示例**:
+```
+PUT /api/h5/courses/456/start
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "课程已开始",
+  "data": {
+    "booking_id": 456,
+    "booking_status": 3
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 6. 完成课程
+
+**接口地址**: `PUT /api/h5/courses/:id/complete`
+
+**接口描述**: 教练标记课程完成
+
+**认证**: 需要（仅教练）
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | number | 是 | 课程ID（路径参数） |
+| feedback | string | 否 | 教练反馈 |
+| rating | number | 否 | 课程评分（1-5） |
+
+**请求示例**:
+```json
+{
+  "feedback": "学员发球进步明显，建议多练习",
+  "rating": 5
+}
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "课程已标记为完成",
+  "data": {
+    "booking_id": 456,
+    "booking_status": 4
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 7. 取消课程
+
+**接口地址**: `PUT /api/h5/courses/:id/cancel`
+
+**接口描述**: 取消课程预约（学员或教练都可以）
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | number | 是 | 课程ID（路径参数） |
+| cancel_reason | string | 否 | 取消原因 |
+
+**请求示例**:
+```json
+{
+  "cancel_reason": "时间有冲突"
+}
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "课程取消成功",
+  "data": {
+    "booking_id": 456,
+    "booking_status": 5
+  },
+  "timestamp": 1638360000000
+}
 
 ---
 
@@ -726,6 +1338,46 @@ interface StudentCoachRelation {
 }
 ```
 
+### CourseBooking (课程预约)
+
+```typescript
+interface CourseBooking {
+  id: number;                  // 预约ID
+  student_id: number;          // 学员ID
+  coach_id: number;            // 教练ID
+  relation_id?: number;        // 师生关系ID
+  template_id?: number;        // 时间模板ID
+  booking_date: string;        // 预约日期（YYYY-MM-DD）
+  start_time: string;          // 开始时间（HH:mm）
+  end_time: string;            // 结束时间（HH:mm）
+  booking_status: number;      // 预约状态：1-待确认，2-已确认，3-进行中，4-已完成，5-已取消
+  notes?: string;              // 学员备注
+  feedback?: string;           // 教练反馈
+  rating?: number;             // 课程评分（1-5）
+  cancel_reason?: string;      // 取消原因
+  confirmed_at?: string;       // 确认时间
+  started_at?: string;         // 开始时间
+  completed_at?: string;       // 完成时间
+  cancelled_at?: string;       // 取消时间
+  cancelled_by?: number;       // 取消人ID
+  created_by: number;          // 创建人ID
+  updated_by?: number;         // 更新人ID
+  created_at: string;          // 创建时间
+  updated_at: string;          // 更新时间
+  student?: User;              // 学员信息
+  coach?: User;                // 教练信息
+}
+
+// 课程状态枚举
+enum BookingStatus {
+  PENDING = 1,                 // 待确认
+  CONFIRMED = 2,               // 已确认
+  IN_PROGRESS = 3,             // 进行中
+  COMPLETED = 4,               // 已完成
+  CANCELLED = 5                // 已取消
+}
+```
+
 ### JWT Token Payload
 
 ```typescript
@@ -794,12 +1446,18 @@ interface TokenPayload {
    - 需要配置微信小程序的 APP_ID 和 APP_SECRET
    - 环境变量文件：`.env`
 
-3. **Token管理**:
+3. **用户角色逻辑**:
+   - 每个用户都可能同时具有学员和教练身份
+   - 教练身份判断：在 `student_coach_relations` 表中作为 `coach_id` 存在，或在 `time_templates` 表中有记录
+   - 学员身份判断：在 `student_coach_relations` 表中作为 `student_id` 存在
+   - "我的教练"列表：来源于 `student_coach_relations` 表中该学员绑定的教练
+
+4. **Token管理**:
    - JWT Token 默认有效期：24小时
    - 支持Token刷新机制
    - 客户端需要处理Token过期情况
 
-4. **错误处理**:
+5. **错误处理**:
    - 所有接口都有统一的错误处理
    - 建议客户端根据 `success` 字段判断请求结果
    - 根据 `code` 字段进行具体错误处理
@@ -809,8 +1467,9 @@ interface TokenPayload {
    - 用户信息模块：✅ 已完成
    - 时间模板模块：✅ 已完成
    - 师生关系模块：✅ 已完成
-   - 课程管理模块：🚧 开发中
-   - 教练/学员模块：🚧 开发中
+   - 教练相关模块：✅ 已完成
+   - 学员相关模块：✅ 已完成
+   - 课程管理模块：✅ 已完成
    - 管理端：📋 规划中
 
 ---
@@ -842,6 +1501,33 @@ curl -X GET http://localhost:3000/api/h5/user/profile \
 
 # 测试时间模板接口
 curl -X GET http://localhost:3000/api/h5/time-templates \
+  -H "Authorization: Bearer <your_token>"
+
+# 测试教练列表接口（无认证 - 应返回401）
+curl -X GET "http://localhost:3000/api/h5/coach/list?page=1&limit=5" -i
+
+# 测试教练列表接口（需要有效token）
+curl -X GET "http://localhost:3000/api/h5/coach/list?page=1&limit=5" \
+  -H "Authorization: Bearer <your_token>"
+
+# 测试学员预约记录
+curl -X GET "http://localhost:3000/api/h5/student/bookings?status=2" \
+  -H "Authorization: Bearer <your_token>"
+
+# 测试课程预约
+curl -X POST http://localhost:3000/api/h5/courses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your_token>" \
+  -d '{
+    "coach_id": 123,
+    "booking_date": "2025-06-05",
+    "start_time": "14:00",
+    "end_time": "15:00",
+    "notes": "想练习发球"
+  }'
+
+# 测试课程列表
+curl -X GET "http://localhost:3000/api/h5/courses?role=student&status=2" \
   -H "Authorization: Bearer <your_token>"
 ```
 

@@ -272,26 +272,95 @@ class RelationController {
   /**
    * 获取我的教练列表（学员视角）
    * @route GET /api/h5/relations/my-coaches
+   * @description 获取当前学员绑定的所有教练，包含课程统计信息
    */
   static getMyCoaches = asyncHandler(async (req, res) => {
     const studentId = req.user.id;
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
 
-    const relations = await StudentCoachRelation.findAll({
-      where: {
-        student_id: studentId,
-        relation_status: 1
-      },
-      include: [
-        {
-          model: User,
-          as: 'coach',
-          attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro']
+    try {
+      const { count, rows: relations } = await StudentCoachRelation.findAndCountAll({
+        where: {
+          student_id: studentId,
+          relation_status: 1
+        },
+        include: [
+          {
+            model: User,
+            as: 'coach',
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'gender']
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset
+      });
+
+      // 为每个教练关系添加课程统计信息
+      const { CourseBooking } = require('../../models');
+      const coachesWithStats = await Promise.all(relations.map(async (relation) => {
+        const coachId = relation.coach_id;
+
+        // 获取与该教练的课程统计
+        const [totalLessons, completedLessons, upcomingLessons] = await Promise.all([
+          // 总课程数
+          CourseBooking.count({
+            where: {
+              student_id: studentId,
+              coach_id: coachId
+            }
+          }),
+          // 已完成课程数
+          CourseBooking.count({
+            where: {
+              student_id: studentId,
+              coach_id: coachId,
+              booking_status: 4
+            }
+          }),
+          // 未来课程数（待确认、已确认、进行中）
+          CourseBooking.count({
+            where: {
+              student_id: studentId,
+              coach_id: coachId,
+              booking_status: {
+                [Op.in]: [1, 2, 3]
+              },
+              booking_date: {
+                [Op.gte]: new Date().toISOString().split('T')[0]
+              }
+            }
+          })
+        ]);
+
+        return {
+          ...relation.toJSON(),
+          lesson_stats: {
+            total_lessons: totalLessons,
+            completed_lessons: completedLessons,
+            upcoming_lessons: upcomingLessons,
+            remaining_lessons: relation.remaining_lessons || 0
+          }
+        };
+      }));
+
+      const totalPages = Math.ceil(count / limit);
+
+      return ResponseUtil.success(res, {
+        coaches: coachesWithStats,
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: totalPages,
+          total_count: count,
+          limit: parseInt(limit)
         }
-      ],
-      order: [['createdAt', 'DESC']]
-    });
+      }, '获取我的教练列表成功');
 
-    return ResponseUtil.success(res, relations, '获取我的教练列表成功');
+    } catch (error) {
+      logger.error('获取我的教练列表失败:', error);
+      return ResponseUtil.error(res, '获取我的教练列表失败');
+    }
   });
 
   /**

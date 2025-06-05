@@ -6,6 +6,9 @@ const authRoutes = require('./auth');
 const userRoutes = require('./user');
 const relationRoutes = require('./relation');
 const timeTemplateRoutes = require('./timeTemplate');
+const coachRoutes = require('./coach');
+const studentRoutes = require('./student');
+const courseRoutes = require('./course');
 
 /**
  * H5端路由配置
@@ -23,13 +26,13 @@ router.use('/relations', relationRoutes);
 // 时间模板路由
 router.use('/time-templates', timeTemplateRoutes);
 
-// 暂未实现的路由模块
-// const coachRoutes = require('./coach');
-// const studentRoutes = require('./student');
-// const courseRoutes = require('./course');
+// 教练相关路由
+router.use('/coach', coachRoutes);
 
-// router.use('/coach', coachRoutes);
-// router.use('/student', studentRoutes);
-// router.use('/courses', courseRoutes);
+// 学员相关路由
+router.use('/student', studentRoutes);
+
+// 课程管理路由
+router.use('/courses', courseRoutes);
 
 module.exports = router; 

@@ -26,7 +26,15 @@ class WeChatUtil {
         grant_type: 'authorization_code'
       };
 
-      logger.debug('微信登录请求参数:', { code, appid: this.appId });
+      logger.debug('微信登录请求参数:', { 
+        code, 
+        appid: this.appId,
+        appSecret: this.appSecret ? this.appSecret.substring(0, 4) + '****' : 'undefined',
+        codeLength: code.length,
+        requestUrl: url,
+        fullRequestUrl: `${url}?${new URLSearchParams(params).toString()}`,
+        timestamp: new Date().toISOString()
+      });
 
       const response = await axios.get(url, { params });
       const data = response.data;
@@ -34,7 +42,27 @@ class WeChatUtil {
       logger.debug('微信登录响应:', data);
 
       if (data.errcode) {
-        throw new WeChatError(`微信登录失败: ${data.errmsg}`);
+        // 根据错误码提供更详细的错误信息
+        let errorMessage = `微信登录失败: ${data.errmsg}`;
+        
+        switch (data.errcode) {
+          case 40029:
+            errorMessage = '微信登录失败: code 无效，请重新获取授权码';
+            break;
+          case 45011:
+            errorMessage = '微信登录失败: API 调用频率限制，请稍后重试';
+            break;
+          case 40013:
+            errorMessage = '微信登录失败: AppID 无效';
+            break;
+          case 40125:
+            errorMessage = '微信登录失败: AppSecret 无效';
+            break;
+          default:
+            errorMessage = `微信登录失败: ${data.errmsg} (错误码: ${data.errcode})`;
+        }
+        
+        throw new WeChatError(errorMessage);
       }
 
       if (!data.openid) {
