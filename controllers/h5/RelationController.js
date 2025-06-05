@@ -327,7 +327,7 @@ class RelationController {
               booking_status: {
                 [Op.in]: [1, 2, 3]
               },
-              booking_date: {
+              course_date: {
                 [Op.gte]: new Date().toISOString().split('T')[0]
               }
             }

@@ -38,12 +38,12 @@ class StudentController {
 
       // 日期范围筛选
       if (start_date || end_date) {
-        whereConditions.booking_date = {};
+        whereConditions.course_date = {};
         if (start_date) {
-          whereConditions.booking_date[Op.gte] = start_date;
+          whereConditions.course_date[Op.gte] = start_date;
         }
         if (end_date) {
-          whereConditions.booking_date[Op.lte] = end_date;
+          whereConditions.course_date[Op.lte] = end_date;
         }
       }
 
@@ -61,7 +61,7 @@ class StudentController {
             attributes: ['id', 'nickname', 'avatar_url', 'phone']
           }
         ],
-        order: [['booking_date', 'DESC'], ['start_time', 'DESC']],
+        order: [['course_date', 'DESC'], ['start_time', 'DESC']],
         limit: parseInt(limit),
         offset: parseInt(offset)
       });
@@ -167,7 +167,7 @@ class StudentController {
         where: {
           student_id: userId,
           booking_status: 4,
-          booking_date: {
+          course_date: {
             [Op.between]: [
               monthStart.toISOString().split('T')[0],
               monthEnd.toISOString().split('T')[0]

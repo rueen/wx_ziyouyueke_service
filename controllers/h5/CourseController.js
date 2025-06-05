@@ -66,7 +66,7 @@ class CourseController {
       const conflictBooking = await CourseBooking.findOne({
         where: {
           coach_id: coach_id,
-          booking_date: booking_date,
+          course_date: booking_date,
           [Op.or]: [
             {
               start_time: {
@@ -91,7 +91,7 @@ class CourseController {
       const studentConflict = await CourseBooking.findOne({
         where: {
           student_id: userId,
-          booking_date: booking_date,
+          course_date: booking_date,
           [Op.or]: [
             {
               start_time: {
@@ -116,7 +116,7 @@ class CourseController {
       const booking = await CourseBooking.create({
         student_id: userId,
         coach_id: coach_id,
-        booking_date: booking_date,
+        course_date: booking_date,
         start_time: start_time,
         end_time: end_time,
         booking_status: 1, // 待确认
@@ -186,12 +186,12 @@ class CourseController {
 
       // 日期范围筛选
       if (start_date || end_date) {
-        whereConditions.booking_date = {};
+        whereConditions.course_date = {};
         if (start_date) {
-          whereConditions.booking_date[Op.gte] = start_date;
+          whereConditions.course_date[Op.gte] = start_date;
         }
         if (end_date) {
-          whereConditions.booking_date[Op.lte] = end_date;
+          whereConditions.course_date[Op.lte] = end_date;
         }
       }
 
@@ -209,7 +209,7 @@ class CourseController {
             attributes: ['id', 'nickname', 'avatar_url', 'phone']
           }
         ],
-        order: [['booking_date', 'DESC'], ['start_time', 'DESC']],
+        order: [['course_date', 'DESC'], ['start_time', 'DESC']],
         limit: parseInt(limit),
         offset: parseInt(offset)
       });

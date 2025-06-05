@@ -259,12 +259,12 @@ class CoachController {
 
       // 日期范围筛选
       if (start_date || end_date) {
-        whereConditions.booking_date = {};
+        whereConditions.course_date = {};
         if (start_date) {
-          whereConditions.booking_date[Op.gte] = start_date;
+          whereConditions.course_date[Op.gte] = start_date;
         }
         if (end_date) {
-          whereConditions.booking_date[Op.lte] = end_date;
+          whereConditions.course_date[Op.lte] = end_date;
         }
       }
 
@@ -283,12 +283,12 @@ class CoachController {
             attributes: ['id', 'nickname', 'avatar_url', 'phone']
           }
         ],
-        order: [['booking_date', 'ASC'], ['start_time', 'ASC']]
+        order: [['course_date', 'ASC'], ['start_time', 'ASC']]
       });
 
       // 按日期分组
       const schedulesByDate = schedules.reduce((acc, schedule) => {
-        const date = schedule.booking_date;
+        const date = schedule.course_date;
         if (!acc[date]) {
           acc[date] = [];
         }
