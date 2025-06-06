@@ -1,30 +1,14 @@
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const logger = require('./logger');
+const { createOSSClient, getOSSFileUrl } = require('../config/oss');
 
 /**
  * 文件上传工具类
  */
 class UploadUtil {
   constructor() {
-    this.uploadDir = process.env.UPLOAD_PATH || 'uploads';
     this.maxFileSize = parseInt(process.env.MAX_FILE_SIZE) || 2 * 1024 * 1024; // 默认2MB
-    
-    // 确保上传目录存在
-    this.ensureDirectoryExists(this.uploadDir);
-    this.ensureDirectoryExists(path.join(this.uploadDir, 'images'));
-  }
-
-  /**
-   * 确保目录存在
-   * @param {string} dirPath - 目录路径
-   */
-  ensureDirectoryExists(dirPath) {
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-      logger.info(`创建上传目录: ${dirPath}`);
-    }
   }
 
   /**
@@ -82,22 +66,12 @@ class UploadUtil {
   }
 
   /**
-   * 获取图片上传中间件
+   * 获取图片上传中间件（OSS版本）
    * @returns {Function} multer中间件
    */
   getImageUploadMiddleware() {
-    const storage = multer.diskStorage({
-      destination: (req, file, cb) => {
-        const uploadPath = path.join(this.uploadDir, 'images');
-        this.ensureDirectoryExists(uploadPath);
-        cb(null, uploadPath);
-      },
-      filename: (req, file, cb) => {
-        const userId = req.user ? req.user.id : 'anonymous';
-        const filename = this.generateUniqueFilename(file.originalname, userId);
-        cb(null, filename);
-      }
-    });
+    // 使用内存存储，不保存到本地磁盘
+    const storage = multer.memoryStorage();
 
     const fileFilter = (req, file, cb) => {
       const validation = this.validateImageFile(file);
@@ -119,75 +93,77 @@ class UploadUtil {
   }
 
   /**
-   * 删除文件
-   * @param {string} filename - 文件名
+   * 上传文件到OSS
+   * @param {Object} file - multer文件对象
+   * @param {number} userId - 用户ID
    * @param {string} subDir - 子目录（如images）
-   * @returns {boolean} 删除是否成功
+   * @returns {Promise<Object>} 上传结果
    */
-  deleteFile(filename, subDir = '') {
+  async uploadToOSS(file, userId, subDir = 'images') {
     try {
-      const filePath = path.join(this.uploadDir, subDir, filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        logger.info(`删除文件成功: ${filePath}`);
-        return true;
-      }
-      return false;
+      const client = createOSSClient();
+      
+      // 生成OSS对象名称
+      const filename = this.generateUniqueFilename(file.originalname, userId);
+      const objectName = subDir ? `${subDir}/${filename}` : filename;
+      
+      // 上传到OSS（使用Bucket默认权限）
+      const result = await client.put(objectName, file.buffer, {
+        headers: {
+          'Content-Type': file.mimetype,
+          'x-oss-storage-class': 'Standard'
+        }
+      });
+
+      logger.info('文件上传到OSS成功:', {
+        objectName: objectName,
+        size: file.size,
+        mimetype: file.mimetype,
+        url: result.url
+      });
+
+      return {
+        success: true,
+        objectName: objectName,
+        filename: filename,
+        url: getOSSFileUrl(objectName),
+        size: file.size,
+        mimetype: file.mimetype
+      };
     } catch (error) {
-      logger.error(`删除文件失败: ${error.message}`);
-      return false;
+      logger.error('文件上传到OSS失败:', {
+        error: error.message,
+        stack: error.stack
+      });
+      
+      throw new Error(`OSS上传失败: ${error.message}`);
     }
   }
 
   /**
-   * 获取文件访问URL
-   * @param {string} filename - 文件名
-   * @param {string} subDir - 子目录
-   * @param {string} baseUrl - 基础URL
-   * @returns {string} 文件访问URL
+   * 删除OSS文件
+   * @param {string} objectName - OSS对象名称或文件名
+   * @param {string} subDir - 子目录（如images）
+   * @returns {Promise<boolean>} 删除是否成功
    */
-  getFileUrl(filename, subDir = '', baseUrl = process.env.BASE_URL || 'http://localhost:3000') {
-    if (subDir) {
-      return `${baseUrl}/uploads/${subDir}/${filename}`;
-    }
-    return `${baseUrl}/uploads/${filename}`;
-  }
-
-  /**
-   * 检查文件是否存在
-   * @param {string} filename - 文件名
-   * @param {string} subDir - 子目录
-   * @returns {boolean} 文件是否存在
-   */
-  fileExists(filename, subDir = '') {
-    const filePath = path.join(this.uploadDir, subDir, filename);
-    return fs.existsSync(filePath);
-  }
-
-  /**
-   * 获取文件信息
-   * @param {string} filename - 文件名
-   * @param {string} subDir - 子目录
-   * @returns {Object|null} 文件信息
-   */
-  getFileInfo(filename, subDir = '') {
+  async deleteOSSFile(objectName, subDir = '') {
     try {
-      const filePath = path.join(this.uploadDir, subDir, filename);
-      if (fs.existsSync(filePath)) {
-        const stats = fs.statSync(filePath);
-        return {
-          filename: filename,
-          size: stats.size,
-          createdAt: stats.birthtime,
-          modifiedAt: stats.mtime
-        };
-      }
-      return null;
+      const client = createOSSClient();
+      
+      // 如果传入的是文件名而不是完整对象名，需要拼接路径
+      const fullObjectName = objectName.includes('/') ? objectName : (subDir ? `${subDir}/${objectName}` : objectName);
+      
+      await client.delete(fullObjectName);
+      
+      logger.info(`删除OSS文件成功: ${fullObjectName}`);
+      return true;
     } catch (error) {
-      logger.error(`获取文件信息失败: ${error.message}`);
-      return null;
+      logger.error(`删除OSS文件失败: ${error.message}`);
+      return false;
     }
   }
+
+
 }
 
 module.exports = new UploadUtil(); 

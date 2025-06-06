@@ -14,12 +14,6 @@ router.get('/profile', authenticateToken, UserController.getProfile);
 // 更新用户信息
 router.put('/profile', authenticateToken, updateProfileValidation, validateRequest, UserController.updateProfile);
 
-// 上传头像
-router.post('/avatar', authenticateToken, UserController.uploadAvatar);
-
-// 获取用户统计信息
-router.get('/stats', authenticateToken, UserController.getUserStats);
-
 // 解密微信手机号
 router.post('/decrypt-phone', authenticateToken, decryptPhoneValidation, validateRequest, UserController.decryptPhone);
 

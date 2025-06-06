@@ -124,11 +124,7 @@ Authorization: Bearer <token>
       "gender": 1,
       "intro": null,
       "register_time": "2025-06-02T07:30:00.000Z",
-      "last_login_time": "2025-06-02T07:32:00.000Z",
-      "roles": {
-        "isCoach": false,
-        "isStudent": true
-      }
+      "last_login_time": "2025-06-02T07:32:00.000Z"
     },
     "isNewUser": true,
     "autoBindCoach": true
@@ -214,11 +210,7 @@ Authorization: Bearer <token>
       "avatar_url": "https://example.com/avatar.jpg",
       "phone": "13800138000",
       "gender": 1,
-      "intro": "我是一名学员",
-      "roles": {
-        "isCoach": false,
-        "isStudent": true
-      }
+      "intro": "我是一名学员"
     }
   },
   "timestamp": 1638360000000
@@ -226,6 +218,8 @@ Authorization: Bearer <token>
 ```
 
 ### 用户信息模块 (`/api/h5/user`)
+
+**头像上传说明**: 用户头像上传请使用通用上传接口 `POST /api/upload/image`，传递 `directory=avatar` 参数。上传成功后，使用返回的URL通过更新用户信息接口设置 `avatar_url` 字段。
 
 #### 1. 获取用户信息
 
@@ -253,11 +247,7 @@ Authorization: Bearer <token>
     "intro": "我是一名学员",
     "register_time": "2025-06-02T07:30:00.000Z",
     "last_login_time": "2025-06-02T07:32:00.000Z",
-    "status": 1,
-    "roles": {
-      "isCoach": false,
-      "isStudent": true
-    }
+    "status": 1
   },
   "timestamp": 1638360000000
 }
@@ -308,56 +298,13 @@ Authorization: Bearer <token>
     "intro": "专业健身教练",
     "register_time": "2025-06-02T07:30:00.000Z",
     "last_login_time": "2025-06-02T07:32:00.000Z",
-    "status": 1,
-    "roles": {
-      "isCoach": true,
-      "isStudent": true
-    }
+    "status": 1
   },
   "timestamp": 1638360000000
 }
 ```
 
-#### 3. 获取用户统计信息
-
-**接口地址**: `GET /api/h5/user/stats`
-
-**接口描述**: 获取用户的统计数据
-
-**认证**: 需要
-
-**请求参数**: 无
-
-**响应示例**:
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "获取用户统计信息成功",
-  "data": {
-    "roles": {
-      "isCoach": true,
-      "isStudent": true
-    },
-    "coachStats": {
-      "totalStudents": 5,
-      "totalCourses": 20,
-      "completedCourses": 18,
-      "pendingCourses": 2
-    },
-    "studentStats": {
-      "totalCoaches": 2,
-      "totalCourses": 15,
-      "completedCourses": 12,
-      "remainingLessons": 8,
-      "pendingCourses": 3
-    }
-  },
-  "timestamp": 1638360000000
-}
-```
-
-#### 4. 解密微信手机号
+#### 3. 解密微信手机号
 
 **接口地址**: `POST /api/h5/user/decrypt-phone`
 
@@ -403,23 +350,7 @@ Authorization: Bearer <token>
 }
 ```
 
-#### 5. 上传头像
 
-**接口地址**: `POST /api/h5/user/avatar`
-
-**接口描述**: 上传用户头像（暂未实现）
-
-**认证**: 需要
-
-**响应示例**:
-```json
-{
-  "success": false,
-  "code": 1001,
-  "message": "头像上传功能暂未实现",
-  "timestamp": 1638360000000
-}
-```
 
 ### 时间模板模块 (`/api/h5/time-templates`)
 
@@ -881,18 +812,19 @@ GET /api/h5/coach/123/schedule?start_date=2025-06-01&end_date=2025-06-07
 
 ### 文件上传模块 (`/api/upload`)
 
-#### 1. 上传图片
+#### 1. 上传图片到OSS
 
 **接口地址**: `POST /api/upload/image`
 
-**接口描述**: 上传图片文件，支持头像、封面图等各种图片上传需求
+**接口描述**: 上传图片文件到阿里云OSS，支持头像、封面图等各种图片上传需求
 
 **认证**: 需要
 
 **请求参数**:
 
 - Content-Type: `multipart/form-data`
-- 字段名: `file`
+- 字段名: `file`（必填）- 图片文件
+- 字段名: `directory`（可选）- 上传目录，支持：images、avatar、documents、temp，默认为images
 - 文件类型: 图片格式（jpg, jpeg, png, gif, webp）
 - 文件大小: 最大2MB
 
@@ -903,6 +835,7 @@ Content-Type: multipart/form-data
 Authorization: Bearer <token>
 
 file: <image_file>
+directory: avatar
 ```
 
 **响应示例**:
@@ -912,8 +845,10 @@ file: <image_file>
   "code": 200,
   "message": "图片上传成功",
   "data": {
-    "url": "http://localhost:3000/uploads/images/1638360000_123_a1b2c3.jpg",
-    "filename": "1638360000_123_a1b2c3.jpg",
+    "url": "https://ziyouyueke.oss-cn-hangzhou.aliyuncs.com/avatar/1749221234567_123_a1b2c3.jpg",
+    "filename": "1749221234567_123_a1b2c3.jpg",
+    "objectName": "avatar/1749221234567_123_a1b2c3.jpg",
+    "directory": "avatar",
     "size": 1024000,
     "mimetype": "image/jpeg"
   },
@@ -931,11 +866,11 @@ file: <image_file>
 }
 ```
 
-#### 2. 删除图片
+#### 2. 删除OSS图片
 
 **接口地址**: `DELETE /api/upload/image/:filename`
 
-**接口描述**: 删除指定的图片文件
+**接口描述**: 从阿里云OSS删除指定的图片文件
 
 **认证**: 需要
 
@@ -944,10 +879,11 @@ file: <image_file>
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | filename | string | 是 | 图片文件名（路径参数） |
+| directory | string | 否 | 文件所在目录（查询参数），默认为images |
 
 **请求示例**:
 ```
-DELETE /api/upload/image/1638360000_123_a1b2c3.jpg
+DELETE /api/upload/image/1749221234567_123_a1b2c3.jpg?directory=avatar
 Authorization: Bearer <token>
 ```
 
@@ -972,92 +908,19 @@ Authorization: Bearer <token>
 }
 ```
 
-#### 3. 获取图片信息
 
-**接口地址**: `GET /api/upload/image/:filename/info`
-
-**接口描述**: 获取指定图片文件的详细信息
-
-**认证**: 不需要
-
-**请求参数**:
-
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| filename | string | 是 | 图片文件名（路径参数） |
-
-**请求示例**:
-```
-GET /api/upload/image/1638360000_123_a1b2c3.jpg/info
-```
-
-**响应示例**:
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "获取图片信息成功",
-  "data": {
-    "filename": "1638360000_123_a1b2c3.jpg",
-    "size": 1024000,
-    "createdAt": "2025-06-02T10:00:00.000Z",
-    "modifiedAt": "2025-06-02T10:00:00.000Z",
-    "url": "http://localhost:3000/uploads/images/1638360000_123_a1b2c3.jpg"
-  },
-  "timestamp": 1638360000000
-}
-```
-
-#### 4. 上传用户头像
-
-**接口地址**: `POST /api/h5/user/avatar`
-
-**接口描述**: 上传用户头像并自动更新用户信息
-
-**认证**: 需要
-
-**请求参数**:
-
-- Content-Type: `multipart/form-data`
-- 字段名: `file`
-- 文件类型: 图片格式（jpg, jpeg, png, gif, webp）
-- 文件大小: 最大2MB
-
-**请求示例**:
-```
-POST /api/h5/user/avatar
-Content-Type: multipart/form-data
-Authorization: Bearer <token>
-
-file: <avatar_image_file>
-```
-
-**响应示例**:
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "头像上传成功",
-  "data": {
-    "url": "http://localhost:3000/uploads/images/1638360000_123_a1b2c3.jpg",
-    "filename": "1638360000_123_a1b2c3.jpg",
-    "size": 1024000,
-    "mimetype": "image/jpeg"
-  },
-  "timestamp": 1638360000000
-}
-```
 
 **注意事项**:
 
-1. **文件命名规则**: 上传的文件会自动重命名为 `时间戳_用户ID_随机字符串.扩展名` 的格式
-2. **权限控制**: 用户只能删除自己上传的文件（通过文件名中的用户ID判断）
-3. **自动清理**: 上传新头像时会自动删除用户之前的头像文件
-4. **静态访问**: 上传的文件可通过 `/uploads/images/filename` 路径直接访问
-5. **错误处理**: 
+1. **OSS存储**: 所有文件都存储在阿里云OSS上，不占用服务器本地存储空间
+2. **文件命名规则**: 上传的文件会自动重命名为 `时间戳_用户ID_随机字符串.扩展名` 的格式
+3. **目录管理**: 支持通过directory参数指定上传目录，默认支持：images、avatar、documents、temp
+4. **权限控制**: 用户只能删除自己上传的文件（通过文件名中的用户ID判断）
+5. **公开访问**: 上传的文件设置为公开读，可直接通过返回的URL访问
+6. **错误处理**: 
    - 4000: 文件相关错误（格式、大小等）
    - 1003: 权限不足（删除他人文件）
-   - 1004: 文件不存在
+   - OSS相关错误会返回具体的错误信息
 
 
 
@@ -1523,10 +1386,6 @@ interface User {
   register_time: string;        // 注册时间
   last_login_time?: string;     // 最后登录时间
   status: number;               // 账户状态：0-禁用，1-正常
-  roles: {                      // 用户角色
-    isCoach: boolean;           // 是否为教练
-    isStudent: boolean;         // 是否为学员
-  };
 }
 ```
 

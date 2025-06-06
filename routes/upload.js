@@ -14,7 +14,4 @@ router.post('/image', authenticateToken, UploadController.uploadImage);
 // 删除图片
 router.delete('/image/:filename', authenticateToken, UploadController.deleteImage);
 
-// 获取图片信息
-router.get('/image/:filename/info', UploadController.getImageInfo);
-
 module.exports = router; 

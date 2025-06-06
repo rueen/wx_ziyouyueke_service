@@ -8,7 +8,7 @@ const logger = require('../utils/logger');
  */
 class UploadController {
   /**
-   * 上传图片
+   * 上传图片到OSS
    * @route POST /api/upload/image
    */
   static uploadImage = asyncHandler(async (req, res) => {
@@ -17,7 +17,7 @@ class UploadController {
     // 使用multer中间件处理文件上传
     const uploadMiddleware = uploadUtil.getImageUploadMiddleware();
     
-    uploadMiddleware(req, res, (err) => {
+    uploadMiddleware(req, res, async (err) => {
       if (err) {
         logger.error('图片上传失败:', { 
           userId: user.id,
@@ -46,63 +46,71 @@ class UploadController {
         return ResponseUtil.validationError(res, '请选择要上传的图片文件');
       }
       
+      // 获取上传目录参数，默认为images
+      const directory = req.body.directory || 'images';
+      
+      // 验证目录参数安全性
+      const allowedDirectories = ['images', 'avatar', 'documents', 'temp'];
+      if (!allowedDirectories.includes(directory)) {
+        return ResponseUtil.validationError(res, '不支持的上传目录');
+      }
+      
       try {
-        // 生成文件访问URL
-        const fileUrl = uploadUtil.getFileUrl(req.file.filename, 'images');
+        // 上传文件到OSS
+        const uploadResult = await uploadUtil.uploadToOSS(req.file, user.id, directory);
         
-        logger.info('图片上传成功:', {
+        logger.info('图片上传到OSS成功:', {
           userId: user.id,
-          filename: req.file.filename,
+          directory: directory,
+          objectName: uploadResult.objectName,
+          filename: uploadResult.filename,
           originalName: req.file.originalname,
-          size: req.file.size,
-          mimetype: req.file.mimetype,
-          url: fileUrl,
+          size: uploadResult.size,
+          mimetype: uploadResult.mimetype,
+          url: uploadResult.url,
           timestamp: new Date().toISOString()
         });
         
         return ResponseUtil.success(res, {
-          url: fileUrl,
-          filename: req.file.filename,
-          size: req.file.size,
-          mimetype: req.file.mimetype
+          url: uploadResult.url,
+          filename: uploadResult.filename,
+          objectName: uploadResult.objectName,
+          directory: directory,
+          size: uploadResult.size,
+          mimetype: uploadResult.mimetype
         }, '图片上传成功');
         
       } catch (error) {
         logger.error('图片上传处理失败:', {
           userId: user.id,
+          directory: directory,
           error: error.message,
           timestamp: new Date().toISOString()
         });
         
-        // 如果处理失败，删除已上传的文件
-        if (req.file) {
-          uploadUtil.deleteFile(req.file.filename, 'images');
-        }
-        
-        return ResponseUtil.internalError(res, '图片上传处理失败');
+        return ResponseUtil.serverError(res, '图片上传处理失败');
       }
     });
   });
 
   /**
-   * 删除图片
+   * 删除OSS图片
    * @route DELETE /api/upload/image/:filename
    */
   static deleteImage = asyncHandler(async (req, res) => {
     const { filename } = req.params;
+    const { directory = 'images' } = req.query; // 从查询参数获取目录
     const user = req.user;
     
     if (!filename) {
       return ResponseUtil.validationError(res, '文件名不能为空');
     }
     
-    // 检查文件是否存在
-    if (!uploadUtil.fileExists(filename, 'images')) {
-      return ResponseUtil.businessError(res, 1004, '文件不存在');
+    // 验证目录参数安全性
+    const allowedDirectories = ['images', 'avatar', 'documents', 'temp'];
+    if (!allowedDirectories.includes(directory)) {
+      return ResponseUtil.validationError(res, '不支持的目录参数');
     }
-    
-    // 获取文件信息（可以用来验证文件所有权）
-    const fileInfo = uploadUtil.getFileInfo(filename, 'images');
     
     // 简单的权限检查：文件名中包含用户ID
     if (!filename.includes(`_${user.id}_`)) {
@@ -110,12 +118,15 @@ class UploadController {
     }
     
     try {
-      const deleted = uploadUtil.deleteFile(filename, 'images');
+      // 从OSS删除文件
+      const deleted = await uploadUtil.deleteOSSFile(filename, directory);
       
       if (deleted) {
-        logger.info('图片删除成功:', {
+        logger.info('OSS图片删除成功:', {
           userId: user.id,
           filename: filename,
+          directory: directory,
+          objectName: `${directory}/${filename}`,
           timestamp: new Date().toISOString()
         });
         
@@ -125,56 +136,19 @@ class UploadController {
       }
       
     } catch (error) {
-      logger.error('图片删除失败:', {
+      logger.error('OSS图片删除失败:', {
         userId: user.id,
         filename: filename,
+        directory: directory,
         error: error.message,
         timestamp: new Date().toISOString()
       });
       
-      return ResponseUtil.internalError(res, '图片删除失败');
+      return ResponseUtil.serverError(res, '图片删除失败');
     }
   });
 
-  /**
-   * 获取图片信息
-   * @route GET /api/upload/image/:filename/info
-   */
-  static getImageInfo = asyncHandler(async (req, res) => {
-    const { filename } = req.params;
-    
-    if (!filename) {
-      return ResponseUtil.validationError(res, '文件名不能为空');
-    }
-    
-    // 检查文件是否存在
-    if (!uploadUtil.fileExists(filename, 'images')) {
-      return ResponseUtil.businessError(res, 1004, '文件不存在');
-    }
-    
-    try {
-      const fileInfo = uploadUtil.getFileInfo(filename, 'images');
-      const fileUrl = uploadUtil.getFileUrl(filename, 'images');
-      
-      if (fileInfo) {
-        return ResponseUtil.success(res, {
-          ...fileInfo,
-          url: fileUrl
-        }, '获取图片信息成功');
-      } else {
-        return ResponseUtil.businessError(res, 1004, '文件信息获取失败');
-      }
-      
-    } catch (error) {
-      logger.error('获取图片信息失败:', {
-        filename: filename,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-      
-      return ResponseUtil.internalError(res, '获取图片信息失败');
-    }
-  });
+
 }
 
 module.exports = UploadController; 

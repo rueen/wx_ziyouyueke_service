@@ -149,10 +149,6 @@ Authorization: Bearer <token>
     "intro": "个人介绍",
     "register_time": "2024-12-19T10:00:00Z",
     "last_login_time": "2024-12-19T10:00:00Z",
-    "roles": {
-      "isCoach": true,               // 是否为教练
-      "isStudent": false             // 是否为学员
-    }
   }
 }
 ```

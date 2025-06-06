@@ -1,3 +1,10 @@
+/*
+ * @Author: diaochan
+ * @Date: 2025-06-02 15:12:19
+ * @LastEditors: diaochan
+ * @LastEditTime: 2025-06-06 20:27:44
+ * @Description: 
+ */
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -86,21 +93,7 @@ const User = sequelize.define('users', {
   ]
 });
 
-/**
- * 实例方法：获取用户角色
- */
-User.prototype.getRoles = async function() {
-  const TimeTemplate = require('./TimeTemplate');
-  const StudentCoachRelation = require('./StudentCoachRelation');
-  
-  // 检查是否为教练（有时间模板）
-  const isCoach = await TimeTemplate.count({ where: { coach_id: this.id } }) > 0;
-  
-  // 检查是否为学员（有师生关系）
-  const isStudent = await StudentCoachRelation.count({ where: { student_id: this.id } }) > 0;
-  
-  return { isCoach, isStudent };
-};
+
 
 /**
  * 实例方法：更新最后登录时间

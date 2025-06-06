@@ -81,12 +81,18 @@ npm install
 复制环境变量模板并配置：
 
 ```bash
-cp config/env.example .env
+cp .env.example .env
 ```
 
 编辑 `.env` 文件，配置以下参数：
 
 ```env
+# 阿里云OSS配置（必填）
+OSS_REGION=oss-cn-hangzhou
+OSS_ACCESS_KEY_ID=your_oss_access_key_id
+OSS_ACCESS_KEY_SECRET=your_oss_access_key_secret
+OSS_BUCKET=your_oss_bucket_name
+
 # 服务器配置
 PORT=3000
 NODE_ENV=development
@@ -106,6 +112,11 @@ JWT_EXPIRES_IN=7d
 WECHAT_APP_ID=your_wechat_app_id
 WECHAT_APP_SECRET=your_wechat_app_secret
 ```
+
+**重要说明**: 
+- OSS配置为必填项，用于文件上传功能
+- 请确保 `.env` 文件已添加到 `.gitignore` 中，避免敏感信息泄露
+- 生产环境请使用强密码和安全的访问密钥
 
 ### 4. 数据库准备
 

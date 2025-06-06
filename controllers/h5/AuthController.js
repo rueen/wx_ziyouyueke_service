@@ -92,9 +92,6 @@ class AuthController {
     // 生成JWT token
     const token = jwtUtil.generateUserToken(user);
 
-    // 获取用户角色
-    const roles = await user.getRoles();
-
     return ResponseUtil.success(res, {
       token,
       user: {
@@ -106,8 +103,7 @@ class AuthController {
         gender: user.gender,
         intro: user.intro,
         register_time: user.register_time,
-        last_login_time: user.last_login_time,
-        roles
+        last_login_time: user.last_login_time
       },
       isNewUser,
       autoBindCoach
@@ -152,7 +148,6 @@ class AuthController {
   static verifyToken = asyncHandler(async (req, res) => {
     // 如果能到达这里，说明token有效（通过了认证中间件）
     const user = req.user;
-    const roles = await user.getRoles();
 
     return ResponseUtil.success(res, {
       user: {
@@ -162,8 +157,7 @@ class AuthController {
         avatar_url: user.avatar_url,
         phone: user.phone,
         gender: user.gender,
-        intro: user.intro,
-        roles
+        intro: user.intro
       }
     }, 'Token有效');
   });

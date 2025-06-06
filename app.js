@@ -49,8 +49,8 @@ app.use(morgan('combined', { stream: { write: (message) => logger.info(message.t
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// 静态文件
-app.use('/uploads', express.static('uploads'));
+// 静态文件服务已迁移到OSS，无需本地静态文件服务
+// app.use('/uploads', express.static('uploads'));
 
 /**
  * 路由配置
