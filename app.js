@@ -12,6 +12,7 @@ const sequelize = require('./config/database');
 // 引入路由
 const h5Routes = require('./routes/h5');
 const adminRoutes = require('./routes/admin');
+const uploadRoutes = require('./routes/upload');
 
 // 引入中间件
 const { errorHandler } = require('./middleware/errorHandler');
@@ -56,6 +57,7 @@ app.use('/uploads', express.static('uploads'));
  */
 app.use('/api/h5', h5Routes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // 健康检查
 app.get('/health', (req, res) => {

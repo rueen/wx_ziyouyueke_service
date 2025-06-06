@@ -201,6 +201,80 @@ class WeChatUtil {
       throw new WeChatError('生成二维码失败');
     }
   }
+
+  /**
+   * 解密微信手机号
+   * @param {string} code - 微信小程序 getPhoneNumber 返回的加密code
+   * @returns {Promise<Object>} 解密后的手机号信息
+   */
+  async decryptPhoneNumber(code) {
+    try {
+      const accessToken = await this.getAccessToken();
+      const url = `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${accessToken}`;
+      
+      const requestData = {
+        code: code
+      };
+
+      logger.debug('解密手机号请求参数:', { 
+        code,
+        accessToken: accessToken ? accessToken.substring(0, 10) + '****' : 'undefined',
+        requestUrl: url,
+        timestamp: new Date().toISOString()
+      });
+
+      const response = await axios.post(url, requestData);
+      const data = response.data;
+
+      logger.debug('解密手机号响应:', data);
+
+      if (data.errcode !== 0) {
+        // 根据错误码提供更详细的错误信息
+        let errorMessage = `微信接口调用失败：${data.errmsg}`;
+        
+        switch (data.errcode) {
+          case 40029:
+          case 41008:
+            errorMessage = '微信接口调用失败：code无效或已过期';
+            break;
+          case 45011:
+            errorMessage = '微信接口调用失败：API调用频率限制，请稍后重试';
+            break;
+          case 40001:
+            errorMessage = '微信接口调用失败：访问令牌无效';
+            break;
+          case 48001:
+            errorMessage = '微信接口调用失败：接口未授权';
+            break;
+          default:
+            errorMessage = `微信接口调用失败：${data.errmsg}`;
+        }
+        
+        throw new WeChatError(errorMessage);
+      }
+
+      if (!data.phone_info) {
+        throw new WeChatError('微信接口调用失败：未获取到手机号信息');
+      }
+
+      const phoneInfo = data.phone_info;
+      
+      return {
+        phone: phoneInfo.phoneNumber,
+        purePhoneNumber: phoneInfo.purePhoneNumber,
+        countryCode: phoneInfo.countryCode,
+        watermark: phoneInfo.watermark
+      };
+    } catch (error) {
+      logger.error('微信手机号解密失败:', error);
+      
+      if (error instanceof WeChatError) {
+        throw error;
+      }
+      
+      throw new WeChatError('微信手机号解密服务暂时不可用');
+    }
+  }
 }
 
 module.exports = new WeChatUtil(); 

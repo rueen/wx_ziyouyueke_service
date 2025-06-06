@@ -1,0 +1,20 @@
+const express = require('express');
+const router = express.Router();
+const UploadController = require('../controllers/UploadController');
+const { authenticateToken } = require('../middleware/auth');
+const { idParamValidation, validateRequest } = require('../middleware/validation');
+
+/**
+ * 文件上传相关路由
+ */
+
+// 上传图片
+router.post('/image', authenticateToken, UploadController.uploadImage);
+
+// 删除图片
+router.delete('/image/:filename', authenticateToken, UploadController.deleteImage);
+
+// 获取图片信息
+router.get('/image/:filename/info', UploadController.getImageInfo);
+
+module.exports = router; 

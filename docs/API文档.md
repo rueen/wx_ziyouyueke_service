@@ -355,7 +355,53 @@ Authorization: Bearer <token>
 }
 ```
 
-#### 4. 上传头像
+#### 4. 解密微信手机号
+
+**接口地址**: `POST /api/h5/user/decrypt-phone`
+
+**接口描述**: 解密微信小程序获取的加密手机号数据
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| code | string | 是 | 微信小程序 getPhoneNumber 返回的加密code |
+
+**请求示例**:
+```json
+{
+  "code": "wx_encrypted_phone_code_from_getPhoneNumber"
+}
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "手机号解密成功",
+  "data": {
+    "phone": "13800138000",
+    "countryCode": "86",
+    "purePhoneNumber": "13800138000"
+  },
+  "timestamp": 1638360000000
+}
+```
+
+**错误响应示例**:
+```json
+{
+  "success": false,
+  "code": 2001,
+  "message": "微信接口调用失败：code无效或已过期",
+  "timestamp": 1638360000000
+}
+```
+
+#### 5. 上传头像
 
 **接口地址**: `POST /api/h5/user/avatar`
 
@@ -540,7 +586,7 @@ Authorization: Bearer <token>
 
 **接口地址**: `POST /api/h5/relations`
 
-**接口描述**: 绑定师生关系，自动使用当前登录用户作为学员
+**接口描述**: 绑定师生关系
 
 **认证**: 需要
 
@@ -549,12 +595,9 @@ Authorization: Bearer <token>
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | coach_id | number | 是 | 教练ID |
+| student_id | number | 否 | 学员ID（默认为当前用户） |
 | remaining_lessons | number | 否 | 剩余课时（默认0） |
 | student_remark | string | 否 | 学员备注（最大500字符） |
-
-**说明**: 
-- 学员ID（student_id）自动使用当前登录用户的ID，无需在请求中传递
-- 确保了安全性，防止用户伪造其他人的学员ID
 
 **请求示例**:
 ```json
@@ -728,9 +771,9 @@ GET /api/h5/coach/list?page=1&limit=10&keyword=张&gender=1
 
 **接口地址**: `GET /api/h5/coach/:id`
 
-**接口描述**: 获取指定教练的详细信息（公开接口）
+**接口描述**: 获取指定教练的详细信息
 
-**认证**: 不需要
+**认证**: 需要
 
 **请求参数**:
 
@@ -755,6 +798,7 @@ GET /api/h5/coach/123
     "avatar_url": "https://example.com/avatar.jpg",
     "gender": 1,
     "intro": "专业网球教练，10年教学经验",
+    "phone": "13800138000",
     "register_time": "2025-06-01T10:00:00.000Z",
     "last_login_time": "2025-06-02T08:00:00.000Z",
     "stats": {
@@ -832,6 +876,188 @@ GET /api/h5/coach/123/schedule?start_date=2025-06-01&end_date=2025-06-07
   "timestamp": 1638360000000
 }
 ```
+
+### 文件上传模块 (`/api/upload`)
+
+#### 1. 上传图片
+
+**接口地址**: `POST /api/upload/image`
+
+**接口描述**: 上传图片文件，支持头像、封面图等各种图片上传需求
+
+**认证**: 需要
+
+**请求参数**:
+
+- Content-Type: `multipart/form-data`
+- 字段名: `file`
+- 文件类型: 图片格式（jpg, jpeg, png, gif, webp）
+- 文件大小: 最大2MB
+
+**请求示例**:
+```
+POST /api/upload/image
+Content-Type: multipart/form-data
+Authorization: Bearer <token>
+
+file: <image_file>
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "图片上传成功",
+  "data": {
+    "url": "http://localhost:3000/uploads/images/1638360000_123_a1b2c3.jpg",
+    "filename": "1638360000_123_a1b2c3.jpg",
+    "size": 1024000,
+    "mimetype": "image/jpeg"
+  },
+  "timestamp": 1638360000000
+}
+```
+
+**错误示例**:
+```json
+{
+  "success": false,
+  "code": 4000,
+  "message": "文件格式不支持，请上传图片文件",
+  "timestamp": 1638360000000
+}
+```
+
+#### 2. 删除图片
+
+**接口地址**: `DELETE /api/upload/image/:filename`
+
+**接口描述**: 删除指定的图片文件
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| filename | string | 是 | 图片文件名（路径参数） |
+
+**请求示例**:
+```
+DELETE /api/upload/image/1638360000_123_a1b2c3.jpg
+Authorization: Bearer <token>
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "图片删除成功",
+  "data": null,
+  "timestamp": 1638360000000
+}
+```
+
+**错误示例**:
+```json
+{
+  "success": false,
+  "code": 1004,
+  "message": "文件不存在",
+  "timestamp": 1638360000000
+}
+```
+
+#### 3. 获取图片信息
+
+**接口地址**: `GET /api/upload/image/:filename/info`
+
+**接口描述**: 获取指定图片文件的详细信息
+
+**认证**: 不需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| filename | string | 是 | 图片文件名（路径参数） |
+
+**请求示例**:
+```
+GET /api/upload/image/1638360000_123_a1b2c3.jpg/info
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "获取图片信息成功",
+  "data": {
+    "filename": "1638360000_123_a1b2c3.jpg",
+    "size": 1024000,
+    "createdAt": "2025-06-02T10:00:00.000Z",
+    "modifiedAt": "2025-06-02T10:00:00.000Z",
+    "url": "http://localhost:3000/uploads/images/1638360000_123_a1b2c3.jpg"
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 4. 上传用户头像
+
+**接口地址**: `POST /api/h5/user/avatar`
+
+**接口描述**: 上传用户头像并自动更新用户信息
+
+**认证**: 需要
+
+**请求参数**:
+
+- Content-Type: `multipart/form-data`
+- 字段名: `file`
+- 文件类型: 图片格式（jpg, jpeg, png, gif, webp）
+- 文件大小: 最大2MB
+
+**请求示例**:
+```
+POST /api/h5/user/avatar
+Content-Type: multipart/form-data
+Authorization: Bearer <token>
+
+file: <avatar_image_file>
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "头像上传成功",
+  "data": {
+    "url": "http://localhost:3000/uploads/images/1638360000_123_a1b2c3.jpg",
+    "filename": "1638360000_123_a1b2c3.jpg",
+    "size": 1024000,
+    "mimetype": "image/jpeg"
+  },
+  "timestamp": 1638360000000
+}
+```
+
+**注意事项**:
+
+1. **文件命名规则**: 上传的文件会自动重命名为 `时间戳_用户ID_随机字符串.扩展名` 的格式
+2. **权限控制**: 用户只能删除自己上传的文件（通过文件名中的用户ID判断）
+3. **自动清理**: 上传新头像时会自动删除用户之前的头像文件
+4. **静态访问**: 上传的文件可通过 `/uploads/images/filename` 路径直接访问
+5. **错误处理**: 
+   - 4000: 文件相关错误（格式、大小等）
+   - 1003: 权限不足（删除他人文件）
+   - 1004: 文件不存在
+
+
 
 ### 学员相关模块 (`/api/h5/student`)
 
@@ -1501,6 +1727,12 @@ curl -X GET http://localhost:3000/api/h5/auth/verify \
 curl -X GET http://localhost:3000/api/h5/user/profile \
   -H "Authorization: Bearer <your_token>"
 
+# 测试手机号解密接口（需要真实的微信getPhoneNumber返回的code）
+curl -X POST http://localhost:3000/api/h5/user/decrypt-phone \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your_token>" \
+  -d '{"code":"wx_encrypted_phone_code"}'
+
 # 测试时间模板接口
 curl -X GET http://localhost:3000/api/h5/time-templates \
   -H "Authorization: Bearer <your_token>"
@@ -1531,6 +1763,11 @@ curl -X POST http://localhost:3000/api/h5/courses \
 # 测试课程列表
 curl -X GET "http://localhost:3000/api/h5/courses?role=student&status=2" \
   -H "Authorization: Bearer <your_token>"
+
+# 测试上传图片（需要有效token和图片文件）
+curl -X POST http://localhost:3000/api/upload/image \
+  -H "Authorization: Bearer <your_token>" \
+  -F "file=@/path/to/your/image.jpg"
 ```
 
 ### 常见问题

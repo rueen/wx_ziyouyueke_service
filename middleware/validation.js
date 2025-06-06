@@ -189,6 +189,17 @@ const idParamValidation = [
     .withMessage('ID必须是正整数')
 ];
 
+/**
+ * 解密手机号验证规则
+ */
+const decryptPhoneValidation = [
+  body('code')
+    .notEmpty()
+    .withMessage('微信手机号授权码不能为空')
+    .isString()
+    .withMessage('微信手机号授权码格式不正确')
+];
+
 module.exports = {
   validateRequest,
   loginValidation,
@@ -200,5 +211,6 @@ module.exports = {
   relationBindValidation,
   remarkUpdateValidation,
   paginationValidation,
-  idParamValidation
+  idParamValidation,
+  decryptPhoneValidation
 }; 

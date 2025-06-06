@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const UserController = require('../../controllers/h5/UserController');
 const { authenticateToken } = require('../../middleware/auth');
-const { updateProfileValidation, validateRequest } = require('../../middleware/validation');
+const { updateProfileValidation, decryptPhoneValidation, validateRequest } = require('../../middleware/validation');
 
 /**
  * 用户信息相关路由
@@ -19,5 +19,8 @@ router.post('/avatar', authenticateToken, UserController.uploadAvatar);
 
 // 获取用户统计信息
 router.get('/stats', authenticateToken, UserController.getUserStats);
+
+// 解密微信手机号
+router.post('/decrypt-phone', authenticateToken, decryptPhoneValidation, validateRequest, UserController.decryptPhone);
 
 module.exports = router; 
