@@ -60,7 +60,19 @@ const updateProfileValidation = [
   body('intro')
     .optional()
     .isLength({ max: 500 })
-    .withMessage('个人介绍不能超过500个字符')
+    .withMessage('个人介绍不能超过500个字符'),
+  body('avatar_url')
+    .optional()
+    .custom((value) => {
+      // 自定义URL验证，支持localhost和开发环境
+      const urlRegex = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$|^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:[0-9]+)?(\/.*)?$/;
+      if (!urlRegex.test(value)) {
+        throw new Error('头像URL格式不正确');
+      }
+      return true;
+    })
+    .isLength({ max: 500 })
+    .withMessage('头像URL长度不能超过500个字符')
 ];
 
 /**

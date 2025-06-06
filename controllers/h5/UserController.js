@@ -36,7 +36,7 @@ class UserController {
    */
   static updateProfile = asyncHandler(async (req, res) => {
     const user = req.user;
-    const { nickname, phone, gender, intro } = req.body;
+    const { nickname, phone, gender, intro, avatar_url } = req.body;
 
     // 准备更新数据
     const updateData = {};
@@ -44,6 +44,7 @@ class UserController {
     if (phone !== undefined) updateData.phone = phone;
     if (gender !== undefined) updateData.gender = gender;
     if (intro !== undefined) updateData.intro = intro;
+    if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
 
     // 检查手机号是否已被其他用户使用
     if (phone && phone !== user.phone) {

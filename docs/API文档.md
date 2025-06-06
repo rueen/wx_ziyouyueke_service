@@ -279,6 +279,7 @@ Authorization: Bearer <token>
 | phone | string | 否 | 手机号（中国大陆格式） |
 | gender | number | 否 | 性别：0-未知，1-男，2-女 |
 | intro | string | 否 | 个人介绍（最大500字符） |
+| avatar_url | string | 否 | 头像URL（最大500字符，必须是有效URL格式） |
 
 **请求示例**:
 ```json
@@ -286,7 +287,8 @@ Authorization: Bearer <token>
   "nickname": "张三丰",
   "phone": "13800138000",
   "gender": 1,
-  "intro": "专业健身教练"
+  "intro": "专业健身教练",
+  "avatar_url": "http://localhost:3000/uploads/images/1749211777985_1_1wmcb6.jpeg"
 }
 ```
 
