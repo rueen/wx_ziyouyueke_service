@@ -540,7 +540,7 @@ Authorization: Bearer <token>
 
 **接口地址**: `POST /api/h5/relations`
 
-**接口描述**: 绑定师生关系
+**接口描述**: 绑定师生关系，自动使用当前登录用户作为学员
 
 **认证**: 需要
 
@@ -549,9 +549,12 @@ Authorization: Bearer <token>
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | coach_id | number | 是 | 教练ID |
-| student_id | number | 否 | 学员ID（默认为当前用户） |
 | remaining_lessons | number | 否 | 剩余课时（默认0） |
 | student_remark | string | 否 | 学员备注（最大500字符） |
+
+**说明**: 
+- 学员ID（student_id）自动使用当前登录用户的ID，无需在请求中传递
+- 确保了安全性，防止用户伪造其他人的学员ID
 
 **请求示例**:
 ```json

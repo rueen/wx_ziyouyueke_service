@@ -136,15 +136,12 @@ const courseCancelValidation = [
 
 /**
  * 关系绑定验证规则
+ * 注意：student_id 自动使用当前登录用户，不需要从请求中传递
  */
 const relationBindValidation = [
   body('coach_id')
     .isInt({ min: 1 })
     .withMessage('教练ID必须是正整数'),
-  body('student_id')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('学员ID必须是正整数'),
   body('remaining_lessons')
     .optional()
     .isInt({ min: 0 })

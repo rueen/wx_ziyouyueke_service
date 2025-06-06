@@ -55,13 +55,14 @@ class RelationController {
   /**
    * 绑定师生关系
    * @route POST /api/h5/relations
+   * @description 自动使用当前登录用户作为学员，绑定与指定教练的师生关系
    */
   static bindRelation = asyncHandler(async (req, res) => {
     const currentUserId = req.user.id;
-    const { coach_id, student_id, remaining_lessons = 0, student_remark } = req.body;
+    const { coach_id, remaining_lessons = 0, student_remark } = req.body;
 
-    // 如果没有指定学员ID，默认为当前用户
-    const finalStudentId = student_id || currentUserId;
+    // 直接使用当前登录用户作为学员ID
+    const finalStudentId = currentUserId;
     const finalCoachId = coach_id;
 
     // 验证教练和学员不能是同一人
