@@ -725,9 +725,9 @@ GET /api/h5/coach/list?page=1&limit=10&keyword=张&gender=1
 
 **接口地址**: `GET /api/h5/coach/:id`
 
-**接口描述**: 获取指定教练的详细信息
+**接口描述**: 获取指定教练的详细信息（公开接口）
 
-**认证**: 需要
+**认证**: 不需要
 
 **请求参数**:
 
@@ -752,7 +752,6 @@ GET /api/h5/coach/123
     "avatar_url": "https://example.com/avatar.jpg",
     "gender": 1,
     "intro": "专业网球教练，10年教学经验",
-    "phone": "13800138000",
     "register_time": "2025-06-01T10:00:00.000Z",
     "last_login_time": "2025-06-02T08:00:00.000Z",
     "stats": {

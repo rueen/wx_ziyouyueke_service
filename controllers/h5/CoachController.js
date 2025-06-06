@@ -148,6 +148,8 @@ class CoachController {
   /**
    * 获取教练详情
    * @route GET /api/h5/coach/:id
+   * @description 公开接口，无需认证即可访问
+   * @param {string} req.params.id - 教练ID
    */
   static getCoachDetail = asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -167,7 +169,8 @@ class CoachController {
         where: { id: id },
         attributes: [
           'id', 'nickname', 'avatar_url', 'gender', 'intro', 
-          'phone', 'register_time', 'last_login_time'
+          'register_time', 'last_login_time'
+          // 注意：移除了 phone 字段，保护用户隐私
         ]
       });
 
