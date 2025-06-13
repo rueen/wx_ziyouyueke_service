@@ -8,6 +8,37 @@ const logger = require('../../utils/logger');
  */
 class UserController {
   /**
+   * 获取用户详情
+   * @route GET /api/h5/user/:id
+   * @description 公开接口，无需认证，返回用户基本信息
+   */
+  static getUserDetail = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      // 查找用户
+      const user = await User.findOne({
+        where: { id: id },
+        attributes: [
+          'id', 'nickname', 'avatar_url', 'gender', 'intro', 
+          'register_time', 'last_login_time'
+          // 注意：移除了 openid, phone 等敏感字段，保护用户隐私
+        ]
+      });
+
+      if (!user) {
+        return ResponseUtil.notFound(res, '用户不存在');
+      }
+
+      return ResponseUtil.success(res, user.toJSON(), '获取用户详情成功');
+
+    } catch (error) {
+      logger.error('获取用户详情失败:', error);
+      return ResponseUtil.serverError(res, '获取用户详情失败');
+    }
+  });
+
+  /**
    * 获取用户信息
    * @route GET /api/h5/user/profile
    */

@@ -435,49 +435,7 @@ class CourseController {
     }
   });
 
-  /**
-   * 开始课程（标记为进行中）
-   * @route PUT /api/h5/courses/:id/start
-   */
-  static startCourse = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { userId } = req;
 
-    try {
-      const course = await CourseBooking.findByPk(id);
-
-      if (!course) {
-        return ResponseUtil.notFound(res, '课程不存在');
-      }
-
-      // 只有教练可以开始课程
-      if (course.coach_id !== userId) {
-        return ResponseUtil.forbidden(res, '只有教练可以开始课程');
-      }
-
-      // 只有已确认的课程可以开始
-      if (course.booking_status !== 2) {
-        return ResponseUtil.validationError(res, '只有已确认的课程可以开始');
-      }
-
-      await course.update({
-        booking_status: 3, // 进行中
-        started_at: new Date(),
-        updated_by: userId
-      });
-
-      logger.info('课程开始:', { courseId: id, coachId: userId });
-
-      return ResponseUtil.success(res, {
-        booking_id: course.id,
-        booking_status: course.booking_status
-      }, '课程已开始');
-
-    } catch (error) {
-      logger.error('开始课程失败:', error);
-      return ResponseUtil.error(res, '开始课程失败');
-    }
-  });
 }
 
 module.exports = CourseController; 

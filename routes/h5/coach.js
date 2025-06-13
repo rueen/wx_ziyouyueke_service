@@ -17,10 +17,4 @@ const { authenticateToken } = require('../../middleware/auth');
 // 获取教练列表
 router.get('/list', authenticateToken, CoachController.getCoachList);
 
-// 获取教练详情（无需认证）
-router.get('/:id', CoachController.getCoachDetail);
-
-// 获取教练课程安排
-router.get('/:id/schedule', authenticateToken, CoachController.getCoachSchedule);
-
 module.exports = router; 

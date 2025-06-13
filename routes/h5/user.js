@@ -8,8 +8,11 @@ const { updateProfileValidation, decryptPhoneValidation, validateRequest } = req
  * 用户信息相关路由
  */
 
-// 获取用户信息
+// 获取用户信息（需要认证的个人信息）
 router.get('/profile', authenticateToken, UserController.getProfile);
+
+// 获取用户详情（公开接口，无需认证）
+router.get('/:id', UserController.getUserDetail);
 
 // 更新用户信息
 router.put('/profile', authenticateToken, updateProfileValidation, validateRequest, UserController.updateProfile);

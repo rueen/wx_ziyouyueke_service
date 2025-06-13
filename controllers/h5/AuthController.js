@@ -5,6 +5,9 @@ const wechatUtil = require('../../utils/wechat');
 const jwtUtil = require('../../utils/jwt');
 const logger = require('../../utils/logger');
 
+// 默认头像URL
+const DEFAULT_AVATAR_URL = 'https://ziyouyueke.oss-cn-hangzhou.aliyuncs.com/avatar/defaultAvatar.png';
+
 /**
  * 认证控制器
  */
@@ -35,27 +38,33 @@ class AuthController {
         openid,
         unionid,
         nickname: userInfo?.nickname || null,
-        avatar_url: userInfo?.avatarUrl || null,
+        avatar_url: userInfo?.avatarUrl || DEFAULT_AVATAR_URL,
         gender: userInfo?.gender || null,
         register_time: new Date(),
         last_login_time: new Date()
       });
       isNewUser = true;
-      logger.info('新用户注册:', { userId: user.id, openid });
+      logger.info('新用户注册:', { userId: user.id, openid, avatarUrl: user.avatar_url });
     } else {
       // 更新最后登录时间
       await user.updateLastLoginTime();
       
       // 更新用户信息（如果提供）
+      const updateData = {};
       if (userInfo) {
-        const updateData = {};
         if (userInfo.nickname) updateData.nickname = userInfo.nickname;
         if (userInfo.avatarUrl) updateData.avatar_url = userInfo.avatarUrl;
         if (userInfo.gender !== undefined) updateData.gender = userInfo.gender;
-        
-        if (Object.keys(updateData).length > 0) {
-          await user.update(updateData);
-        }
+      }
+      
+      // 如果用户没有头像，设置默认头像
+      if (!user.avatar_url) {
+        updateData.avatar_url = DEFAULT_AVATAR_URL;
+        logger.info('为老用户设置默认头像:', { userId: user.id, openid });
+      }
+      
+      if (Object.keys(updateData).length > 0) {
+        await user.update(updateData);
       }
       
       logger.info('用户登录:', { userId: user.id, openid });
