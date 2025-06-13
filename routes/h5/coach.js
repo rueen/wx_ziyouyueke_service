@@ -7,14 +7,12 @@
  */
 const express = require('express');
 const router = express.Router();
-const CoachController = require('../../controllers/h5/CoachController');
-const { authenticateToken } = require('../../middleware/auth');
 
 /**
  * 教练相关路由
+ * 注意：所有教练相关接口已被移除
  */
 
-// 获取教练列表
-router.get('/list', authenticateToken, CoachController.getCoachList);
+// 教练列表接口已被移除
 
 module.exports = router; 

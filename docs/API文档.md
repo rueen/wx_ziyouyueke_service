@@ -679,66 +679,6 @@ GET /api/h5/relations/my-coaches?page=1&limit=10
 
 以下接口正在开发中：
 
-### 教练相关模块 (`/api/h5/coach`)
-
-#### 1. 获取教练列表
-
-**接口地址**: `GET /api/h5/coach/list`
-
-**接口描述**: 获取系统中的教练列表，支持搜索和筛选
-
-**认证**: 需要
-
-**请求参数**:
-
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| page | number | 否 | 1 | 页码 |
-| limit | number | 否 | 10 | 每页数量 |
-| keyword | string | 否 | "" | 关键词搜索（昵称） |
-| gender | number | 否 | "" | 性别筛选：1-男，2-女 |
-| sort_by | string | 否 | "id" | 排序字段 |
-| sort_order | string | 否 | "DESC" | 排序方向：ASC/DESC |
-
-**请求示例**:
-```
-GET /api/h5/coach/list?page=1&limit=10&keyword=张&gender=1
-```
-
-**响应示例**:
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "获取教练列表成功",
-  "data": {
-    "coaches": [
-      {
-        "id": 2,
-        "nickname": "张教练",
-        "avatar_url": "https://example.com/avatar.jpg",
-        "gender": 1,
-        "intro": "专业网球教练",
-        "register_time": "2025-06-01T10:00:00.000Z",
-        "last_login_time": "2025-06-02T08:00:00.000Z",
-        "stats": {
-          "student_count": 15,
-          "completed_lessons": 120,
-          "available_slots": 6
-        }
-      }
-    ],
-    "pagination": {
-      "current_page": 1,
-      "total_pages": 3,
-      "total_count": 25,
-      "limit": 10
-    }
-  },
-  "timestamp": 1638360000000
-}
-```
-
 ### 文件上传模块 (`/api/upload`)
 
 #### 1. 上传图片到OSS
@@ -1395,13 +1335,6 @@ curl -X POST http://localhost:3000/api/h5/user/decrypt-phone \
 
 # 测试时间模板接口
 curl -X GET http://localhost:3000/api/h5/time-templates \
-  -H "Authorization: Bearer <your_token>"
-
-# 测试教练列表接口（无认证 - 应返回401）
-curl -X GET "http://localhost:3000/api/h5/coach/list?page=1&limit=5" -i
-
-# 测试教练列表接口（需要有效token）
-curl -X GET "http://localhost:3000/api/h5/coach/list?page=1&limit=5" \
   -H "Authorization: Bearer <your_token>"
 
 # 测试学员预约记录
