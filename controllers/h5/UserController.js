@@ -43,7 +43,12 @@ class UserController {
    * @route GET /api/h5/user/profile
    */
   static getProfile = asyncHandler(async (req, res) => {
-    const user = req.user;
+    // 重新从数据库获取最新的用户信息，避免返回缓存数据
+    const user = await User.findByPk(req.userId);
+    
+    if (!user) {
+      return ResponseUtil.notFound(res, '用户不存在');
+    }
 
     return ResponseUtil.success(res, {
       id: user.id,

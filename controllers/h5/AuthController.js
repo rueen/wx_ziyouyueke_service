@@ -33,7 +33,7 @@ class AuthController {
     let isNewUser = false;
 
     if (!user) {
-      // 创建新用户
+      // 创建新用户 - 使用微信基础信息进行初始化
       user = await User.create({
         openid,
         unionid,
@@ -46,26 +46,17 @@ class AuthController {
       isNewUser = true;
       logger.info('新用户注册:', { userId: user.id, openid, avatarUrl: user.avatar_url });
     } else {
-      // 更新最后登录时间
+      // 老用户登录 - 只更新登录时间，不覆盖已设置的个人信息
       await user.updateLastLoginTime();
       
-      // 更新用户信息（如果提供）
-      const updateData = {};
-      if (userInfo) {
-        if (userInfo.nickname) updateData.nickname = userInfo.nickname;
-        if (userInfo.avatarUrl) updateData.avatar_url = userInfo.avatarUrl;
-        if (userInfo.gender !== undefined) updateData.gender = userInfo.gender;
-      }
-      
-      // 如果用户没有头像，设置默认头像
+      // 只有在用户没有设置头像时，才设置默认头像
       if (!user.avatar_url) {
-        updateData.avatar_url = DEFAULT_AVATAR_URL;
+        await user.update({ avatar_url: DEFAULT_AVATAR_URL });
         logger.info('为老用户设置默认头像:', { userId: user.id, openid });
       }
       
-      if (Object.keys(updateData).length > 0) {
-        await user.update(updateData);
-      }
+      // 重新从数据库获取最新的用户信息，确保返回的数据是最新的
+      await user.reload();
       
       logger.info('用户登录:', { userId: user.id, openid });
     }
