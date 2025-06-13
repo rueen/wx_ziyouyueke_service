@@ -247,6 +247,7 @@ Authorization: Bearer <token>
     "id": 1,
     "nickname": "布兰达",
     "avatar_url": "https://ziyouyueke.oss-cn-hangzhou.aliyuncs.com/avatar/defaultAvatar.png",
+    "phone": "13800138000",
     "gender": 2,
     "intro": "我是自由教练",
     "register_time": "2025-06-02T07:30:00.000Z",
@@ -258,7 +259,7 @@ Authorization: Bearer <token>
 
 **说明**:
 - 该接口为公开接口，无需认证即可访问
-- 只返回用户的基本公开信息，隐私字段（如openid、phone）不会返回
+- 返回用户的基本信息，包含手机号，但不包含 openid 等敏感字段
 
 #### 2. 获取用户信息
 

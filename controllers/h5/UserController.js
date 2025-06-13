@@ -20,9 +20,9 @@ class UserController {
       const user = await User.findOne({
         where: { id: id },
         attributes: [
-          'id', 'nickname', 'avatar_url', 'gender', 'intro', 
+          'id', 'nickname', 'avatar_url', 'phone', 'gender', 'intro', 
           'register_time', 'last_login_time'
-          // 注意：移除了 openid, phone 等敏感字段，保护用户隐私
+          // 注意：移除了 openid 等敏感字段，保护用户隐私
         ]
       });
 
