@@ -707,6 +707,163 @@ GET /api/h5/relations/my-coaches?page=1&limit=10
 
 **认证**: 需要
 
+### 地址管理模块 (`/api/h5/addresses`)
+
+#### 1. 获取地址列表
+
+**接口地址**: `GET /api/h5/addresses`
+
+**接口描述**: 获取用户的常用地址列表
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| page | number | 否 | 1 | 页码 |
+| limit | number | 否 | 20 | 每页数量 |
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "获取地址列表成功",
+  "data": {
+    "addresses": [
+      {
+        "id": 1,
+        "user_id": 123,
+        "name": "万达广场健身房",
+        "address": "北京市朝阳区建国路93号万达广场B1层",
+        "latitude": 39.9042,
+        "longitude": 116.4074,
+        "is_default": true,
+        "created_at": "2024-01-15T10:30:00.000Z",
+        "updated_at": "2024-01-15T10:30:00.000Z"
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 1,
+      "total_count": 4,
+      "limit": 20
+    }
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 2. 创建地址
+
+**接口地址**: `POST /api/h5/addresses`
+
+**接口描述**: 添加新的常用地址
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| name | string | 是 | 地址名称（最大100字符） |
+| address | string | 是 | 详细地址（最大500字符） |
+| latitude | number | 是 | 纬度 |
+| longitude | number | 是 | 经度 |
+| is_default | boolean | 否 | 是否设为默认地址，默认false |
+
+**请求示例**:
+```json
+{
+  "name": "万达广场健身房",
+  "address": "北京市朝阳区建国路93号万达广场B1层",
+  "latitude": 39.9042,
+  "longitude": 116.4074,
+  "is_default": false
+}
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "地址添加成功",
+  "data": {
+    "id": 5,
+    "user_id": 123,
+    "name": "万达广场健身房",
+    "address": "北京市朝阳区建国路93号万达广场B1层",
+    "latitude": 39.9042,
+    "longitude": 116.4074,
+    "is_default": false,
+    "created_at": "2024-01-20T14:30:00.000Z",
+    "updated_at": "2024-01-20T14:30:00.000Z"
+  },
+  "timestamp": 1638360000000
+}
+```
+
+#### 3. 更新地址
+
+**接口地址**: `PUT /api/h5/addresses/:id`
+
+**接口描述**: 更新地址信息
+
+**认证**: 需要
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| name | string | 否 | 地址名称（最大100字符） |
+| address | string | 否 | 详细地址（最大500字符） |
+| latitude | number | 否 | 纬度 |
+| longitude | number | 否 | 经度 |
+| is_default | boolean | 否 | 是否设为默认地址 |
+
+#### 4. 删除地址
+
+**接口地址**: `DELETE /api/h5/addresses/:id`
+
+**接口描述**: 删除指定地址
+
+**认证**: 需要
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "地址删除成功",
+  "data": null,
+  "timestamp": 1638360000000
+}
+```
+
+#### 5. 设置默认地址
+
+**接口地址**: `PUT /api/h5/addresses/:id/default`
+
+**接口描述**: 设置指定地址为默认地址
+
+**认证**: 需要
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "默认地址设置成功",
+  "data": {
+    "id": 1,
+    "is_default": true
+  },
+  "timestamp": 1638360000000
+}
+```
+
 ### 其他模块接口（开发中）
 
 以下接口正在开发中：
@@ -1235,6 +1392,22 @@ enum BookingStatus {
   IN_PROGRESS = 3,             // 进行中
   COMPLETED = 4,               // 已完成
   CANCELLED = 5                // 已取消
+}
+```
+
+### Address (地址)
+
+```typescript
+interface Address {
+  id: number;                   // 地址ID
+  user_id: number;             // 用户ID
+  name: string;                // 地址名称
+  address: string;             // 详细地址
+  latitude: number;            // 纬度
+  longitude: number;           // 经度
+  is_default: boolean;         // 是否为默认地址
+  created_at: string;          // 创建时间
+  updated_at: string;          // 更新时间
 }
 ```
 

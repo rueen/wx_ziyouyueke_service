@@ -8,6 +8,7 @@ const TimeTemplate = require('./TimeTemplate');
 const CourseBooking = require('./CourseBooking');
 const Notification = require('./Notification');
 const OperationLog = require('./OperationLog');
+const Address = require('./Address');
 
 /**
  * 设置模型关联关系
@@ -114,6 +115,18 @@ OperationLog.belongsTo(User, {
   as: 'user' 
 });
 
+// User 与 Address 的关联
+User.hasMany(Address, { 
+  foreignKey: 'user_id', 
+  as: 'addresses',
+  onDelete: 'CASCADE'
+});
+
+Address.belongsTo(User, { 
+  foreignKey: 'user_id', 
+  as: 'user' 
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -125,5 +138,6 @@ module.exports = {
   TimeTemplate,
   CourseBooking,
   Notification,
-  OperationLog
+  OperationLog,
+  Address
 }; 

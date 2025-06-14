@@ -9,6 +9,7 @@ const timeTemplateRoutes = require('./timeTemplate');
 const coachRoutes = require('./coach');
 const studentRoutes = require('./student');
 const courseRoutes = require('./course');
+const addressRoutes = require('./address');
 
 /**
  * H5端路由配置
@@ -34,5 +35,8 @@ router.use('/student', studentRoutes);
 
 // 课程管理路由
 router.use('/courses', courseRoutes);
+
+// 地址管理路由
+router.use('/addresses', addressRoutes);
 
 module.exports = router; 

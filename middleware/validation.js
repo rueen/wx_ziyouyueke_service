@@ -212,6 +212,58 @@ const decryptPhoneValidation = [
     .withMessage('微信手机号授权码格式不正确')
 ];
 
+/**
+ * 地址创建验证规则
+ */
+const addressCreateValidation = [
+  body('name')
+    .notEmpty()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('地址名称不能为空，长度必须在1-100个字符之间'),
+  body('address')
+    .notEmpty()
+    .isLength({ min: 1, max: 500 })
+    .withMessage('详细地址不能为空，长度必须在1-500个字符之间'),
+  body('latitude')
+    .notEmpty()
+    .isFloat({ min: -90, max: 90 })
+    .withMessage('纬度不能为空，必须在-90到90之间'),
+  body('longitude')
+    .notEmpty()
+    .isFloat({ min: -180, max: 180 })
+    .withMessage('经度不能为空，必须在-180到180之间'),
+  body('is_default')
+    .optional()
+    .isBoolean()
+    .withMessage('是否默认地址必须是布尔值')
+];
+
+/**
+ * 地址更新验证规则
+ */
+const addressUpdateValidation = [
+  body('name')
+    .optional()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('地址名称长度必须在1-100个字符之间'),
+  body('address')
+    .optional()
+    .isLength({ min: 1, max: 500 })
+    .withMessage('详细地址长度必须在1-500个字符之间'),
+  body('latitude')
+    .optional()
+    .isFloat({ min: -90, max: 90 })
+    .withMessage('纬度必须在-90到90之间'),
+  body('longitude')
+    .optional()
+    .isFloat({ min: -180, max: 180 })
+    .withMessage('经度必须在-180到180之间'),
+  body('is_default')
+    .optional()
+    .isBoolean()
+    .withMessage('是否默认地址必须是布尔值')
+];
+
 module.exports = {
   validateRequest,
   loginValidation,
@@ -224,5 +276,7 @@ module.exports = {
   remarkUpdateValidation,
   paginationValidation,
   idParamValidation,
-  decryptPhoneValidation
+  decryptPhoneValidation,
+  addressCreateValidation,
+  addressUpdateValidation
 }; 
