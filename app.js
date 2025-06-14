@@ -34,7 +34,7 @@ app.use(cors({
 // 请求限制
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
-  max: 100, // 限制每个IP 15分钟内最多100个请求
+  max: 500, // 限制每个IP 15分钟内最多500个请求
   message: {
     success: false,
     code: 429,
