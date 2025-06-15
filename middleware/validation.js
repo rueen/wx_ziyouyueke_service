@@ -107,6 +107,13 @@ const courseBookingValidation = [
   body('coach_id')
     .isInt({ min: 1 })
     .withMessage('教练ID必须是正整数'),
+  body('student_id')
+    .isInt({ min: 1 })
+    .withMessage('学员ID必须是正整数'),
+  body('relation_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('师生关系ID必须是正整数'),
   body('course_date')
     .isISO8601({ strict: true })
     .withMessage('课程日期格式不正确'),
@@ -116,14 +123,17 @@ const courseBookingValidation = [
   body('end_time')
     .matches(/^([01]\d|2[0-3]):[0-5]\d$/)
     .withMessage('结束时间格式不正确'),
-  body('location')
-    .optional()
-    .isLength({ max: 200 })
-    .withMessage('地点描述不能超过200个字符'),
+  body('address_id')
+    .isInt({ min: 1 })
+    .withMessage('地址ID必须是正整数'),
   body('student_remark')
     .optional()
     .isLength({ max: 500 })
-    .withMessage('学员备注不能超过500个字符')
+    .withMessage('学员备注不能超过500个字符'),
+  body('coach_remark')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('教练备注不能超过500个字符')
 ];
 
 /**

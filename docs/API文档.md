@@ -1015,19 +1015,27 @@ Authorization: Bearer <token>
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | coach_id | number | 是 | 教练ID |
-| booking_date | string | 是 | 预约日期（YYYY-MM-DD） |
+| student_id | number | 是 | 学员ID |
+| relation_id | number | 否 | 师生关系ID |
+| course_date | string | 是 | 课程日期（YYYY-MM-DD） |
 | start_time | string | 是 | 开始时间（HH:mm） |
 | end_time | string | 是 | 结束时间（HH:mm） |
-| notes | string | 否 | 备注信息 |
+| address_id | number | 是 | 地址ID |
+| student_remark | string | 否 | 学员备注 |
+| coach_remark | string | 否 | 教练备注 |
 
 **请求示例**:
 ```json
 {
-  "coach_id": 123,
-  "booking_date": "2025-06-03",
+  "coach_id": 1,
+  "student_id": 2,
+  "relation_id": 3,
+  "course_date": "2025-06-03",
   "start_time": "14:00",
   "end_time": "15:00",
-  "notes": "想练习发球"
+  "address_id": 4,
+  "student_remark": "",
+  "coach_remark": ""
 }
 ```
 
@@ -1081,11 +1089,12 @@ GET /api/h5/courses?page=1&limit=10&role=student&status=2
     "courses": [
       {
         "id": 456,
-        "booking_date": "2025-06-03",
+        "course_date": "2025-06-03",
         "start_time": "14:00",
         "end_time": "15:00",
         "booking_status": 2,
-        "notes": "想练习发球",
+        "student_remark": "想练习发球",
+        "coach_remark": "",
         "created_at": "2025-06-02T10:00:00.000Z",
         "student": {
           "id": 1,
@@ -1098,6 +1107,13 @@ GET /api/h5/courses?page=1&limit=10&role=student&status=2
           "nickname": "张教练",
           "avatar_url": "https://example.com/coach.jpg",
           "phone": "13800138000"
+        },
+        "address": {
+          "id": 4,
+          "address_name": "网球场A",
+          "address_detail": "市体育中心网球场A场地",
+          "latitude": 39.908823,
+          "longitude": 116.397470
         }
       }
     ],
@@ -1139,13 +1155,12 @@ GET /api/h5/courses/456
   "message": "获取课程详情成功",
   "data": {
     "id": 456,
-    "booking_date": "2025-06-03",
+    "course_date": "2025-06-03",
     "start_time": "14:00",
     "end_time": "15:00",
     "booking_status": 2,
-    "notes": "想练习发球",
-    "feedback": null,
-    "rating": null,
+    "student_remark": "想练习发球",
+    "coach_remark": "",
     "created_at": "2025-06-02T10:00:00.000Z",
     "confirmed_at": "2025-06-02T11:00:00.000Z",
     "student": {
@@ -1162,6 +1177,13 @@ GET /api/h5/courses/456
       "phone": "13800138000",
       "gender": 1,
       "intro": "专业网球教练"
+    },
+    "address": {
+      "id": 4,
+      "address_name": "网球场A",
+      "address_detail": "市体育中心网球场A场地",
+      "latitude": 39.908823,
+      "longitude": 116.397470
     }
   },
   "timestamp": 1638360000000
@@ -1215,13 +1237,11 @@ PUT /api/h5/courses/456/confirm
 |--------|------|------|------|
 | id | number | 是 | 课程ID（路径参数） |
 | feedback | string | 否 | 教练反馈 |
-| rating | number | 否 | 课程评分（1-5） |
 
 **请求示例**:
 ```json
 {
-  "feedback": "学员发球进步明显，建议多练习",
-  "rating": 5
+  "feedback": "学员发球进步明显，建议多练习"
 }
 ```
 
@@ -1381,26 +1401,24 @@ interface CourseBooking {
   student_id: number;          // 学员ID
   coach_id: number;            // 教练ID
   relation_id?: number;        // 师生关系ID
-  template_id?: number;        // 时间模板ID
-  booking_date: string;        // 预约日期（YYYY-MM-DD）
+  course_date: string;         // 课程日期（YYYY-MM-DD）
   start_time: string;          // 开始时间（HH:mm）
   end_time: string;            // 结束时间（HH:mm）
   booking_status: number;      // 预约状态：1-待确认，2-已确认，3-进行中，4-已完成，5-已取消
-  notes?: string;              // 学员备注
-  feedback?: string;           // 教练反馈
-  rating?: number;             // 课程评分（1-5）
-  cancel_reason?: string;      // 取消原因
+  address_id: number;          // 地址ID
+  student_remark?: string;     // 学员备注
+  coach_remark?: string;       // 教练备注
+  created_by: number;          // 创建人ID
   confirmed_at?: string;       // 确认时间
-  started_at?: string;         // 开始时间
-  completed_at?: string;       // 完成时间
   cancelled_at?: string;       // 取消时间
   cancelled_by?: number;       // 取消人ID
-  created_by: number;          // 创建人ID
-  updated_by?: number;         // 更新人ID
-  created_at: string;          // 创建时间
+  cancel_reason?: string;      // 取消原因
   updated_at: string;          // 更新时间
+  complete_at?: string;        // 完成时间
+  created_at: string;          // 创建时间
   student?: User;              // 学员信息
   coach?: User;                // 教练信息
+  address?: Address;           // 地址信息
 }
 
 // 课程状态枚举

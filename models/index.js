@@ -127,6 +127,17 @@ Address.belongsTo(User, {
   as: 'user' 
 });
 
+// Address 与 CourseBooking 的关联
+Address.hasMany(CourseBooking, { 
+  foreignKey: 'address_id', 
+  as: 'bookings'
+});
+
+CourseBooking.belongsTo(Address, { 
+  foreignKey: 'address_id', 
+  as: 'address' 
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
