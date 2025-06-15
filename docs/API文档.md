@@ -648,11 +648,21 @@ GET /api/h5/relations/my-coaches?page=1&limit=10
 
 **接口地址**: `GET /api/h5/relations/my-students`
 
-**接口描述**: 获取当前教练的学员列表，包含师生关系ID
+**接口描述**: 获取当前教练的学员列表，包含师生关系ID，支持分页
 
 **认证**: 需要
 
-**请求参数**: 无
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| page | number | 否 | 1 | 页码 |
+| limit | number | 否 | 10 | 每页数量 |
+
+**请求示例**:
+```
+GET /api/h5/relations/my-students?page=1&limit=10
+```
 
 **响应示例**:
 ```json
@@ -660,25 +670,33 @@ GET /api/h5/relations/my-coaches?page=1&limit=10
   "success": true,
   "code": 200,
   "message": "获取我的学员列表成功",
-  "data": [
-    {
-      "id": 1,
-      "student_id": 123,
-      "coach_id": 456,
-      "remaining_lessons": 8,
-      "student_remark": "学员备注",
-      "coach_remark": "教练备注",
-      "relation_status": 1,
-      "createdAt": "2025-06-01T10:00:00.000Z",
-      "updatedAt": "2025-06-02T10:00:00.000Z",
-      "student": {
-        "id": 123,
-        "nickname": "张三",
-        "avatar_url": "https://example.com/avatar.jpg",
-        "phone": "13800138000"
+  "data": {
+    "students": [
+      {
+        "id": 1,
+        "student_id": 123,
+        "coach_id": 456,
+        "remaining_lessons": 8,
+        "student_remark": "学员备注",
+        "coach_remark": "教练备注",
+        "relation_status": 1,
+        "createdAt": "2025-06-01T10:00:00.000Z",
+        "updatedAt": "2025-06-02T10:00:00.000Z",
+        "student": {
+          "id": 123,
+          "nickname": "张三",
+          "avatar_url": "https://example.com/avatar.jpg",
+          "phone": "13800138000"
+        }
       }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 1,
+      "total_count": 5,
+      "limit": 10
     }
-  ],
+  },
   "timestamp": 1638360000000
 }
 ```

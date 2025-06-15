@@ -370,8 +370,10 @@ class RelationController {
    */
   static getMyStudents = asyncHandler(async (req, res) => {
     const coachId = req.user.id;
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
 
-    const relations = await StudentCoachRelation.findAll({
+    const { count, rows: relations } = await StudentCoachRelation.findAndCountAll({
       where: {
         coach_id: coachId,
         relation_status: 1
@@ -388,10 +390,22 @@ class RelationController {
           attributes: ['id', 'nickname', 'avatar_url', 'phone']
         }
       ],
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset
     });
 
-    return ResponseUtil.success(res, relations, '获取我的学员列表成功');
+    const totalPages = Math.ceil(count / limit);
+
+    return ResponseUtil.success(res, {
+      students: relations,
+      pagination: {
+        current_page: parseInt(page),
+        total_pages: totalPages,
+        total_count: count,
+        limit: parseInt(limit)
+      }
+    }, '获取我的学员列表成功');
   });
 }
 
