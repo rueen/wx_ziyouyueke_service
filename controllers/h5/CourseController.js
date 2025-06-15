@@ -318,9 +318,14 @@ class CourseController {
         return ResponseUtil.notFound(res, '课程不存在');
       }
 
-      // 只有教练可以确认课程
-      if (course.coach_id !== userId) {
-        return ResponseUtil.forbidden(res, '只有教练可以确认课程');
+      // 自己创建的课程不可以自己确认
+      if (course.created_by === userId) {
+        return ResponseUtil.forbidden(res, '不能确认自己创建的课程');
+      }
+
+      // 只有课程相关的学员或教练可以确认课程
+      if (course.student_id !== userId && course.coach_id !== userId) {
+        return ResponseUtil.forbidden(res, '无权确认此课程');
       }
 
       // 只有待确认状态的课程可以确认
@@ -333,7 +338,7 @@ class CourseController {
         confirmed_at: new Date()
       });
 
-      logger.info('课程确认成功:', { courseId: id, coachId: userId });
+      logger.info('课程确认成功:', { courseId: id, userId });
 
       return ResponseUtil.success(res, {
         booking_id: course.id,
