@@ -317,16 +317,16 @@ class RelationController {
             where: {
               student_id: studentId,
               coach_id: coachId,
-              booking_status: 4
+              booking_status: 3
             }
           }),
-          // 未来课程数（待确认、已确认、进行中）
+          // 未来课程数（待确认、已确认）
           CourseBooking.count({
             where: {
               student_id: studentId,
               coach_id: coachId,
               booking_status: {
-                [Op.in]: [1, 2, 3]
+                [Op.in]: [1, 2]
               },
               course_date: {
                 [Op.gte]: new Date().toISOString().split('T')[0]

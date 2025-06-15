@@ -1253,7 +1253,7 @@ PUT /api/h5/courses/456/confirm
   "message": "课程已标记为完成",
   "data": {
     "booking_id": 456,
-    "booking_status": 4
+    "booking_status": 3
   },
   "timestamp": 1638360000000
 }
@@ -1289,7 +1289,7 @@ PUT /api/h5/courses/456/confirm
   "message": "课程取消成功",
   "data": {
     "booking_id": 456,
-    "booking_status": 5
+    "booking_status": 4
   },
   "timestamp": 1638360000000
 }
@@ -1404,7 +1404,7 @@ interface CourseBooking {
   course_date: string;         // 课程日期（YYYY-MM-DD）
   start_time: string;          // 开始时间（HH:mm）
   end_time: string;            // 结束时间（HH:mm）
-  booking_status: number;      // 预约状态：1-待确认，2-已确认，3-进行中，4-已完成，5-已取消
+  booking_status: number;      // 预约状态：1-待确认，2-已确认，3-已完成，4-已取消
   address_id: number;          // 地址ID
   student_remark?: string;     // 学员备注
   coach_remark?: string;       // 教练备注
@@ -1425,9 +1425,8 @@ interface CourseBooking {
 enum BookingStatus {
   PENDING = 1,                 // 待确认
   CONFIRMED = 2,               // 已确认
-  IN_PROGRESS = 3,             // 进行中
-  COMPLETED = 4,               // 已完成
-  CANCELLED = 5                // 已取消
+  COMPLETED = 3,               // 已完成
+  CANCELLED = 4                // 已取消
 }
 ```
 

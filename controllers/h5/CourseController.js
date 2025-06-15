@@ -88,7 +88,7 @@ class CourseController {
             }
           ],
           booking_status: {
-            [Op.in]: [1, 2, 3] // 待确认、已确认、进行中
+            [Op.in]: [1, 2] // 待确认、已确认
           }
         }
       });
@@ -113,7 +113,7 @@ class CourseController {
             }
           ],
           booking_status: {
-            [Op.in]: [1, 2, 3]
+            [Op.in]: [1, 2]
           }
         }
       });
@@ -364,17 +364,17 @@ class CourseController {
       }
 
       // 已完成的课程不能取消
-      if (course.booking_status === 4) {
+      if (course.booking_status === 3) {
         return ResponseUtil.validationError(res, '已完成的课程不能取消');
       }
 
       // 已取消的课程不能重复取消
-      if (course.booking_status === 5) {
+      if (course.booking_status === 4) {
         return ResponseUtil.validationError(res, '课程已被取消');
       }
 
       await course.update({
-        booking_status: 5, // 已取消
+        booking_status: 4, // 已取消
         cancel_reason: cancel_reason,
         cancelled_at: new Date(),
         cancelled_by: userId
@@ -432,13 +432,13 @@ class CourseController {
         return ResponseUtil.forbidden(res, '只有教练可以标记课程完成');
       }
 
-      // 只有已确认或进行中的课程可以完成
-      if (![2, 3].includes(course.booking_status)) {
+      // 只有已确认的课程可以完成
+      if (course.booking_status !== 2) {
         return ResponseUtil.validationError(res, '课程状态不允许完成');
       }
 
       await course.update({
-        booking_status: 4, // 已完成
+        booking_status: 3, // 已完成
         complete_at: new Date(),
         coach_remark: feedback
       });

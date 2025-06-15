@@ -46,7 +46,7 @@ const CourseBooking = sequelize.define('course_bookings', {
     type: DataTypes.TINYINT(1),
     allowNull: false,
     defaultValue: 1,
-    comment: '预约状态：1-待确认，2-已确认，3-进行中，4-已完成，5-已取消'
+    comment: '预约状态：1-待确认，2-已确认，3-已完成，4-已取消'
   },
   address_id: {
     type: DataTypes.BIGINT.UNSIGNED,
@@ -152,7 +152,7 @@ CourseBooking.prototype.confirmBooking = function(coachRemark = null) {
  */
 CourseBooking.prototype.completeBooking = function(coachRemark = null) {
   return this.update({
-    booking_status: 4,
+    booking_status: 3,
     complete_at: new Date(),
     coach_remark: coachRemark
   });
@@ -163,7 +163,7 @@ CourseBooking.prototype.completeBooking = function(coachRemark = null) {
  */
 CourseBooking.prototype.cancelBooking = function(cancelReason, cancelledBy) {
   return this.update({
-    booking_status: 5,
+    booking_status: 4,
     cancelled_at: new Date(),
     cancel_reason: cancelReason,
     cancelled_by: cancelledBy
@@ -177,9 +177,8 @@ CourseBooking.prototype.getStatusText = function() {
   const statusMap = {
     1: '待确认',
     2: '已确认',
-    3: '进行中',
-    4: '已完成',
-    5: '已取消'
+    3: '已完成',
+    4: '已取消'
   };
   return statusMap[this.booking_status] || '未知状态';
 };
@@ -191,7 +190,7 @@ CourseBooking.checkTimeConflict = async function(coachId, courseDate, startTime,
   const where = {
     coach_id: coachId,
     course_date: courseDate,
-    booking_status: [1, 2, 3], // 待确认、已确认或进行中的课程
+    booking_status: [1, 2], // 待确认、已确认的课程
     [sequelize.Op.or]: [
       {
         start_time: {
