@@ -241,7 +241,7 @@ class CourseController {
       const totalPages = Math.ceil(count / limit);
 
       return ResponseUtil.success(res, {
-        courses,
+        list: courses,
         pagination: {
           current_page: parseInt(page),
           total_pages: totalPages,

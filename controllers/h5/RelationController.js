@@ -349,7 +349,7 @@ class RelationController {
       const totalPages = Math.ceil(count / limit);
 
       return ResponseUtil.success(res, {
-        coaches: coachesWithStats,
+        list: coachesWithStats,
         pagination: {
           current_page: parseInt(page),
           total_pages: totalPages,
@@ -398,7 +398,7 @@ class RelationController {
     const totalPages = Math.ceil(count / limit);
 
     return ResponseUtil.success(res, {
-      students: relations,
+      list: relations,
       pagination: {
         current_page: parseInt(page),
         total_pages: totalPages,

@@ -608,7 +608,7 @@ GET /api/h5/relations/my-coaches?page=1&limit=10
   "code": 200,
   "message": "获取我的教练列表成功",
   "data": {
-    "coaches": [
+    "list": [
       {
         "id": 1,
         "student_id": 1,
@@ -671,7 +671,7 @@ GET /api/h5/relations/my-students?page=1&limit=10
   "code": 200,
   "message": "获取我的学员列表成功",
   "data": {
-    "students": [
+    "list": [
       {
         "id": 1,
         "student_id": 123,
@@ -749,7 +749,7 @@ GET /api/h5/relations/my-students?page=1&limit=10
   "code": 200,
   "message": "获取地址列表成功",
   "data": {
-    "addresses": [
+    "list": [
       {
         "id": 1,
         "user_id": 123,
@@ -1101,7 +1101,7 @@ GET /api/h5/courses?page=1&limit=10&status=2
   "code": 200,
   "message": "获取课程列表成功",
   "data": {
-    "courses": [
+    "list": [
       {
         "id": 456,
         "course_date": "2025-06-03",

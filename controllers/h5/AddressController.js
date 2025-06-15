@@ -29,7 +29,7 @@ class AddressController {
     const totalPages = Math.ceil(count / limit);
 
     return ResponseUtil.success(res, {
-      addresses,
+      list: addresses,
       pagination: {
         current_page: parseInt(page),
         total_pages: totalPages,
