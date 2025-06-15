@@ -226,7 +226,7 @@ class CourseController {
           {
             model: Address,
             as: 'address',
-            attributes: ['id', 'address_name', 'address_detail', 'latitude', 'longitude']
+            attributes: ['id', 'name', 'address', 'latitude', 'longitude']
           }
         ],
         order: [['course_date', 'DESC'], ['start_time', 'DESC']],
@@ -277,7 +277,7 @@ class CourseController {
           {
             model: Address,
             as: 'address',
-            attributes: ['id', 'address_name', 'address_detail', 'latitude', 'longitude']
+            attributes: ['id', 'name', 'address', 'latitude', 'longitude']
           }
         ]
       });

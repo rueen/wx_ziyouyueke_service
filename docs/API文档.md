@@ -1110,8 +1110,8 @@ GET /api/h5/courses?page=1&limit=10&role=student&status=2
         },
         "address": {
           "id": 4,
-          "address_name": "网球场A",
-          "address_detail": "市体育中心网球场A场地",
+          "name": "网球场A",
+          "address": "市体育中心网球场A场地",
           "latitude": 39.908823,
           "longitude": 116.397470
         }
@@ -1180,8 +1180,8 @@ GET /api/h5/courses/456
     },
     "address": {
       "id": 4,
-      "address_name": "网球场A",
-      "address_detail": "市体育中心网球场A场地",
+      "name": "网球场A",
+      "address": "市体育中心网球场A场地",
       "latitude": 39.908823,
       "longitude": 116.397470
     }
