@@ -741,6 +741,16 @@ GET /api/h5/relations/my-students?page=1&limit=10
 |--------|------|------|--------|------|
 | page | number | 否 | 1 | 页码 |
 | limit | number | 否 | 20 | 每页数量 |
+| coach_id | number | 否 | - | 教练ID，如果指定则获取该教练的地址列表 |
+
+**请求示例**:
+```
+# 获取当前用户的地址列表
+GET /api/h5/addresses?page=1&limit=20
+
+# 获取指定教练的地址列表
+GET /api/h5/addresses?coach_id=456&page=1&limit=20
+```
 
 **响应示例**:
 ```json

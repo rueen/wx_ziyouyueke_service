@@ -13,11 +13,23 @@ class AddressController {
    */
   static getAddressList = asyncHandler(async (req, res) => {
     const userId = req.user.id;
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20, coach_id = '' } = req.query;
     const offset = (page - 1) * limit;
 
+    // 确定查询的用户ID
+    const targetUserId = coach_id ? parseInt(coach_id) : userId;
+
+    // 如果查询教练地址，验证教练是否存在
+    if (coach_id) {
+      const { User } = require('../../models');
+      const coach = await User.findByPk(targetUserId);
+      if (!coach) {
+        return ResponseUtil.notFound(res, '教练不存在');
+      }
+    }
+
     const { count, rows: addresses } = await Address.findAndCountAll({
-      where: { user_id: userId },
+      where: { user_id: targetUserId },
       order: [
         ['is_default', 'DESC'], // 默认地址优先
         ['createdAt', 'DESC']   // 最新创建的在前
