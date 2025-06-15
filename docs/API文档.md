@@ -1058,9 +1058,14 @@ Authorization: Bearer <token>
 
 **接口地址**: `GET /api/h5/courses`
 
-**接口描述**: 获取课程列表（学员或教练视角）
+**接口描述**: 获取课程列表
 
 **认证**: 需要
+
+**逻辑说明**:
+- 如果指定了 `student_id` 参数，返回该学员的课程列表
+- 如果未指定 `student_id` 参数，返回当前用户相关的所有课程（作为学员或教练的课程）
+- 可以同时使用 `coach_id` 和 `student_id` 进行精确筛选
 
 **请求参数**:
 
@@ -1069,14 +1074,24 @@ Authorization: Bearer <token>
 | page | number | 否 | 1 | 页码 |
 | limit | number | 否 | 10 | 每页数量 |
 | status | number | 否 | "" | 状态筛选 |
-| coach_id | number | 否 | "" | 教练筛选（学员视角） |
+| coach_id | number | 否 | "" | 教练ID筛选 |
+| student_id | number | 否 | "" | 学员ID筛选 |
 | start_date | string | 否 | "" | 开始日期 |
 | end_date | string | 否 | "" | 结束日期 |
-| role | string | 否 | "student" | 角色视角：student/coach |
 
 **请求示例**:
 ```
-GET /api/h5/courses?page=1&limit=10&role=student&status=2
+# 获取指定学员的课程列表
+GET /api/h5/courses?student_id=1&status=2
+
+# 获取指定教练的所有课程
+GET /api/h5/courses?coach_id=5
+
+# 获取指定学员与指定教练的课程
+GET /api/h5/courses?student_id=1&coach_id=5
+
+# 获取当前用户相关的所有课程（不指定student_id）
+GET /api/h5/courses?page=1&limit=10&status=2
 ```
 
 **响应示例**:

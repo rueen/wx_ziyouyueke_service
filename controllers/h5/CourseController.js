@@ -171,9 +171,9 @@ class CourseController {
       limit = 10, 
       status = '', 
       coach_id = '',
+      student_id = '',
       start_date = '',
-      end_date = '',
-      role = 'student' // student 或 coach
+      end_date = ''
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -182,21 +182,25 @@ class CourseController {
       // 构建查询条件
       const whereConditions = {};
 
-      // 根据角色过滤
-      if (role === 'coach') {
-        whereConditions.coach_id = userId;
+      // 学员ID筛选
+      if (student_id) {
+        whereConditions.student_id = student_id;
       } else {
-        whereConditions.student_id = userId;
+        // 如果没有指定学员ID，默认返回当前用户相关的课程（学员或教练）
+        whereConditions[Op.or] = [
+          { student_id: userId },
+          { coach_id: userId }
+        ];
+      }
+
+      // 教练ID筛选
+      if (coach_id) {
+        whereConditions.coach_id = coach_id;
       }
 
       // 状态筛选
       if (status) {
         whereConditions.booking_status = status;
-      }
-
-      // 教练筛选（只在学员视角下有效）
-      if (coach_id && role === 'student') {
-        whereConditions.coach_id = coach_id;
       }
 
       // 日期范围筛选
