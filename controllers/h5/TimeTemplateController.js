@@ -84,7 +84,7 @@ class TimeTemplateController {
       coach_id,
       min_advance_days,
       max_advance_days,
-      time_slots: JSON.stringify(time_slots),
+      time_slots: time_slots,
       is_active
     });
 
@@ -132,7 +132,7 @@ class TimeTemplateController {
           return ResponseUtil.validationError(res, '结束时间必须大于开始时间');
         }
       }
-      updateData.time_slots = JSON.stringify(time_slots);
+      updateData.time_slots = time_slots;
     }
 
     // 验证天数设置

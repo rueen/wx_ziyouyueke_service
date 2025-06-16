@@ -1,4 +1,4 @@
-const { User, StudentCoachRelation } = require('../../models');
+const { User, StudentCoachRelation, TimeTemplate } = require('../../models');
 const { asyncHandler } = require('../../middleware/errorHandler');
 const ResponseUtil = require('../../utils/response');
 const wechatUtil = require('../../utils/wechat');
@@ -45,6 +45,32 @@ class AuthController {
       });
       isNewUser = true;
       logger.info('新用户注册:', { userId: user.id, openid, avatarUrl: user.avatar_url });
+
+      // 为新用户创建默认时间模板
+      try {
+        const defaultTimeSlots = [
+          { startTime: "09:00", endTime: "10:00" },
+          { startTime: "14:00", endTime: "15:00" },
+          { startTime: "19:00", endTime: "20:00" }
+        ];
+
+        const timeTemplate = await TimeTemplate.create({
+          coach_id: user.id,
+          min_advance_days: 1,
+          max_advance_days: 7,
+          time_slots: defaultTimeSlots,
+          is_active: 1
+        });
+
+        logger.info('为新用户创建默认时间模板:', { 
+          userId: user.id, 
+          templateId: timeTemplate.id,
+          timeSlots: defaultTimeSlots 
+        });
+      } catch (error) {
+        logger.error('创建默认时间模板失败:', { userId: user.id, error: error.message });
+        // 不阻断用户注册流程
+      }
     } else {
       // 老用户登录 - 只更新登录时间，不覆盖已设置的个人信息
       await user.updateLastLoginTime();
