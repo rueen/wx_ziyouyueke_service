@@ -137,11 +137,6 @@ class CourseController {
         created_by: userId
       });
 
-      // 如果有师生关系，更新剩余课时
-      if (relation) {
-        await relation.decrement('remaining_lessons', { by: 1 });
-      }
-
       logger.info('课程预约成功:', { 
         bookingId: booking.id, 
         studentId: student_id, 
@@ -151,7 +146,7 @@ class CourseController {
       return ResponseUtil.success(res, {
         booking_id: booking.id,
         booking_status: booking.booking_status,
-        remaining_lessons: relation ? relation.remaining_lessons - 1 : null
+        remaining_lessons: relation ? relation.remaining_lessons : null
       }, '预约成功');
 
     } catch (error) {
@@ -382,6 +377,9 @@ class CourseController {
         return ResponseUtil.validationError(res, '课程已被取消');
       }
 
+      // 记录原始状态用于课时恢复判断
+      const originalStatus = course.booking_status;
+
       await course.update({
         booking_status: 4, // 已取消
         cancel_reason: cancel_reason,
@@ -389,17 +387,17 @@ class CourseController {
         cancelled_by: userId
       });
 
-      // 如果是学员取消，需要恢复课时
-      if (course.student_id === userId) {
-        const relation = await StudentCoachRelation.findOne({
-          where: {
-            student_id: course.student_id,
-            coach_id: course.coach_id
-          }
-        });
-
+      // 如果课程原本已完成（状态为3），需要恢复课时
+      if (originalStatus === 3 && course.relation_id) {
+        const relation = await StudentCoachRelation.findByPk(course.relation_id);
         if (relation) {
           await relation.increment('remaining_lessons', { by: 1 });
+          logger.info('课时恢复:', { 
+            relationId: course.relation_id, 
+            courseId: id,
+            reason: '已完成课程被取消',
+            remainingLessons: relation.remaining_lessons + 1 
+          });
         }
       }
 
@@ -446,11 +444,25 @@ class CourseController {
         return ResponseUtil.validationError(res, '课程状态不允许完成');
       }
 
+      // 更新课程状态为完成
       await course.update({
         booking_status: 3, // 已完成
         complete_at: new Date(),
         coach_remark: feedback
       });
+
+      // 如果有师生关系，消耗剩余课时
+      if (course.relation_id) {
+        const relation = await StudentCoachRelation.findByPk(course.relation_id);
+        if (relation && relation.remaining_lessons > 0) {
+          await relation.decrement('remaining_lessons', { by: 1 });
+          logger.info('课时消耗:', { 
+            relationId: course.relation_id, 
+            courseId: id,
+            remainingLessons: relation.remaining_lessons - 1 
+          });
+        }
+      }
 
       logger.info('课程完成:', { courseId: id, coachId: userId });
 
