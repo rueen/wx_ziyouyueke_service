@@ -59,6 +59,23 @@ app.use('/api/h5', h5Routes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 
+// 根路径响应（用于SSL证书验证和基本信息展示）
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: '自由约课微信小程序API服务',
+    description: '提供用户管理、课程预约、师生关系等功能的RESTful API',
+    version: require('./package.json').version,
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      h5_api: '/api/h5',
+      admin_api: '/api/admin',
+      upload_api: '/api/upload'
+    }
+  });
+});
+
 // 健康检查
 app.get('/health', (req, res) => {
   res.json({
