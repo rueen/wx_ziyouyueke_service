@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-06-16 21:15:51
  * @LastEditors: diaochan
- * @LastEditTime: 2025-06-16 21:35:44
+ * @LastEditTime: 2025-06-17 17:43:37
  * @Description: 
  */
 // 宝塔面板专用PM2配置文件
@@ -10,9 +10,9 @@
 
 module.exports = {
   apps: [{
-    name: 'yueke-api',
+    name: 'wx_ziyouyueke_service',
     script: 'app.js',
-    cwd: '/www/wwwroot/yueke-api/',
+    cwd: '/www/wwwroot/wx_ziyouyueke_service/',
     instances: 'max',
     exec_mode: 'cluster',
     
@@ -27,9 +27,9 @@ module.exports = {
     },
     
     // 日志配置 (宝塔面板目录结构)
-    error_file: '/www/wwwroot/yueke-api/logs/pm2-err.log',
-    out_file: '/www/wwwroot/yueke-api/logs/pm2-out.log',
-    log_file: '/www/wwwroot/yueke-api/logs/pm2-combined.log',
+    error_file: '/www/wwwroot/wx_ziyouyueke_service/logs/pm2-err.log',
+    out_file: '/www/wwwroot/wx_ziyouyueke_service/logs/pm2-out.log',
+    log_file: '/www/wwwroot/wx_ziyouyueke_service/logs/pm2-combined.log',
     time: true,
     log_date_format: 'YYYY-MM-DD HH:mm:ss',
     
@@ -56,7 +56,7 @@ module.exports = {
     ],
     
     // 宝塔面板环境变量文件
-    env_file: '/www/wwwroot/yueke-api/.env',
+    env_file: '/www/wwwroot/wx_ziyouyueke_service/.env',
     
     // 进程间通信
     kill_timeout: 5000,
@@ -77,8 +77,8 @@ module.exports = {
       user: 'www',
       host: 'localhost',
       ref: 'origin/main',
-      repo: 'https://github.com/rueen/wx_ziyouyueke_service.git',
-      path: '/www/wwwroot/yueke-api',
+      repo: 'git@github.com:rueen/wx_ziyouyueke_service.git',
+      path: '/www/wwwroot/wx_ziyouyueke_service',
       ssh_options: 'StrictHostKeyChecking=no',
       'pre-deploy': 'git fetch --all',
       'post-deploy': 'npm install --production && npm run migrate && pm2 reload ecosystem.bt.config.js --env production && pm2 save',
