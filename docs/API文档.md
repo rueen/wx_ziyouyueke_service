@@ -1083,7 +1083,7 @@ Authorization: Bearer <token>
 |--------|------|------|--------|------|
 | page | number | 否 | 1 | 页码 |
 | limit | number | 否 | 10 | 每页数量 |
-| status | number | 否 | "" | 状态筛选 |
+| status | number | 否 | "" | 状态筛选：1-待确认，2-已确认，3-已完成，4-已取消（包含超时取消） |
 | coach_id | number | 否 | "" | 教练ID筛选 |
 | student_id | number | 否 | "" | 学员ID筛选 |
 | start_date | string | 否 | "" | 开始日期 |
@@ -1102,6 +1102,9 @@ GET /api/h5/courses?student_id=1&coach_id=5
 
 # 获取当前用户相关的所有课程（不指定student_id）
 GET /api/h5/courses?page=1&limit=10&status=2
+
+# 获取所有已取消的课程（包含手动取消和超时取消）
+GET /api/h5/courses?status=4
 ```
 
 **响应示例**:

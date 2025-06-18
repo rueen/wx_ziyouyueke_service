@@ -198,7 +198,14 @@ class CourseController {
 
       // 状态筛选
       if (status) {
-        whereConditions.booking_status = status;
+        if (status === '4') {
+          // 当状态为4时，筛选所有已取消的课程（包含手动取消4和超时取消5）
+          whereConditions.booking_status = {
+            [Op.in]: [4, 5]
+          };
+        } else {
+          whereConditions.booking_status = status;
+        }
       }
 
       // 日期范围筛选
