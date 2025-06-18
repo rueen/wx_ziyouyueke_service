@@ -174,6 +174,9 @@ class CourseController {
     const offset = (page - 1) * limit;
 
     try {
+      // 自动取消超时课程
+      await CourseBooking.autoTimeoutCancel();
+
       // 构建查询条件
       const whereConditions = {};
 
@@ -260,6 +263,9 @@ class CourseController {
     const { userId } = req;
 
     try {
+      // 自动取消超时课程
+      await CourseBooking.autoTimeoutCancel();
+
       const course = await CourseBooking.findOne({
         where: { id },
         include: [
@@ -307,6 +313,9 @@ class CourseController {
     const { userId } = req;
 
     try {
+      // 自动取消超时课程
+      await CourseBooking.autoTimeoutCancel();
+
       const course = await CourseBooking.findByPk(id);
 
       if (!course) {
@@ -373,7 +382,7 @@ class CourseController {
       }
 
       // 已取消的课程不能重复取消
-      if (course.booking_status === 4) {
+      if (course.booking_status === 4 || course.booking_status === 5) {
         return ResponseUtil.validationError(res, '课程已被取消');
       }
 

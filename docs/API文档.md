@@ -1429,7 +1429,7 @@ interface CourseBooking {
   course_date: string;         // 课程日期（YYYY-MM-DD）
   start_time: string;          // 开始时间（HH:mm）
   end_time: string;            // 结束时间（HH:mm）
-  booking_status: number;      // 预约状态：1-待确认，2-已确认，3-已完成，4-已取消
+      booking_status: number;      // 预约状态：1-待确认，2-已确认，3-已完成，4-已取消，5-超时取消
   address_id: number;          // 地址ID
   student_remark?: string;     // 学员备注
   coach_remark?: string;       // 教练备注

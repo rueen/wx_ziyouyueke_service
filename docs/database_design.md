@@ -99,7 +99,7 @@ CREATE TABLE `course_bookings` (
   `course_date` date NOT NULL COMMENT '课程日期（YYYY-MM-DD）',
   `start_time` time NOT NULL COMMENT '开始时间（HH:mm）',
   `end_time` time NOT NULL COMMENT '结束时间（HH:mm）',
-  `booking_status` tinyint(1) DEFAULT 1 COMMENT '预约状态：1-待确认，2-已确认，3-已完成，4-已取消',
+  `booking_status` tinyint(1) DEFAULT 1 COMMENT '预约状态：1-待确认，2-已确认，3-已完成，4-已取消，5-超时取消',
   `address_id` bigint(20) unsigned NOT NULL COMMENT '地址ID',
   `student_remark` text COMMENT '学员备注',
   `coach_remark` text COMMENT '教练备注',

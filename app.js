@@ -18,6 +18,9 @@ const uploadRoutes = require('./routes/upload');
 const { errorHandler } = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 
+// 引入课程超时管理器
+const CourseTimeoutManager = require('./utils/courseTimeout');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -112,6 +115,9 @@ const startServer = async () => {
       await sequelize.sync({ alter: true });
       logger.info('数据库模型同步完成');
     }
+
+    // 启动课程超时检查定时任务
+    CourseTimeoutManager.startScheduledTask();
 
     // 启动服务器
     app.listen(PORT, () => {

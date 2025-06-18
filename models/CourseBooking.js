@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 
@@ -46,7 +46,7 @@ const CourseBooking = sequelize.define('course_bookings', {
     type: DataTypes.TINYINT(1),
     allowNull: false,
     defaultValue: 1,
-    comment: '预约状态：1-待确认，2-已确认，3-已完成，4-已取消'
+    comment: '预约状态：1-待确认，2-已确认，3-已完成，4-已取消，5-超时取消'
   },
   address_id: {
     type: DataTypes.BIGINT.UNSIGNED,
@@ -178,9 +178,80 @@ CourseBooking.prototype.getStatusText = function() {
     1: '待确认',
     2: '已确认',
     3: '已完成',
-    4: '已取消'
+    4: '已取消',
+    5: '超时取消'
   };
   return statusMap[this.booking_status] || '未知状态';
+};
+
+/**
+ * 实例方法：超时取消课程
+ */
+CourseBooking.prototype.timeoutCancel = function() {
+  return this.update({
+    booking_status: 5,
+    cancelled_at: new Date(),
+    cancel_reason: '超时，系统自动取消'
+  });
+};
+
+/**
+ * 类方法：自动取消超时课程
+ * 检查所有待确认状态且开始时间已过的课程，自动取消
+ */
+CourseBooking.autoTimeoutCancel = async function() {
+  const currentDateTime = new Date();
+  const currentDate = currentDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
+  const currentTime = currentDateTime.toTimeString().slice(0, 8); // HH:mm:ss
+  
+  try {
+    // 查找需要超时取消的课程
+    const timeoutCourses = await this.findAll({
+      where: {
+        booking_status: 1, // 待确认状态
+        [Op.or]: [
+          // 课程日期小于今天
+          {
+            course_date: {
+              [Op.lt]: currentDate
+            }
+          },
+          // 课程日期等于今天且开始时间小于当前时间
+          {
+            [Op.and]: [
+              { course_date: currentDate },
+              { start_time: { [Op.lt]: currentTime } }
+            ]
+          }
+        ]
+      }
+    });
+
+    let cancelledCount = 0;
+    
+    // 逐个取消超时课程
+    for (const course of timeoutCourses) {
+      await course.timeoutCancel();
+      cancelledCount++;
+    }
+
+    if (cancelledCount > 0) {
+      console.log(`自动取消了 ${cancelledCount} 个超时课程`);
+    }
+
+    return {
+      success: true,
+      cancelledCount: cancelledCount,
+      message: `成功自动取消 ${cancelledCount} 个超时课程`
+    };
+    
+  } catch (error) {
+    console.error('自动取消超时课程失败:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 };
 
 /**
@@ -191,28 +262,28 @@ CourseBooking.checkTimeConflict = async function(coachId, courseDate, startTime,
     coach_id: coachId,
     course_date: courseDate,
     booking_status: [1, 2], // 待确认、已确认的课程
-    [sequelize.Op.or]: [
+    [Op.or]: [
       {
         start_time: {
-          [sequelize.Op.between]: [startTime, endTime]
+          [Op.between]: [startTime, endTime]
         }
       },
       {
         end_time: {
-          [sequelize.Op.between]: [startTime, endTime]
+          [Op.between]: [startTime, endTime]
         }
       },
       {
-        [sequelize.Op.and]: [
-          { start_time: { [sequelize.Op.lte]: startTime } },
-          { end_time: { [sequelize.Op.gte]: endTime } }
+        [Op.and]: [
+          { start_time: { [Op.lte]: startTime } },
+          { end_time: { [Op.gte]: endTime } }
         ]
       }
     ]
   };
 
   if (excludeId) {
-    where.id = { [sequelize.Op.ne]: excludeId };
+    where.id = { [Op.ne]: excludeId };
   }
 
   const conflictBooking = await this.findOne({ where });
