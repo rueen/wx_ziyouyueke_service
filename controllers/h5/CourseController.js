@@ -183,12 +183,6 @@ class CourseController {
       // 学员ID筛选
       if (student_id) {
         whereConditions.student_id = student_id;
-      } else {
-        // 如果没有指定学员ID，默认返回当前用户相关的课程（学员或教练）
-        whereConditions[Op.or] = [
-          { student_id: userId },
-          { coach_id: userId }
-        ];
       }
 
       // 教练ID筛选
