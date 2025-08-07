@@ -2,7 +2,6 @@ const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address } = req
 const { asyncHandler } = require('../../middleware/errorHandler');
 const ResponseUtil = require('../../utils/response');
 const logger = require('../../utils/logger');
-const TimezoneUtil = require('../../utils/timezone');
 const { Op } = require('sequelize');
 
 /**
@@ -14,7 +13,7 @@ class CourseController {
    * @route POST /api/h5/courses
    */
   static createBooking = asyncHandler(async (req, res) => {
-    const { userId, timezone = 'Asia/Shanghai' } = req;
+    const { userId } = req;
     const { 
       coach_id, 
       student_id,
@@ -73,29 +72,53 @@ class CourseController {
         }
       }
 
-      // 检查教练时间冲突（考虑时区）
-      const coachHasConflict = await CourseBooking.checkTimeConflict({
-        coach_id,
-        courseDate: course_date,
-        startTime: start_time,
-        endTime: end_time,
-        timezone
+      // 检查教练时间冲突
+      const coachConflict = await CourseBooking.findOne({
+        where: {
+          coach_id: coach_id,
+          course_date: course_date,
+          [Op.or]: [
+            {
+              start_time: {
+                [Op.lt]: end_time
+              },
+              end_time: {
+                [Op.gt]: start_time
+              }
+            }
+          ],
+          booking_status: {
+            [Op.in]: [1, 2] // 待确认、已确认
+          }
+        }
       });
 
-      if (coachHasConflict) {
+      if (coachConflict) {
         return ResponseUtil.validationError(res, '教练在该时间段已有其他预约');
       }
 
-      // 检查学员时间冲突（考虑时区）
-      const studentHasConflict = await CourseBooking.checkTimeConflict({
-        student_id,
-        courseDate: course_date,
-        startTime: start_time,
-        endTime: end_time,
-        timezone
+      // 检查学员时间冲突
+      const studentConflict = await CourseBooking.findOne({
+        where: {
+          student_id: student_id,
+          course_date: course_date,
+          [Op.or]: [
+            {
+              start_time: {
+                [Op.lt]: end_time
+              },
+              end_time: {
+                [Op.gt]: start_time
+              }
+            }
+          ],
+          booking_status: {
+            [Op.in]: [1, 2]
+          }
+        }
       });
 
-      if (studentHasConflict) {
+      if (studentConflict) {
         return ResponseUtil.validationError(res, '学员在该时间段已有其他预约');
       }
 
@@ -137,7 +160,7 @@ class CourseController {
    * @route GET /api/h5/courses
    */
   static getCourseList = asyncHandler(async (req, res) => {
-    const { userId, timezone = 'Asia/Shanghai' } = req;
+    const { userId } = req;
     const { 
       page = 1, 
       limit = 10, 
@@ -151,8 +174,8 @@ class CourseController {
     const offset = (page - 1) * limit;
 
     try {
-      // 自动取消超时课程（基于用户时区）
-      await CourseBooking.autoTimeoutCancel(timezone);
+      // 自动取消超时课程
+      await CourseBooking.autoTimeoutCancel();
 
       // 构建查询条件
       const whereConditions = {};
@@ -238,11 +261,11 @@ class CourseController {
    */
   static getCourseDetail = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { userId, timezone = 'Asia/Shanghai' } = req;
+    const { userId } = req;
 
     try {
-      // 自动取消超时课程（基于用户时区）
-      await CourseBooking.autoTimeoutCancel(timezone);
+      // 自动取消超时课程
+      await CourseBooking.autoTimeoutCancel();
 
       const course = await CourseBooking.findOne({
         where: { id },
@@ -288,11 +311,11 @@ class CourseController {
    */
   static confirmCourse = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { userId, timezone = 'Asia/Shanghai' } = req;
+    const { userId } = req;
 
     try {
-      // 自动取消超时课程（基于用户时区）
-      await CourseBooking.autoTimeoutCancel(timezone);
+      // 自动取消超时课程
+      await CourseBooking.autoTimeoutCancel();
 
       const course = await CourseBooking.findByPk(id);
 

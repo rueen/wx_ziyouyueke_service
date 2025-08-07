@@ -1,9 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const timezoneMiddleware = require('../../middleware/timezone');
-
-// 应用时区中间件
-router.use(timezoneMiddleware);
 
 // 引入子路由
 const authRoutes = require('./auth');
