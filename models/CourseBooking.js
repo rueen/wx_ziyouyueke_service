@@ -1,6 +1,7 @@
 const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
+const TimezoneUtil = require('../utils/timezone');
 
 /**
  * 课程预约模型
@@ -198,11 +199,11 @@ CourseBooking.prototype.timeoutCancel = function() {
 /**
  * 类方法：自动取消超时课程
  * 检查所有待确认状态且开始时间已过的课程，自动取消
+ * @param {string} timezone - 时区标识，默认为中国时区
  */
-CourseBooking.autoTimeoutCancel = async function() {
-  const currentDateTime = new Date();
-  const currentDate = currentDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
-  const currentTime = currentDateTime.toTimeString().slice(0, 8); // HH:mm:ss
+CourseBooking.autoTimeoutCancel = async function(timezone = 'Asia/Shanghai') {
+  const currentDate = TimezoneUtil.getCurrentDate(timezone);
+  const currentTime = TimezoneUtil.getCurrentTime(timezone);
   
   try {
     // 查找需要超时取消的课程
@@ -236,7 +237,7 @@ CourseBooking.autoTimeoutCancel = async function() {
     }
 
     if (cancelledCount > 0) {
-      console.log(`自动取消了 ${cancelledCount} 个超时课程`);
+      console.log(`[${timezone}] 自动取消了 ${cancelledCount} 个超时课程`);
     }
 
     return {
@@ -256,10 +257,27 @@ CourseBooking.autoTimeoutCancel = async function() {
 
 /**
  * 类方法：检查时间冲突
+ * @param {Object} options - 检查选项
+ * @param {number} options.coach_id - 教练ID（可选）
+ * @param {number} options.student_id - 学员ID（可选）
+ * @param {string} options.courseDate - 课程日期
+ * @param {string} options.startTime - 开始时间
+ * @param {string} options.endTime - 结束时间
+ * @param {number} options.excludeId - 排除的预约ID
+ * @param {string} options.timezone - 时区标识
  */
-CourseBooking.checkTimeConflict = async function(coachId, courseDate, startTime, endTime, excludeId = null) {
+CourseBooking.checkTimeConflict = async function(options) {
+  const { 
+    coach_id, 
+    student_id, 
+    courseDate, 
+    startTime, 
+    endTime, 
+    excludeId = null, 
+    timezone = 'Asia/Shanghai' 
+  } = options;
+
   const where = {
-    coach_id: coachId,
     course_date: courseDate,
     booking_status: [1, 2], // 待确认、已确认的课程
     [Op.or]: [
@@ -281,6 +299,14 @@ CourseBooking.checkTimeConflict = async function(coachId, courseDate, startTime,
       }
     ]
   };
+
+  // 添加教练或学员的条件
+  if (coach_id) {
+    where.coach_id = coach_id;
+  }
+  if (student_id) {
+    where.student_id = student_id;
+  }
 
   if (excludeId) {
     where.id = { [Op.ne]: excludeId };
