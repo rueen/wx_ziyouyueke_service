@@ -4,10 +4,15 @@
   "description": "自由约课微信小程序后端服务",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
-    "test": "jest",
-    "migrate": "node scripts/migrate.js"
+    "start:admin": "node src/admin/admin-server.js",
+    "start:h5": "node src/h5/h5-server.js",
+    "dev:admin": "nodemon src/admin/admin-server.js",
+    "dev:h5": "nodemon src/h5/h5-server.js",
+    "start:all": "concurrently \"npm run start:admin\" \"npm run start:h5\"",
+    "dev:all": "concurrently \"npm run dev:admin\" \"npm run dev:h5\"",
+    "migrate": "node scripts/run-migrations.js",
+    "clean-logs": "node src/shared/utils/log-cleaner.util.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "nodejs",
@@ -38,6 +43,7 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "form-data": "^4.0.3",
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",

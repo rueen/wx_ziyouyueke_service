@@ -9,6 +9,7 @@ const CourseBooking = require('./CourseBooking');
 const Notification = require('./Notification');
 const OperationLog = require('./OperationLog');
 const Address = require('./Address');
+const Waiter = require('./Waiter');
 
 /**
  * 设置模型关联关系
@@ -150,5 +151,6 @@ module.exports = {
   CourseBooking,
   Notification,
   OperationLog,
-  Address
+  Address,
+  Waiter
 }; 
