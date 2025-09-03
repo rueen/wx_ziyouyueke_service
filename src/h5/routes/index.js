@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-09-03 20:02:54
  * @LastEditors: diaochan
- * @LastEditTime: 2025-09-03 20:23:49
+ * @LastEditTime: 2025-09-03 21:37:38
  * @Description: 
  */
 const express = require('express');
@@ -38,7 +38,7 @@ router.use('/auth', authRoutes);
 router.use('/user', userRoutes);
 
 // 师生关系路由
-router.use('/relation', relationRoutes);
+router.use('/relations', relationRoutes);
 
 // 课程相关路由
 router.use('/courses', courseRoutes); // 支持复数形式
@@ -47,9 +47,9 @@ router.use('/courses', courseRoutes); // 支持复数形式
 router.use('/student', studentRoutes);
 
 // 时间模板路由
-router.use('/time-template', timeTemplateRoutes);
+router.use('/time-templates', timeTemplateRoutes);
 
 // 地址相关路由
-router.use('/address', addressRoutes);
+router.use('/addresses', addressRoutes);
 
 module.exports = router;

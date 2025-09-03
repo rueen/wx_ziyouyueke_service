@@ -1,3 +1,10 @@
+/*
+ * @Author: diaochan
+ * @Date: 2025-09-03 19:58:48
+ * @LastEditors: diaochan
+ * @LastEditTime: 2025-09-03 21:34:19
+ * @Description: 
+ */
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -92,54 +99,41 @@ const createApp = (options = {}) => {
 };
 
 /**
+ * 智能数据库初始化（使用外部初始化器）
+ * 返回值：{ isFirstDeploy: boolean, newTables: string[] }
+ */
+const smartDatabaseInit = async () => {
+  const DatabaseInitializer = require('./database/database-initializer');
+  const initializer = new DatabaseInitializer();
+  return await initializer.initialize();
+};
+
+/**
  * 数据库连接和同步
  */
-const setupDatabase = async (options = {}) => {
+const setupDatabase = async () => {
   const sequelize = require('./config/database');
-  const { createDefaultAdmin = false, skipSync = false } = options;
 
   try {
     // 测试数据库连接
     await sequelize.authenticate();
     logger.info('数据库连接成功');
 
-    // 开发环境同步数据库模型（避免并发冲突）
-    if (process.env.NODE_ENV === 'development') {
-      if (skipSync) {
-        // 跳过数据库同步，只验证连接
-        logger.info('跳过数据库同步，仅验证连接');
+    // 智能数据库初始化：创建新表 + 为新表创建默认数据
+    try {
+      const { isFirstDeploy, newTables } = await smartDatabaseInit();
+      
+      if (isFirstDeploy) {
+        logger.info('首次部署完成，所有表和默认数据已创建');
+      } else if (newTables.length > 0) {
+        logger.info(`新表创建完成: ${newTables.join(', ')}`);
       } else {
-        // 执行数据库同步
-        try {
-          // 先尝试检查表是否存在，如果已存在则跳过完整同步
-          const tables = await sequelize.getQueryInterface().showAllTables();
-          const hasWaitersTable = tables.includes('waiters');
-          
-          if (!hasWaitersTable) {
-            // 只有当核心表不存在时才进行完整同步
-            await sequelize.sync({ alter: true });
-            logger.info('数据库模型同步完成');
-          } else {
-            // 表已存在，使用更温和的同步方式
-            await sequelize.sync({ alter: false });
-            logger.info('数据库结构验证完成');
-          }
-        } catch (syncError) {
-          // 如果同步失败，可能是因为并发冲突，记录警告但不中断启动
-          logger.warn('数据库同步遇到问题（可能是并发冲突）:', syncError.message);
-          logger.info('尝试继续启动服务...');
-        }
-
-        // 创建默认管理员账号（仅管理端需要）
-        if (createDefaultAdmin) {
-          try {
-            const Waiter = require('./models/Waiter');
-            await Waiter.createDefaultAdmin();
-          } catch (adminError) {
-            logger.warn('创建默认管理员账号失败:', adminError.message);
-          }
-        }
+        logger.info('所有表已存在，无需创建新表');
       }
+    } catch (syncError) {
+      // 如果同步失败，记录警告但不中断启动
+      logger.warn('数据库初始化遇到问题:', syncError.message);
+      logger.info('尝试继续启动服务...');
     }
   } catch (error) {
     logger.error('数据库设置失败:', error);

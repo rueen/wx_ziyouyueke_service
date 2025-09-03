@@ -1,3 +1,10 @@
+/*
+ * @Author: diaochan
+ * @Date: 2025-09-03 19:49:18
+ * @LastEditors: diaochan
+ * @LastEditTime: 2025-09-03 21:21:47
+ * @Description: 
+ */
 const { createApp, setupDatabase, startServer } = require('../shared/app-common');
 
 // 引入H5端路由
@@ -25,8 +32,8 @@ const startH5Server = async () => {
       ]
     });
 
-    // 设置数据库（H5端跳过数据库同步，只验证连接）
-    await setupDatabase({ createDefaultAdmin: false, skipSync: true });
+    // 设置数据库
+    await setupDatabase();
 
     // 启动课程超时检查定时任务
     CourseTimeoutManager.startScheduledTask();

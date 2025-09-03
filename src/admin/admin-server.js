@@ -1,3 +1,10 @@
+/*
+ * @Author: diaochan
+ * @Date: 2025-09-03 19:49:07
+ * @LastEditors: diaochan
+ * @LastEditTime: 2025-09-03 21:21:39
+ * @Description: 
+ */
 const { createApp, setupDatabase, startServer } = require('../shared/app-common');
 
 // 引入管理端路由
@@ -23,7 +30,7 @@ const startAdminServer = async () => {
     });
 
     // 设置数据库（管理端需要创建默认管理员）
-    await setupDatabase({ createDefaultAdmin: true });
+    await setupDatabase();
 
     // 配置路由
     app.use('/api/admin', adminRoutes);
