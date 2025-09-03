@@ -1,7 +1,7 @@
 require('dotenv').config();
-const sequelize = require('../config/database');
-const Waiter = require('../models/Waiter');
-const logger = require('../utils/logger');
+const sequelize = require('../src/shared/config/database');
+const Waiter = require('../src/shared/models/Waiter');
+const logger = require('../src/shared/utils/logger');
 
 /**
  * 运行数据库迁移
