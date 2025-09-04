@@ -33,6 +33,11 @@ const createApp = (options = {}) => {
   const app = express();
 
   /**
+   * 信任代理设置（用于宝塔面板等反向代理环境）
+   */
+  app.set('trust proxy', 1);
+
+  /**
    * 安全中间件
    */
   app.use(helmet());
@@ -51,7 +56,13 @@ const createApp = (options = {}) => {
       success: false,
       code: 429,
       message: '请求过于频繁，请稍后再试'
-    }
+    },
+    // 信任代理，正确处理X-Forwarded-For头
+    trustProxy: true,
+    // 跳过成功请求的计数（可选）
+    skipSuccessfulRequests: false,
+    // 跳过失败请求的计数（可选）
+    skipFailedRequests: false
   });
   app.use('/api', limiter);
 

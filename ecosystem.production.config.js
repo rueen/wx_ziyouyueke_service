@@ -24,10 +24,10 @@ module.exports = {
         SERVICE: 'admin'
       },
       
-      // 日志配置 (宝塔面板标准路径)
-      error_file: "/www/wwwlogs/pm2/wx_ziyouyueke_admin/err.log",
-      out_file: "/www/wwwlogs/pm2/wx_ziyouyueke_admin/out.log",
-      log_file: "/www/wwwlogs/pm2/wx_ziyouyueke_admin/combined.log",
+      // 日志配置 (项目目录)
+      error_file: "/www/wwwroot/wx_ziyouyueke_service/logs/admin-err.log",
+      out_file: "/www/wwwroot/wx_ziyouyueke_service/logs/admin-out.log",
+      log_file: "/www/wwwroot/wx_ziyouyueke_service/logs/admin-combined.log",
       time: true,
       log_date_format: "YYYY-MM-DD HH:mm:ss",
       
@@ -84,10 +84,10 @@ module.exports = {
         SERVICE: 'h5'
       },
       
-      // 日志配置 (宝塔面板标准路径)
-      error_file: "/www/wwwlogs/pm2/wx_ziyouyueke_h5/err.log",
-      out_file: "/www/wwwlogs/pm2/wx_ziyouyueke_h5/out.log",
-      log_file: "/www/wwwlogs/pm2/wx_ziyouyueke_h5/combined.log",
+      // 日志配置 (项目目录)
+      error_file: "/www/wwwroot/wx_ziyouyueke_service/logs/h5-err.log",
+      out_file: "/www/wwwroot/wx_ziyouyueke_service/logs/h5-out.log",
+      log_file: "/www/wwwroot/wx_ziyouyueke_service/logs/h5-combined.log",
       time: true,
       log_date_format: "YYYY-MM-DD HH:mm:ss",
       
