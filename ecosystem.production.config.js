@@ -1,6 +1,6 @@
 /*
- * 生产环境PM2配置文件
- * 支持微服务架构的Admin和H5服务
+ * 宝塔面板微服务PM2配置文件
+ * 基于现有宝塔配置适配微服务架构
  */
 
 module.exports = {
@@ -8,7 +8,7 @@ module.exports = {
     {
       name: 'wx_ziyouyueke_admin',
       script: 'src/admin/admin-server.js',
-      cwd: '/www/wwwroot/wx_ziyouyueke_service/',
+      cwd: "/www/wwwroot/wx_ziyouyueke_service",
       instances: 1,
       exec_mode: 'fork',
       
@@ -18,13 +18,18 @@ module.exports = {
         PORT: 3001,
         SERVICE: 'admin'
       },
+      env_development: {
+        NODE_ENV: 'development',
+        PORT: 3001,
+        SERVICE: 'admin'
+      },
       
-      // 日志配置
-      error_file: '/www/wwwroot/wx_ziyouyueke_service/logs/admin-err.log',
-      out_file: '/www/wwwroot/wx_ziyouyueke_service/logs/admin-out.log',
-      log_file: '/www/wwwroot/wx_ziyouyueke_service/logs/admin-combined.log',
+      // 日志配置 (宝塔面板标准路径)
+      error_file: "/www/wwwlogs/pm2/wx_ziyouyueke_admin/err.log",
+      out_file: "/www/wwwlogs/pm2/wx_ziyouyueke_admin/out.log",
+      log_file: "/www/wwwlogs/pm2/wx_ziyouyueke_admin/combined.log",
       time: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
       
       // 自动重启配置
       autorestart: true,
@@ -32,6 +37,12 @@ module.exports = {
       restart_delay: 4000,
       max_restarts: 10,
       min_uptime: '60s',
+      
+      // Node.js 优化配置
+      node_args: [
+        '--max_old_space_size=1024',
+        '--max_semi_space_size=64'
+      ],
       
       // 监控配置
       watch: false,
@@ -42,7 +53,7 @@ module.exports = {
         '.git'
       ],
       
-      // 环境变量文件
+      // 宝塔面板环境变量文件
       env_file: '/www/wwwroot/wx_ziyouyueke_service/.env',
       
       // 进程间通信
@@ -57,7 +68,7 @@ module.exports = {
     {
       name: 'wx_ziyouyueke_h5',
       script: 'src/h5/h5-server.js',
-      cwd: '/www/wwwroot/wx_ziyouyueke_service/',
+      cwd: "/www/wwwroot/wx_ziyouyueke_service",
       instances: 'max',
       exec_mode: 'cluster',
       
@@ -67,13 +78,18 @@ module.exports = {
         PORT: 3000,
         SERVICE: 'h5'
       },
+      env_development: {
+        NODE_ENV: 'development',
+        PORT: 3000,
+        SERVICE: 'h5'
+      },
       
-      // 日志配置
-      error_file: '/www/wwwroot/wx_ziyouyueke_service/logs/h5-err.log',
-      out_file: '/www/wwwroot/wx_ziyouyueke_service/logs/h5-out.log',
-      log_file: '/www/wwwroot/wx_ziyouyueke_service/logs/h5-combined.log',
+      // 日志配置 (宝塔面板标准路径)
+      error_file: "/www/wwwlogs/pm2/wx_ziyouyueke_h5/err.log",
+      out_file: "/www/wwwlogs/pm2/wx_ziyouyueke_h5/out.log",
+      log_file: "/www/wwwlogs/pm2/wx_ziyouyueke_h5/combined.log",
       time: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
       
       // 自动重启配置
       autorestart: true,
@@ -81,6 +97,12 @@ module.exports = {
       restart_delay: 4000,
       max_restarts: 10,
       min_uptime: '60s',
+      
+      // Node.js 优化配置
+      node_args: [
+        '--max_old_space_size=1024',
+        '--max_semi_space_size=64'
+      ],
       
       // 监控配置
       watch: false,
@@ -91,7 +113,7 @@ module.exports = {
         '.git'
       ],
       
-      // 环境变量文件
+      // 宝塔面板环境变量文件
       env_file: '/www/wwwroot/wx_ziyouyueke_service/.env',
       
       // 进程间通信
@@ -99,13 +121,16 @@ module.exports = {
       wait_ready: true,
       listen_timeout: 3000,
       
+      // 集群配置
+      instance_var: 'INSTANCE_ID',
+      
       // 其他配置
       merge_logs: true,
       combine_logs: true
     }
   ],
 
-  // 部署配置
+  // 宝塔面板部署配置
   deploy: {
     production: {
       user: 'www',
