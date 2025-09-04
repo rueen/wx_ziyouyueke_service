@@ -241,6 +241,9 @@ class CourseController {
 
       return ResponseUtil.success(res, {
         list: courses,
+        total: count,
+        page: parseInt(page),
+        pageSize: parseInt(limit),
         pagination: {
           current_page: parseInt(page),
           total_pages: totalPages,
