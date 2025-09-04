@@ -15,23 +15,12 @@ const Waiter = sequelize.define('waiters', {
   username: {
     type: DataTypes.STRING(50),
     allowNull: false,
-    unique: true,
     comment: '用户名'
   },
   password: {
     type: DataTypes.STRING(255),
     allowNull: false,
     comment: '密码哈希'
-  },
-  real_name: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-    comment: '真实姓名'
-  },
-  email: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-    comment: '邮箱'
   },
   status: {
     type: DataTypes.TINYINT(1),
@@ -51,7 +40,7 @@ const Waiter = sequelize.define('waiters', {
     {
       unique: true,
       fields: ['username'],
-      name: 'uk_username'
+      name: 'uk_waiters_username'
     },
     {
       fields: ['status'],
@@ -105,7 +94,6 @@ Waiter.createDefaultAdmin = async function() {
       await this.create({
         username: 'admin',
         password: 'lucky123',
-        real_name: '系统管理员',
         status: 1
       });
       console.log('默认管理员账号创建成功: admin / lucky123');

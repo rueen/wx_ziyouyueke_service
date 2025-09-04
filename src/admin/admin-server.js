@@ -29,8 +29,8 @@ const startAdminServer = async () => {
       ]
     });
 
-    // 设置数据库（管理端需要创建默认管理员）
-    await setupDatabase();
+    // 设置数据库（Admin服务负责数据库初始化）
+    await setupDatabase({ enableSync: true });
 
     // 配置路由
     app.use('/api/admin', adminRoutes);

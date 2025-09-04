@@ -110,30 +110,37 @@ const smartDatabaseInit = async () => {
 
 /**
  * 数据库连接和同步
+ * @param {Object} options - 配置选项
+ * @param {boolean} options.enableSync - 是否启用数据库同步
  */
-const setupDatabase = async () => {
+const setupDatabase = async (options = {}) => {
   const sequelize = require('./config/database');
+  const { enableSync = true } = options;
 
   try {
     // 测试数据库连接
     await sequelize.authenticate();
     logger.info('数据库连接成功');
 
-    // 智能数据库初始化：创建新表 + 为新表创建默认数据
-    try {
-      const { isFirstDeploy, newTables } = await smartDatabaseInit();
-      
-      if (isFirstDeploy) {
-        logger.info('首次部署完成，所有表和默认数据已创建');
-      } else if (newTables.length > 0) {
-        logger.info(`新表创建完成: ${newTables.join(', ')}`);
-      } else {
-        logger.info('所有表已存在，无需创建新表');
+    if (enableSync) {
+      // 执行数据库初始化
+      try {
+        const { isFirstDeploy, newTables } = await smartDatabaseInit();
+        
+        if (isFirstDeploy) {
+          logger.info('首次部署完成，所有表和默认数据已创建');
+        } else if (newTables.length > 0) {
+          logger.info(`新表创建完成: ${newTables.join(', ')}`);
+        } else {
+          logger.info('所有表已存在，无需创建新表');
+        }
+      } catch (syncError) {
+        // 如果同步失败，记录警告但不中断启动
+        logger.warn('数据库初始化遇到问题:', syncError.message);
+        logger.info('尝试继续启动服务...');
       }
-    } catch (syncError) {
-      // 如果同步失败，记录警告但不中断启动
-      logger.warn('数据库初始化遇到问题:', syncError.message);
-      logger.info('尝试继续启动服务...');
+    } else {
+      logger.info('跳过数据库同步，仅验证连接');
     }
   } catch (error) {
     logger.error('数据库设置失败:', error);

@@ -32,8 +32,8 @@ const startH5Server = async () => {
       ]
     });
 
-    // 设置数据库
-    await setupDatabase();
+    // 设置数据库（H5服务只验证连接，不执行初始化）
+    await setupDatabase({ enableSync: false });
 
     // 启动课程超时检查定时任务
     CourseTimeoutManager.startScheduledTask();

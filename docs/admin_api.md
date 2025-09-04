@@ -69,20 +69,17 @@ Authorization: Bearer <your_jwt_token>
 **成功响应:**
 ```json
 {
-  "success": true,
   "code": 200,
   "message": "登录成功",
   "data": {
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "admin": {
+    "expiresIn": 86400,
+    "userInfo": {
       "id": 1,
       "username": "admin",
-      "real_name": "系统管理员",
-      "email": null,
-      "last_login_time": "2025-01-01T12:00:00.000Z"
+      "role": "admin"
     }
-  },
-  "timestamp": 1234567890
+  }
 }
 ```
 

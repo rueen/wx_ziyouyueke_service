@@ -195,4 +195,10 @@ class ResponseUtil {
   }
 }
 
-module.exports = ResponseUtil; 
+// 导出便利方法
+const sendSuccess = ResponseUtil.success;
+const sendError = ResponseUtil.error;
+
+module.exports = ResponseUtil;
+module.exports.sendSuccess = sendSuccess;
+module.exports.sendError = sendError; 

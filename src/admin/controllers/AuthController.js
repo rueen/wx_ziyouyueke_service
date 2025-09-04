@@ -44,6 +44,9 @@ class AuthController {
         return sendError(res, '用户名或密码错误', 401);
       }
 
+      // 计算token过期时间（默认24小时）
+      const expiresIn = 86400; // 24小时，单位：秒
+      
       // 生成 JWT token
       const token = jwt.sign(
         { 
@@ -52,7 +55,7 @@ class AuthController {
           type: 'admin'
         },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+        { expiresIn: `${expiresIn}s` }
       );
 
       // 更新最后登录时间
@@ -60,16 +63,20 @@ class AuthController {
 
       logger.info(`管理员登录成功: ${username}`);
 
-      sendSuccess(res, {
-        token,
-        admin: {
-          id: waiter.id,
-          username: waiter.username,
-          real_name: waiter.real_name,
-          email: waiter.email,
-          last_login_time: waiter.last_login_time
+      // 按照新的响应格式返回数据
+      return res.status(200).json({
+        code: 200,
+        message: '登录成功',
+        data: {
+          token,
+          expiresIn,
+          userInfo: {
+            id: waiter.id,
+            username: waiter.username,
+            role: 'admin'
+          }
         }
-      }, '登录成功');
+      });
 
     } catch (error) {
       logger.error('管理员登录异常:', error);
@@ -107,8 +114,6 @@ class AuthController {
       sendSuccess(res, {
         id: admin.id,
         username: admin.username,
-        real_name: admin.real_name,
-        email: admin.email,
         last_login_time: admin.last_login_time,
         status: admin.status
       }, '获取管理员信息成功');
