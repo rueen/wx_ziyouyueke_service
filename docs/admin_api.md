@@ -155,7 +155,10 @@ GET /users?page=1&limit=20&keyword=张三&status=1&start_date=2025-01-01&end_dat
   "code": 200,
   "message": "获取用户列表成功",
   "data": {
-    "users": [
+    "total": 100,
+    "page": 1,
+    "pageSize": 20,
+    "list": [
       {
         "id": 1,
         "nickname": "张三",
@@ -167,15 +170,8 @@ GET /users?page=1&limit=20&keyword=张三&status=1&start_date=2025-01-01&end_dat
         "status": 1,
         "status_text": "正常"
       }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 100,
-      "pages": 5
-    }
-  },
-  "timestamp": 1234567890
+    ]
+  }
 }
 ```
 
@@ -303,7 +299,10 @@ GET /courses?page=1&limit=20&keyword=张三&status=2&start_date=2025-01-01&end_d
   "code": 200,
   "message": "获取课程列表成功",
   "data": {
-    "courses": [
+    "total": 50,
+    "page": 1,
+    "pageSize": 20,
+    "list": [
       {
         "id": 1,
         "student": {
@@ -336,15 +335,8 @@ GET /courses?page=1&limit=20&keyword=张三&status=2&start_date=2025-01-01&end_d
         "complete_at": null,
         "created_at": "2025-01-10T08:00:00.000Z"
       }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 50,
-      "pages": 3
-    }
-  },
-  "timestamp": 1234567890
+    ]
+  }
 }
 ```
 
