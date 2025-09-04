@@ -65,6 +65,7 @@ class AuthController {
 
       // 按照新的响应格式返回数据
       return res.status(200).json({
+        success: true,
         code: 200,
         message: '登录成功',
         data: {
