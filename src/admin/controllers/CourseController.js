@@ -70,7 +70,7 @@ class CourseController {
         {
           model: Address,
           as: 'address',
-          attributes: ['id', 'address_name', 'detailed_address']
+          attributes: ['id', 'name', 'address']
         }
       ];
 
@@ -105,8 +105,8 @@ class CourseController {
         status_text: course.getStatusText(),
         address: {
           id: course.address?.id,
-          name: course.address?.address_name,
-          detailed_address: course.address?.detailed_address
+          name: course.address?.name,
+          detailed_address: course.address?.address
         },
         student_remark: course.student_remark,
         coach_remark: course.coach_remark,
@@ -118,13 +118,10 @@ class CourseController {
       }));
 
       const result = {
-        courses,
-        pagination: {
-          page: parseInt(page),
-          limit: pageLimit,
-          total: count,
-          pages: Math.ceil(count / pageLimit)
-        }
+        list: courses,
+        total: count,
+        page: parseInt(page),
+        pageSize: pageLimit,
       };
 
       sendSuccess(res, result, '获取课程列表成功');
@@ -165,7 +162,7 @@ class CourseController {
           {
             model: Address,
             as: 'address',
-            attributes: ['id', 'address_name', 'detailed_address', 'latitude', 'longitude']
+            attributes: ['id', 'name', 'address', 'latitude', 'longitude']
           }
         ]
       });
@@ -198,8 +195,8 @@ class CourseController {
         status_text: course.getStatusText(),
         address: {
           id: course.address?.id,
-          name: course.address?.address_name,
-          detailed_address: course.address?.detailed_address,
+          name: course.address?.name,
+          detailed_address: course.address?.address,
           latitude: course.address?.latitude,
           longitude: course.address?.longitude
         },

@@ -80,13 +80,10 @@ class UserController {
       }));
 
       const result = {
-        users,
-        pagination: {
-          page: parseInt(page),
-          limit: pageLimit,
-          total: count,
-          pages: Math.ceil(count / pageLimit)
-        }
+        total: count,
+        page: parseInt(page),
+        limit: pageLimit,
+        list: users,
       };
 
       sendSuccess(res, result, '获取用户列表成功');
