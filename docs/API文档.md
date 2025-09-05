@@ -496,66 +496,7 @@ Authorization: Bearer <token>
 
 ### 师生关系模块 (`/api/h5/relations`)
 
-#### 1. 获取师生关系列表
-
-**接口地址**: `GET /api/h5/relations`
-
-**接口描述**: 获取当前用户相关的师生关系列表
-
-**认证**: 需要
-
-**请求参数**:
-
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| page | number | 否 | 页码（默认1） |
-| limit | number | 否 | 每页数量（默认20，最大100） |
-| status | number | 否 | 关系状态（0-禁用，1-启用） |
-
-**响应示例**:
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "获取师生关系列表成功",
-  "data": {
-    "list": [
-      {
-        "id": 1,
-        "student_id": 2,
-        "coach_id": 1,
-        "remaining_lessons": 5,
-        "relation_status": 1,
-        "student_remark": "希望提高体能",
-        "coach_remark": "学员很努力",
-        "createdAt": "2025-06-02T08:00:00.000Z",
-        "student": {
-          "id": 2,
-          "nickname": "李四",
-          "avatar_url": "https://example.com/avatar2.jpg",
-          "phone": "13800138001"
-        },
-        "coach": {
-          "id": 1,
-          "nickname": "张教练",
-          "avatar_url": "https://example.com/avatar1.jpg",
-          "phone": "13800138000",
-          "intro": "专业健身教练"
-        }
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 1,
-      "totalPages": 1
-    }
-  },
-  "timestamp": 1638360000000
-}
-```
-
-#### 2. 绑定师生关系
+#### 1. 绑定师生关系
 
 **接口地址**: `POST /api/h5/relations`
 
@@ -581,7 +522,7 @@ Authorization: Bearer <token>
 }
 ```
 
-#### 3. 获取我的教练列表
+#### 2. 获取我的教练列表
 
 **接口地址**: `GET /api/h5/relations/my-coaches`
 
@@ -632,19 +573,13 @@ GET /api/h5/relations/my-coaches?page=1&limit=10
           "remaining_lessons": 8
         }
       }
-    ],
-    "pagination": {
-      "current_page": 1,
-      "total_pages": 1,
-      "total_count": 2,
-      "limit": 10
-    }
+    ]
   },
   "timestamp": 1638360000000
 }
 ```
 
-#### 4. 获取我的学员列表
+#### 3. 获取我的学员列表
 
 **接口地址**: `GET /api/h5/relations/my-students`
 
@@ -689,13 +624,7 @@ GET /api/h5/relations/my-students?page=1&limit=10
           "phone": "13800138000"
         }
       }
-    ],
-    "pagination": {
-      "current_page": 1,
-      "total_pages": 1,
-      "total_count": 5,
-      "limit": 10
-    }
+    ]
   },
   "timestamp": 1638360000000
 }
@@ -771,13 +700,7 @@ GET /api/h5/addresses?coach_id=456&page=1&limit=20
         "created_at": "2024-01-15T10:30:00.000Z",
         "updated_at": "2024-01-15T10:30:00.000Z"
       }
-    ],
-    "pagination": {
-      "current_page": 1,
-      "total_pages": 1,
-      "total_count": 4,
-      "limit": 20
-    }
+    ]
   },
   "timestamp": 1638360000000
 }
@@ -1144,13 +1067,7 @@ GET /api/h5/courses?status=4
           "longitude": 116.397470
         }
       }
-    ],
-    "pagination": {
-      "current_page": 1,
-      "total_pages": 3,
-      "total_count": 25,
-      "limit": 10
-    }
+    ]
   },
   "timestamp": 1638360000000
 }

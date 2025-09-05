@@ -9,50 +9,6 @@ const { Op } = require('sequelize');
  */
 class RelationController {
   /**
-   * 获取师生关系列表
-   * @route GET /api/h5/relations
-   */
-  static getRelations = asyncHandler(async (req, res) => {
-    const userId = req.user.id;
-    const { page = 1, limit = 20, status } = req.query;
-    const offset = ResponseUtil.getOffset(page, limit);
-
-    // 构建查询条件
-    const whereCondition = {
-      [Op.or]: [
-        { student_id: userId },
-        { coach_id: userId }
-      ]
-    };
-
-    if (status !== undefined) {
-      whereCondition.relation_status = status;
-    }
-
-    const { count, rows: relations } = await StudentCoachRelation.findAndCountAll({
-      where: whereCondition,
-      include: [
-        {
-          model: User,
-          as: 'student',
-          attributes: ['id', 'nickname', 'avatar_url', 'phone']
-        },
-        {
-          model: User,
-          as: 'coach',
-          attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro']
-        }
-      ],
-      order: [['createdAt', 'DESC']],
-      limit: parseInt(limit),
-      offset
-    });
-
-    const pagination = ResponseUtil.createPagination(page, limit, count);
-    return ResponseUtil.successWithPagination(res, relations, pagination, '获取师生关系列表成功');
-  });
-
-  /**
    * 绑定师生关系
    * @route POST /api/h5/relations
    * @description 自动使用当前登录用户作为学员，绑定与指定教练的师生关系

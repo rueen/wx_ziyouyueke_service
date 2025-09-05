@@ -13,16 +13,12 @@ const {
   relationBindValidation, 
   remarkUpdateValidation, 
   validateRequest, 
-  idParamValidation,
-  paginationValidation 
+  idParamValidation
 } = require('../../shared/middlewares/validation');
 
 /**
  * 师生关系相关路由
  */
-
-// 获取师生关系列表
-router.get('/', authenticateToken, paginationValidation, validateRequest, RelationController.getRelations);
 
 // 绑定师生关系
 router.post('/', authenticateToken, relationBindValidation, validateRequest, RelationController.bindRelation);
