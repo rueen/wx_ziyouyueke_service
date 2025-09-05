@@ -444,6 +444,7 @@ Authorization: Bearer <token>
 |--------|------|------|------|
 | min_advance_days | number | 是 | 最少提前天数（0-30） |
 | max_advance_days | number | 是 | 最多预约天数（1-365） |
+| max_advance_nums | number | 否 | 同时段最多可预约人数（默认1） |
 | time_slots | array | 是 | 时间段数组 |
 | time_slots[].startTime | string | 是 | 开始时间（HH:mm格式） |
 | time_slots[].endTime | string | 是 | 结束时间（HH:mm格式） |
@@ -454,6 +455,7 @@ Authorization: Bearer <token>
 {
   "min_advance_days": 1,
   "max_advance_days": 30,
+  "max_advance_nums": 2,
   "time_slots": [
     {
       "startTime": "09:00",
@@ -1308,6 +1310,7 @@ interface TimeTemplate {
   coach_id: number;            // 教练ID
   min_advance_days: number;    // 最少提前天数
   max_advance_days: number;    // 最多预约天数
+  max_advance_nums: number;    // 同时段最多可预约人数
   time_slots: string;          // 时间段JSON字符串
   is_active: number;           // 是否启用：0-禁用，1-启用
   createdAt: string;           // 创建时间

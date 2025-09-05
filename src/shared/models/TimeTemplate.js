@@ -28,6 +28,12 @@ const TimeTemplate = sequelize.define('time_templates', {
     defaultValue: 5,
     comment: '最多可预约天数'
   },
+  max_advance_nums: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1,
+    comment: '同时段最多可预约人数'
+  },
   time_slots: {
     type: DataTypes.JSON,
     allowNull: true,

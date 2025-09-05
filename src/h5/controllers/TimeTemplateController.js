@@ -47,7 +47,7 @@ class TimeTemplateController {
    */
   static createTemplate = asyncHandler(async (req, res) => {
     const coach_id = req.user.id;
-    const { min_advance_days, max_advance_days, time_slots, is_active = 1 } = req.body;
+    const { min_advance_days, max_advance_days, max_advance_nums = 1, time_slots, is_active = 1 } = req.body;
 
     // 验证时间段格式
     for (const slot of time_slots) {
@@ -72,6 +72,11 @@ class TimeTemplateController {
       return ResponseUtil.validationError(res, '最少提前天数不能大于最多预约天数');
     }
 
+    // 验证预约人数设置
+    if (max_advance_nums < 1) {
+      return ResponseUtil.validationError(res, '同时段最多可预约人数不能小于1');
+    }
+
     // 如果设置为启用，先将其他模板设为禁用（一个教练只能有一个启用的模板）
     if (is_active) {
       await TimeTemplate.update(
@@ -84,6 +89,7 @@ class TimeTemplateController {
       coach_id,
       min_advance_days,
       max_advance_days,
+      max_advance_nums,
       time_slots: time_slots,
       is_active
     });
@@ -100,7 +106,7 @@ class TimeTemplateController {
   static updateTemplate = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const coach_id = req.user.id;
-    const { min_advance_days, max_advance_days, time_slots, is_active } = req.body;
+    const { min_advance_days, max_advance_days, max_advance_nums, time_slots, is_active } = req.body;
 
     const template = await TimeTemplate.findOne({
       where: { id, coach_id }
@@ -114,6 +120,7 @@ class TimeTemplateController {
 
     if (min_advance_days !== undefined) updateData.min_advance_days = min_advance_days;
     if (max_advance_days !== undefined) updateData.max_advance_days = max_advance_days;
+    if (max_advance_nums !== undefined) updateData.max_advance_nums = max_advance_nums;
     if (is_active !== undefined) updateData.is_active = is_active;
 
     if (time_slots) {
@@ -140,6 +147,12 @@ class TimeTemplateController {
     const finalMaxDays = updateData.max_advance_days ?? template.max_advance_days;
     if (finalMinDays > finalMaxDays) {
       return ResponseUtil.validationError(res, '最少提前天数不能大于最多预约天数');
+    }
+
+    // 验证预约人数设置
+    const finalMaxNums = updateData.max_advance_nums ?? template.max_advance_nums;
+    if (finalMaxNums < 1) {
+      return ResponseUtil.validationError(res, '同时段最多可预约人数不能小于1');
     }
 
     // 如果设置为启用，先将其他模板设为禁用
