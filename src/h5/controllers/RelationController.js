@@ -351,6 +351,7 @@ class RelationController {
       return ResponseUtil.success(res, {
         list: coachesWithStats,
         total: count,
+        totalPages: totalPages,
         page: parseInt(page),
         pageSize: parseInt(limit),
         pagination: {
@@ -403,6 +404,7 @@ class RelationController {
     return ResponseUtil.success(res, {
       list: relations,
       total: count,
+      totalPages: totalPages,
       page: parseInt(page),
       pageSize: parseInt(limit),
       pagination: {

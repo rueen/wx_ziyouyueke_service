@@ -43,6 +43,7 @@ class AddressController {
     return ResponseUtil.success(res, {
       list: addresses,
       total: count,
+      totalPages: totalPages,
       page: parseInt(page),
       pageSize: parseInt(limit),
       pagination: {
