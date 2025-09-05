@@ -72,29 +72,60 @@ class CourseController {
         }
       }
 
-      // 检查教练时间冲突
-      const coachConflict = await CourseBooking.findOne({
-        where: {
-          coach_id: coach_id,
-          course_date: course_date,
-          [Op.or]: [
-            {
-              start_time: {
-                [Op.lt]: end_time
-              },
-              end_time: {
-                [Op.gt]: start_time
+      // 检查教练时间段人数限制
+      const activeTemplate = await TimeTemplate.getActiveByCoachId(coach_id);
+      if (activeTemplate) {
+        // 查询同一教练、同一日期、同一时间段的已确认预约数量
+        const existingBookings = await CourseBooking.count({
+          where: {
+            coach_id: coach_id,
+            course_date: course_date,
+            [Op.or]: [
+              {
+                start_time: {
+                  [Op.lt]: end_time
+                },
+                end_time: {
+                  [Op.gt]: start_time
+                }
               }
+            ],
+            booking_status: {
+              [Op.in]: [1, 2] // 待确认、已确认
             }
-          ],
-          booking_status: {
-            [Op.in]: [1, 2] // 待确认、已确认
           }
-        }
-      });
+        });
 
-      if (coachConflict) {
-        return ResponseUtil.validationError(res, '教练在该时间段已有其他预约');
+        // 检查是否超过人数限制
+        if (existingBookings >= activeTemplate.max_advance_nums) {
+          return ResponseUtil.validationError(res, '该时间段预约人数已满');
+        }
+      } else {
+        // 如果教练没有活跃的时间模板，使用默认限制（1人）
+        const existingBookings = await CourseBooking.count({
+          where: {
+            coach_id: coach_id,
+            course_date: course_date,
+            [Op.or]: [
+              {
+                start_time: {
+                  [Op.lt]: end_time
+                },
+                end_time: {
+                  [Op.gt]: start_time
+                }
+              }
+            ],
+            booking_status: {
+              [Op.in]: [1, 2] // 待确认、已确认
+            }
+          }
+        });
+
+        // 默认限制为1人
+        if (existingBookings >= 1) {
+          return ResponseUtil.validationError(res, '该时间段预约人数已满');
+        }
       }
 
       // 检查学员时间冲突
