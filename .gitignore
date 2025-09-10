@@ -61,3 +61,5 @@ ecosystem.config.js
 
 # 测试文件
 test-results/ 
+
+_scripts/
