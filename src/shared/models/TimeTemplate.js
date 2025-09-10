@@ -39,6 +39,20 @@ const TimeTemplate = sequelize.define('time_templates', {
     allowNull: true,
     comment: '时间段数组，格式：[{"startTime":"09:00","endTime":"12:00"}]'
   },
+  date_slots: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [
+      { id: 0, text: '周日', checked: true },
+      { id: 1, text: '周一', checked: true },
+      { id: 2, text: '周二', checked: true },
+      { id: 3, text: '周三', checked: true },
+      { id: 4, text: '周四', checked: true },
+      { id: 5, text: '周五', checked: true },
+      { id: 6, text: '周六', checked: true }
+    ],
+    comment: '可预约日期配置，格式：[{"id":0,"text":"周日","checked":true}]'
+  },
   is_active: {
     type: DataTypes.TINYINT(1),
     allowNull: false,
