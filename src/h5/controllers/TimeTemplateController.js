@@ -47,7 +47,7 @@ class TimeTemplateController {
    */
   static createTemplate = asyncHandler(async (req, res) => {
     const coach_id = req.user.id;
-    const { min_advance_days, max_advance_days, max_advance_nums = 1, time_slots, is_active = 1 } = req.body;
+    const { min_advance_days, max_advance_days, max_advance_nums = 1, time_slots, date_slots, is_active = 1 } = req.body;
 
     // 验证时间段格式
     for (const slot of time_slots) {
@@ -77,6 +77,24 @@ class TimeTemplateController {
       return ResponseUtil.validationError(res, '同时段最多可预约人数不能小于1');
     }
 
+    // 验证日期配置格式（如果提供）
+    if (date_slots) {
+      if (!Array.isArray(date_slots)) {
+        return ResponseUtil.validationError(res, '日期配置必须是数组格式');
+      }
+      
+      for (const slot of date_slots) {
+        if (typeof slot.id !== 'number' || typeof slot.text !== 'string' || typeof slot.checked !== 'boolean') {
+          return ResponseUtil.validationError(res, '日期配置格式不正确，必须包含id、text和checked字段');
+        }
+        
+        // 验证id范围（0-6代表周日至周六）
+        if (slot.id < 0 || slot.id > 6) {
+          return ResponseUtil.validationError(res, '日期配置的id必须在0-6范围内');
+        }
+      }
+    }
+
     // 如果设置为启用，先将其他模板设为禁用（一个教练只能有一个启用的模板）
     if (is_active) {
       await TimeTemplate.update(
@@ -91,6 +109,7 @@ class TimeTemplateController {
       max_advance_days,
       max_advance_nums,
       time_slots: time_slots,
+      date_slots: date_slots,
       is_active
     });
 
@@ -106,7 +125,7 @@ class TimeTemplateController {
   static updateTemplate = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const coach_id = req.user.id;
-    const { min_advance_days, max_advance_days, max_advance_nums, time_slots, is_active } = req.body;
+    const { min_advance_days, max_advance_days, max_advance_nums, time_slots, date_slots, is_active } = req.body;
 
     const template = await TimeTemplate.findOne({
       where: { id, coach_id }
@@ -142,6 +161,25 @@ class TimeTemplateController {
       updateData.time_slots = time_slots;
     }
 
+    if (date_slots) {
+      // 验证日期配置格式
+      if (!Array.isArray(date_slots)) {
+        return ResponseUtil.validationError(res, '日期配置必须是数组格式');
+      }
+      
+      for (const slot of date_slots) {
+        if (typeof slot.id !== 'number' || typeof slot.text !== 'string' || typeof slot.checked !== 'boolean') {
+          return ResponseUtil.validationError(res, '日期配置格式不正确，必须包含id、text和checked字段');
+        }
+        
+        // 验证id范围（0-6代表周日至周六）
+        if (slot.id < 0 || slot.id > 6) {
+          return ResponseUtil.validationError(res, '日期配置的id必须在0-6范围内');
+        }
+      }
+      updateData.date_slots = date_slots;
+    }
+
     // 验证天数设置
     const finalMinDays = updateData.min_advance_days ?? template.min_advance_days;
     const finalMaxDays = updateData.max_advance_days ?? template.max_advance_days;
@@ -164,6 +202,7 @@ class TimeTemplateController {
     }
 
     await template.update(updateData);
+    
     logger.info('时间模板更新:', { coachId: coach_id, templateId: id, updateData });
 
     return ResponseUtil.success(res, template, '时间模板更新成功');
