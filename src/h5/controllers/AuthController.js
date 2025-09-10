@@ -54,11 +54,23 @@ class AuthController {
           { startTime: "19:00", endTime: "20:00" }
         ];
 
+        const defaultDateSlots = [
+          { id: 0, text: '周日', checked: true },
+          { id: 1, text: '周一', checked: true },
+          { id: 2, text: '周二', checked: true },
+          { id: 3, text: '周三', checked: true },
+          { id: 4, text: '周四', checked: true },
+          { id: 5, text: '周五', checked: true },
+          { id: 6, text: '周六', checked: true }
+        ];
+
         const timeTemplate = await TimeTemplate.create({
           coach_id: user.id,
           min_advance_days: 1,
           max_advance_days: 7,
+          max_advance_nums: 1,
           time_slots: defaultTimeSlots,
+          date_slots: defaultDateSlots,
           is_active: 1
         });
 
