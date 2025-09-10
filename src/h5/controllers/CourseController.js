@@ -470,7 +470,7 @@ class CourseController {
   static completeCourse = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { userId } = req;
-    const { feedback = '', rating = 5 } = req.body;
+    const { feedback = '' } = req.body;
 
     try {
       const course = await CourseBooking.findByPk(id);
