@@ -96,7 +96,8 @@ class DatabaseInitializer {
         break;
       
       case 'time_templates':
-        await this.createDefaultTimeTemplates();
+        // 时间模板由用户注册时自动创建，无需在数据库初始化时创建
+        logger.info('时间模板表已创建，无需创建默认数据（由用户注册时自动创建）');
         break;
       
       case 'course_categories':
@@ -127,40 +128,6 @@ class DatabaseInitializer {
     }
   }
 
-  /**
-   * 创建默认时间模板
-   */
-  async createDefaultTimeTemplates() {
-    try {
-      const TimeTemplate = require('../models/TimeTemplate');
-      const defaultTemplates = [
-        {
-          name: '默认模板',
-          time_slots: JSON.stringify([
-            { start: '09:00', end: '10:00' },
-            { start: '10:00', end: '11:00' },
-            { start: '14:00', end: '15:00' },
-            { start: '15:00', end: '16:00' }
-          ]),
-          is_default: true,
-          status: 'active'
-        }
-      ];
-
-      for (const template of defaultTemplates) {
-        const [timeTemplate, created] = await TimeTemplate.findOrCreate({
-          where: { name: template.name },
-          defaults: template
-        });
-        
-        if (created) {
-          logger.info(`默认时间模板创建成功: ${template.name}`);
-        }
-      }
-    } catch (error) {
-      logger.warn('创建默认时间模板失败:', error.message);
-    }
-  }
 
   /**
    * 创建默认课程分类
