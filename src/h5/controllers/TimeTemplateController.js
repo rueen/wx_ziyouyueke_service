@@ -26,97 +26,7 @@ class TimeTemplateController {
     return ResponseUtil.success(res, templates, '获取时间模板成功');
   });
 
-  /**
-   * 获取单个时间模板详情
-   * @route GET /api/h5/time-templates/:id
-   */
-  static getTemplate = asyncHandler(async (req, res) => {
-    const { id } = req.params;
 
-    const template = await TimeTemplate.findByPk(id);
-    if (!template) {
-      return ResponseUtil.notFound(res, '时间模板不存在');
-    }
-
-    return ResponseUtil.success(res, template, '获取时间模板详情成功');
-  });
-
-  /**
-   * 创建时间模板（仅教练可用）
-   * @route POST /api/h5/time-templates
-   */
-  static createTemplate = asyncHandler(async (req, res) => {
-    const coach_id = req.user.id;
-    const { min_advance_days, max_advance_days, max_advance_nums = 1, time_slots, date_slots, is_active = 1 } = req.body;
-
-    // 验证时间段格式
-    for (const slot of time_slots) {
-      if (!slot.startTime || !slot.endTime) {
-        return ResponseUtil.validationError(res, '时间段必须包含开始时间和结束时间');
-      }
-      
-      // 验证时间格式
-      const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
-      if (!timeRegex.test(slot.startTime) || !timeRegex.test(slot.endTime)) {
-        return ResponseUtil.validationError(res, '时间格式不正确，应为HH:mm');
-      }
-      
-      // 验证结束时间大于开始时间
-      if (slot.startTime >= slot.endTime) {
-        return ResponseUtil.validationError(res, '结束时间必须大于开始时间');
-      }
-    }
-
-    // 验证天数设置
-    if (min_advance_days > max_advance_days) {
-      return ResponseUtil.validationError(res, '最少提前天数不能大于最多预约天数');
-    }
-
-    // 验证预约人数设置
-    if (max_advance_nums < 1) {
-      return ResponseUtil.validationError(res, '同时段最多可预约人数不能小于1');
-    }
-
-    // 验证日期配置格式（如果提供）
-    if (date_slots) {
-      if (!Array.isArray(date_slots)) {
-        return ResponseUtil.validationError(res, '日期配置必须是数组格式');
-      }
-      
-      for (const slot of date_slots) {
-        if (typeof slot.id !== 'number' || typeof slot.text !== 'string' || typeof slot.checked !== 'boolean') {
-          return ResponseUtil.validationError(res, '日期配置格式不正确，必须包含id、text和checked字段');
-        }
-        
-        // 验证id范围（0-6代表周日至周六）
-        if (slot.id < 0 || slot.id > 6) {
-          return ResponseUtil.validationError(res, '日期配置的id必须在0-6范围内');
-        }
-      }
-    }
-
-    // 如果设置为启用，先将其他模板设为禁用（一个教练只能有一个启用的模板）
-    if (is_active) {
-      await TimeTemplate.update(
-        { is_active: 0 },
-        { where: { coach_id, is_active: 1 } }
-      );
-    }
-
-    const template = await TimeTemplate.create({
-      coach_id,
-      min_advance_days,
-      max_advance_days,
-      max_advance_nums,
-      time_slots: time_slots,
-      date_slots: date_slots,
-      is_active
-    });
-
-    logger.info('时间模板创建:', { coachId: coach_id, templateId: template.id });
-
-    return ResponseUtil.success(res, template, '时间模板创建成功');
-  });
 
   /**
    * 更新时间模板
@@ -208,27 +118,6 @@ class TimeTemplateController {
     return ResponseUtil.success(res, template, '时间模板更新成功');
   });
 
-  /**
-   * 删除时间模板
-   * @route DELETE /api/h5/time-templates/:id
-   */
-  static deleteTemplate = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const coach_id = req.user.id;
-
-    const template = await TimeTemplate.findOne({
-      where: { id, coach_id }
-    });
-
-    if (!template) {
-      return ResponseUtil.notFound(res, '时间模板不存在或无权限删除');
-    }
-
-    await template.destroy();
-    logger.info('时间模板删除:', { coachId: coach_id, templateId: id });
-
-    return ResponseUtil.success(res, null, '时间模板删除成功');
-  });
 
   /**
    * 启用/禁用时间模板
