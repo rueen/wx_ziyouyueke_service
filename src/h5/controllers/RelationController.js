@@ -100,42 +100,6 @@ class RelationController {
     return ResponseUtil.success(res, relationWithUsers, '师生关系绑定成功');
   });
 
-  /**
-   * 获取单个师生关系详情
-   * @route GET /api/h5/relations/:id
-   */
-  static getRelation = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const relation = await StudentCoachRelation.findOne({
-      where: {
-        id,
-        [Op.or]: [
-          { student_id: userId },
-          { coach_id: userId }
-        ]
-      },
-      include: [
-        {
-          model: User,
-          as: 'student',
-          attributes: ['id', 'nickname', 'avatar_url', 'phone']
-        },
-        {
-          model: User,
-          as: 'coach',
-          attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro']
-        }
-      ]
-    });
-
-    if (!relation) {
-      return ResponseUtil.notFound(res, '师生关系不存在或无权限查看');
-    }
-
-    return ResponseUtil.success(res, relation, '获取师生关系详情成功');
-  });
 
   /**
    * 更新师生关系备注

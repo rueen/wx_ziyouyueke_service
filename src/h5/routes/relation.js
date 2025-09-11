@@ -29,8 +29,6 @@ router.get('/my-coaches', authenticateToken, RelationController.getMyCoaches);
 // 获取我的学员列表
 router.get('/my-students', authenticateToken, RelationController.getMyStudents);
 
-// 获取师生关系详情
-router.get('/:id', authenticateToken, idParamValidation, validateRequest, RelationController.getRelation);
 
 // 更新师生关系备注
 router.put('/:id', authenticateToken, idParamValidation, remarkUpdateValidation, validateRequest, RelationController.updateRelation);
