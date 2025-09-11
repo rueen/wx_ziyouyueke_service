@@ -11,8 +11,6 @@ const { addressCreateValidation, addressUpdateValidation, validateRequest } = re
 // 获取地址列表
 router.get('/', authenticateToken, AddressController.getAddressList);
 
-// 获取默认地址
-router.get('/default', authenticateToken, AddressController.getDefaultAddress);
 
 // 创建地址
 router.post('/', authenticateToken, addressCreateValidation, validateRequest, AddressController.createAddress);
@@ -23,7 +21,5 @@ router.put('/:id', authenticateToken, addressUpdateValidation, validateRequest, 
 // 删除地址
 router.delete('/:id', authenticateToken, AddressController.deleteAddress);
 
-// 设置默认地址
-router.put('/:id/default', authenticateToken, AddressController.setDefaultAddress);
 
 module.exports = router; 

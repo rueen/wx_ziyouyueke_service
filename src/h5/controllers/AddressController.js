@@ -146,52 +146,7 @@ class AddressController {
     return ResponseUtil.success(res, null, '地址删除成功');
   });
 
-  /**
-   * 设置默认地址
-   * @route PUT /api/h5/addresses/:id/default
-   */
-  static setDefaultAddress = asyncHandler(async (req, res) => {
-    const userId = req.user.id;
-    const { id } = req.params;
 
-    const addressRecord = await Address.findOne({
-      where: { id, user_id: userId }
-    });
-
-    if (!addressRecord) {
-      return ResponseUtil.notFound(res, '地址不存在或无权限操作');
-    }
-
-    // 使用模型方法设置默认地址
-    await addressRecord.setAsDefault();
-    logger.info('用户设置默认地址:', { userId, addressId: id });
-
-    return ResponseUtil.success(res, {
-      id: addressRecord.id,
-      is_default: true
-    }, '默认地址设置成功');
-  });
-
-  /**
-   * 获取默认地址
-   * @route GET /api/h5/addresses/default
-   */
-  static getDefaultAddress = asyncHandler(async (req, res) => {
-    const userId = req.user.id;
-
-    const defaultAddress = await Address.findOne({
-      where: { 
-        user_id: userId,
-        is_default: true 
-      }
-    });
-
-    if (!defaultAddress) {
-      return ResponseUtil.notFound(res, '未设置默认地址');
-    }
-
-    return ResponseUtil.success(res, defaultAddress, '获取默认地址成功');
-  });
 }
 
 module.exports = AddressController; 
