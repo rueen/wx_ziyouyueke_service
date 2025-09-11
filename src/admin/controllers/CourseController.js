@@ -22,7 +22,9 @@ class CourseController {
         keyword = '', 
         status = '', 
         start_date = '', 
-        end_date = '' 
+        end_date = '',
+        student_id = '',
+        coach_id = ''
       } = req.query;
 
       // 构建查询条件
@@ -54,18 +56,32 @@ class CourseController {
           model: User,
           as: 'student',
           attributes: ['id', 'nickname', 'phone', 'avatar_url'],
-          where: keyword ? {
-            [Op.or]: [
-              { nickname: { [Op.like]: `%${keyword}%` } },
-              { phone: { [Op.like]: `%${keyword}%` } }
-            ]
-          } : undefined,
-          required: !!keyword
+          where: (() => {
+            const studentWhere = {};
+            
+            // 关键词搜索（姓名或电话）
+            if (keyword) {
+              studentWhere[Op.or] = [
+                { nickname: { [Op.like]: `%${keyword}%` } },
+                { phone: { [Op.like]: `%${keyword}%` } }
+              ];
+            }
+            
+            // 学员ID筛选
+            if (student_id) {
+              studentWhere.id = parseInt(student_id);
+            }
+            
+            return Object.keys(studentWhere).length > 0 ? studentWhere : undefined;
+          })(),
+          required: !!(keyword || student_id)
         },
         {
           model: User,
           as: 'coach',
-          attributes: ['id', 'nickname', 'phone', 'avatar_url']
+          attributes: ['id', 'nickname', 'phone', 'avatar_url'],
+          where: coach_id ? { id: parseInt(coach_id) } : undefined,
+          required: !!coach_id
         },
         {
           model: Address,

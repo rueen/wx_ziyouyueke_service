@@ -30,6 +30,14 @@ router.get('/', [
     .optional()
     .isDate()
     .withMessage('结束日期格式无效'),
+  query('student_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('学员ID必须是大于0的整数'),
+  query('coach_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('教练ID必须是大于0的整数'),
   validate
 ], adminAuth, CourseController.getCourseList);
 
