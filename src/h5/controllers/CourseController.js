@@ -522,6 +522,63 @@ class CourseController {
     }
   });
 
+  /**
+   * 删除课程
+   * @route DELETE /api/h5/courses/:id
+   */
+  static deleteCourse = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { userId } = req;
+
+    try {
+      // 参数验证
+      if (!id || isNaN(id)) {
+        return ResponseUtil.validationError(res, '无效的课程ID');
+      }
+
+      // 查找课程
+      const course = await CourseBooking.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: 'student',
+            attributes: ['nickname', 'phone']
+          },
+          {
+            model: User,
+            as: 'coach',
+            attributes: ['nickname', 'phone']
+          }
+        ]
+      });
+      
+      if (!course) {
+        return ResponseUtil.notFound(res, '课程不存在');
+      }
+
+      // 权限检查：只有课程相关的学员或教练可以删除课程
+      if (course.student_id !== userId && course.coach_id !== userId) {
+        return ResponseUtil.forbidden(res, '无权删除此课程');
+      }
+
+      // 已完成的课程不能删除
+      if (course.booking_status === 3) {
+        return ResponseUtil.validationError(res, '已完成的课程不能删除');
+      }
+
+      // 删除课程
+      await course.destroy();
+
+      logger.info(`用户 ${userId} 删除课程: ID ${course.id}, 学员: ${course.student?.nickname || course.student?.phone}, 教练: ${course.coach?.nickname || course.coach?.phone}`);
+      
+      return ResponseUtil.success(res, null, '删除课程成功');
+      
+    } catch (error) {
+      logger.error('删除课程异常:', error);
+      return ResponseUtil.error(res, '删除课程失败');
+    }
+  });
+
 
 }
 

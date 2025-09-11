@@ -25,4 +25,7 @@ router.put('/:id/cancel', authenticateToken, CourseController.cancelCourse);
 // 完成课程
 router.put('/:id/complete', authenticateToken, CourseController.completeCourse);
 
+// 删除课程
+router.delete('/:id', authenticateToken, CourseController.deleteCourse);
+
 module.exports = router; 
