@@ -289,7 +289,7 @@ class RelationController {
           {
             model: User,
             as: 'coach',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'gender']
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'gender', 'course_categories']
           }
         ],
         order: [['createdAt', 'DESC']],
@@ -297,10 +297,14 @@ class RelationController {
         offset
       });
 
-      // 为每个教练关系添加课程统计信息
+      // 为每个教练关系添加课程统计信息和分类课时信息
       const { CourseBooking } = require('../../shared/models');
       const coachesWithStats = await Promise.all(relations.map(async (relation) => {
         const coachId = relation.coach_id;
+
+        // 获取教练的分类信息
+        const coach = relation.coach;
+        const categories = coach.course_categories || [];
 
         // 获取与该教练的课程统计
         const [totalLessons, completedLessons, upcomingLessons] = await Promise.all([
@@ -334,8 +338,27 @@ class RelationController {
           })
         ]);
 
+        // 获取学员与教练的课时信息
+        const lessons = relation.getAllCategoryLessons();
+        
+        // 整合分类和课时信息
+        const categoryLessons = categories.map(category => {
+          const categoryLesson = lessons.find(lesson => lesson.category_id === category.id);
+          return {
+            category: category,
+            remaining_lessons: categoryLesson ? categoryLesson.remaining_lessons : 0
+          };
+        });
+
+        // 计算总课时数（向后兼容）
+        const totalRemainingLessons = lessons.reduce((total, lesson) => {
+          return total + (lesson.remaining_lessons || 0);
+        }, 0);
+
         return {
           ...relation.toJSON(),
+          category_lessons: categoryLessons,
+          remaining_lessons: totalRemainingLessons, // 兼容字段：总课时数
           lesson_stats: {
             total_lessons: totalLessons,
             completed_lessons: completedLessons,
