@@ -267,7 +267,7 @@ class CourseController {
           {
             model: User,
             as: 'coach',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone']
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'course_categories']
           },
           {
             model: Address,
@@ -325,7 +325,7 @@ class CourseController {
           {
             model: User,
             as: 'coach',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'gender', 'intro']
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'gender', 'intro', 'course_categories']
           },
           {
             model: Address,
