@@ -133,7 +133,7 @@ class RelationController {
   static updateRelation = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
-    const { coach_remark, student_remark, category_lessons } = req.body;
+    const { coach_remark, student_remark, category_lessons, remaining_lessons } = req.body;
 
     try {
       const relation = await StudentCoachRelation.findOne({
@@ -177,7 +177,21 @@ class RelationController {
             }
           }
 
+          // 使用特殊的更新方法确保JSON字段正确保存
+          relation.lessons = category_lessons;
+          relation.changed('lessons', true);
           updateData.lessons = category_lessons;
+        } else if (remaining_lessons !== undefined && typeof remaining_lessons === 'number' && remaining_lessons >= 0) {
+          // 兼容处理：将 remaining_lessons 组装成默认分类格式
+          const compatibleLessons = [{
+            category_id: 0,
+            remaining_lessons: remaining_lessons
+          }];
+
+          // 使用特殊的更新方法确保JSON字段正确保存
+          relation.lessons = compatibleLessons;
+          relation.changed('lessons', true);
+          updateData.lessons = compatibleLessons;
         }
       }
 
@@ -190,7 +204,20 @@ class RelationController {
         return ResponseUtil.validationError(res, '没有可更新的字段');
       }
 
-      await relation.update(updateData);
+      // 如果包含lessons字段更新，使用save方法确保JSON字段正确保存
+      if (updateData.lessons) {
+        // 设置其他字段
+        for (const [key, value] of Object.entries(updateData)) {
+          if (key !== 'lessons') {
+            relation[key] = value;
+          }
+        }
+        await relation.save();
+      } else {
+        // 没有lessons字段更新，使用普通update方法
+        await relation.update(updateData);
+      }
+      
       logger.info('师生关系更新:', { relationId: id, userId, updateData });
 
       return ResponseUtil.success(res, relation, '师生关系更新成功');

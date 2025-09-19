@@ -193,7 +193,11 @@ const relationUpdateValidation = [
   body('category_lessons.*.remaining_lessons')
     .optional()
     .isInt({ min: 0 })
-    .withMessage('分类课时数必须是非负整数')
+    .withMessage('分类课时数必须是非负整数'),
+  body('remaining_lessons')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('课时数必须是非负整数')
 ];
 
 /**
