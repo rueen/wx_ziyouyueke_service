@@ -51,17 +51,14 @@ class CourseController {
         return ResponseUtil.notFound(res, '地址不存在');
       }
 
-      // 验证课程分类是否存在（如果教练是当前用户）
-      if (coach_id === userId) {
-        const coach = await User.findByPk(coach_id);
-        const categories = coach.course_categories || [];
-        const categoryExists = categories.some(cat => cat.id === category_id);
-        if (!categoryExists) {
-          return ResponseUtil.validationError(res, '课程分类不存在');
-        }
+      // 验证课程分类是否存在
+      const categories = coach.course_categories || [];
+      const categoryExists = categories.some(cat => cat.id === category_id);
+      if (!categoryExists) {
+        return ResponseUtil.validationError(res, '课程分类不存在');
       }
 
-      // 如果提供了师生关系ID，验证师生关系
+      // 验证师生关系并检查课时余额
       let relation = null;
       if (relation_id) {
         relation = await StudentCoachRelation.findOne({
@@ -76,12 +73,25 @@ class CourseController {
         if (!relation) {
           return ResponseUtil.forbidden(res, '师生关系不存在或已禁用');
         }
+      } else {
+        // 如果没有提供relation_id，尝试查找师生关系
+        relation = await StudentCoachRelation.findOne({
+          where: {
+            student_id: student_id,
+            coach_id: coach_id,
+            relation_status: 1
+          }
+        });
 
-        // 检查指定分类的剩余课时
-        const categoryLessons = relation.getCategoryLessons(category_id);
-        if (categoryLessons <= 0) {
-          return ResponseUtil.validationError(res, '该分类剩余课时不足');
+        if (!relation) {
+          return ResponseUtil.validationError(res, '学员与教练之间没有有效的师生关系');
         }
+      }
+
+      // 检查指定分类的剩余课时
+      const categoryLessons = relation.getCategoryLessons(category_id);
+      if (categoryLessons <= 0) {
+        return ResponseUtil.validationError(res, '该分类剩余课时不足，无法预约课程');
       }
 
       // 检查教练时间段人数限制
