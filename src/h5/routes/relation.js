@@ -11,7 +11,7 @@ const RelationController = require('../controllers/RelationController');
 const { authenticateToken } = require('../../shared/middlewares/auth');
 const { 
   relationBindValidation, 
-  remarkUpdateValidation, 
+  relationUpdateValidation, 
   validateRequest, 
   idParamValidation
 } = require('../../shared/middlewares/validation');
@@ -30,10 +30,11 @@ router.get('/my-coaches', authenticateToken, RelationController.getMyCoaches);
 router.get('/my-students', authenticateToken, RelationController.getMyStudents);
 
 
-// 更新师生关系备注
-router.put('/:id', authenticateToken, idParamValidation, remarkUpdateValidation, validateRequest, RelationController.updateRelation);
+// 更新师生关系
+router.put('/:id', authenticateToken, idParamValidation, relationUpdateValidation, validateRequest, RelationController.updateRelation);
 
 // 解除师生关系
 router.delete('/:id', authenticateToken, idParamValidation, validateRequest, RelationController.removeRelation);
+
 
 module.exports = router; 

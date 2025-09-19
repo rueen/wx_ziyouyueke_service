@@ -53,6 +53,12 @@ const CourseBooking = sequelize.define('course_bookings', {
     allowNull: false,
     comment: '地址ID'
   },
+  category_id: {
+    type: DataTypes.BIGINT.UNSIGNED,
+    allowNull: false,
+    defaultValue: 0,
+    comment: '课程分类ID'
+  },
   student_remark: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -120,6 +126,10 @@ const CourseBooking = sequelize.define('course_bookings', {
     {
       fields: ['address_id'],
       name: 'idx_address_id'
+    },
+    {
+      fields: ['category_id'],
+      name: 'idx_category_id'
     }
   ]
 });

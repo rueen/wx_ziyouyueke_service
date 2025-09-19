@@ -164,10 +164,6 @@ const relationBindValidation = [
   body('coach_id')
     .isInt({ min: 1 })
     .withMessage('教练ID必须是正整数'),
-  body('remaining_lessons')
-    .optional()
-    .isInt({ min: 0 })
-    .withMessage('剩余课时必须是非负整数'),
   body('student_remark')
     .optional()
     .isLength({ max: 500 })
@@ -175,9 +171,9 @@ const relationBindValidation = [
 ];
 
 /**
- * 备注更新验证规则
+ * 师生关系更新验证规则
  */
-const remarkUpdateValidation = [
+const relationUpdateValidation = [
   body('coach_remark')
     .optional()
     .isLength({ max: 500 })
@@ -185,7 +181,19 @@ const remarkUpdateValidation = [
   body('student_remark')
     .optional()
     .isLength({ max: 500 })
-    .withMessage('学员备注不能超过500个字符')
+    .withMessage('学员备注不能超过500个字符'),
+  body('category_lessons')
+    .optional()
+    .isArray()
+    .withMessage('分类课时必须是数组格式'),
+  body('category_lessons.*.category_id')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('分类ID必须是非负整数'),
+  body('category_lessons.*.remaining_lessons')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('分类课时数必须是非负整数')
 ];
 
 /**
@@ -287,7 +295,7 @@ module.exports = {
   courseConfirmValidation,
   courseCancelValidation,
   relationBindValidation,
-  remarkUpdateValidation,
+  relationUpdateValidation,
   paginationValidation,
   idParamValidation,
   decryptPhoneValidation,

@@ -71,6 +71,12 @@ const User = sequelize.define('users', {
     allowNull: false,
     defaultValue: 1,
     comment: '账户状态：0-禁用，1-正常'
+  },
+  course_categories: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: [{"id": 0, "name": "默认", "desc": "默认分类"}],
+    comment: '课程分类配置，格式：[{"id":0, "name":"默认", "desc": "默认分类"}]'
   }
 }, {
   tableName: 'users',
@@ -100,6 +106,92 @@ const User = sequelize.define('users', {
  */
 User.prototype.updateLastLoginTime = function() {
   return this.update({ last_login_time: new Date() });
+};
+
+/**
+ * 实例方法：获取下一个分类ID
+ */
+User.prototype.getNextCategoryId = function() {
+  const categories = this.course_categories || [];
+  if (categories.length === 0) {
+    return 0;
+  }
+  return Math.max(...categories.map(cat => cat.id)) + 1;
+};
+
+/**
+ * 实例方法：添加课程分类
+ */
+User.prototype.addCourseCategory = function(name, desc) {
+  const categories = [...(this.course_categories || [])];
+  const newId = this.getNextCategoryId();
+  
+  // 检查分类名称是否已存在
+  if (categories.some(cat => cat.name === name)) {
+    throw new Error('分类名称已存在');
+  }
+  
+  categories.push({
+    id: newId,
+    name: name,
+    desc: desc || ''
+  });
+  
+  return this.update({ course_categories: categories });
+};
+
+/**
+ * 实例方法：更新课程分类
+ */
+User.prototype.updateCourseCategory = function(categoryId, name, desc) {
+  const categories = [...(this.course_categories || [])];
+  const categoryIndex = categories.findIndex(cat => cat.id === categoryId);
+  
+  if (categoryIndex === -1) {
+    throw new Error('分类不存在');
+  }
+  
+  // 检查分类名称是否已存在（排除当前分类）
+  if (categories.some((cat, index) => cat.name === name && index !== categoryIndex)) {
+    throw new Error('分类名称已存在');
+  }
+  
+  categories[categoryIndex] = {
+    ...categories[categoryIndex],
+    name: name,
+    desc: desc || categories[categoryIndex].desc
+  };
+  
+  return this.update({ course_categories: categories });
+};
+
+/**
+ * 实例方法：删除课程分类
+ */
+User.prototype.deleteCourseCategory = function(categoryId) {
+  // 不允许删除默认分类
+  if (categoryId === 0) {
+    throw new Error('不允许删除默认分类');
+  }
+  
+  const categories = [...(this.course_categories || [])];
+  const categoryIndex = categories.findIndex(cat => cat.id === categoryId);
+  
+  if (categoryIndex === -1) {
+    throw new Error('分类不存在');
+  }
+  
+  categories.splice(categoryIndex, 1);
+  
+  return this.update({ course_categories: categories });
+};
+
+/**
+ * 实例方法：获取课程分类
+ */
+User.prototype.getCourseCategory = function(categoryId) {
+  const categories = this.course_categories || [];
+  return categories.find(cat => cat.id === categoryId);
 };
 
 module.exports = User; 

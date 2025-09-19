@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { User } = require('../models');
-const logger = require('../utils/logger');
+const { User } = require('../../shared/models');
+const logger = require('../../shared/utils/logger');
 
 /**
  * JWT认证中间件

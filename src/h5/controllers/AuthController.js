@@ -111,10 +111,18 @@ class AuthController {
           });
 
           if (!existingRelation) {
+            // 获取教练的分类信息，创建默认的课时结构
+            const coachUser = await User.findByPk(coach_id);
+            const categories = coachUser.course_categories || [];
+            const lessons = categories.map(category => ({
+              category_id: category.id,
+              remaining_lessons: 0
+            }));
+
             await StudentCoachRelation.create({
               student_id: user.id,
               coach_id: coach_id,
-              remaining_lessons: 0,
+              lessons: lessons,
               relation_status: 1
             });
             autoBindCoach = true;

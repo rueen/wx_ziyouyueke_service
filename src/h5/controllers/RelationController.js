@@ -15,7 +15,7 @@ class RelationController {
    */
   static bindRelation = asyncHandler(async (req, res) => {
     const currentUserId = req.user.id;
-    const { coach_id, remaining_lessons = 0, student_remark } = req.body;
+    const { coach_id, student_remark } = req.body;
 
     // 直接使用当前登录用户作为学员ID
     const finalStudentId = currentUserId;
@@ -50,9 +50,25 @@ class RelationController {
         return ResponseUtil.validationError(res, '师生关系已存在');
       } else {
         // 如果关系存在但已禁用，重新启用
+        // 获取教练的课程分类，更新分类课时
+        const categories = coach.course_categories || [];
+        
+        // 构建按分类的课时结构，保留现有课时并添加新分类
+        let lessons = existingRelation.lessons || [];
+        
+        // 为新增的分类添加课时项
+        for (const category of categories) {
+          if (!lessons.some(lesson => lesson.category_id === category.id)) {
+            lessons.push({
+              category_id: category.id,
+              remaining_lessons: 0
+            });
+          }
+        }
+
         await existingRelation.update({
           relation_status: 1,
-          remaining_lessons,
+          lessons: lessons,
           student_remark: student_remark || existingRelation.student_remark
         });
         
@@ -66,11 +82,20 @@ class RelationController {
       }
     }
 
+    // 获取教练的课程分类，初始化分类课时
+    const categories = coach.course_categories || [];
+    
+    // 构建按分类的课时结构
+    const lessons = categories.map(category => ({
+      category_id: category.id,
+      remaining_lessons: 0 // 所有分类初始课时为0
+    }));
+
     // 创建新的师生关系
     const relation = await StudentCoachRelation.create({
       student_id: finalStudentId,
       coach_id: finalCoachId,
-      remaining_lessons,
+      lessons: lessons,
       student_remark,
       relation_status: 1
     });
@@ -102,50 +127,77 @@ class RelationController {
 
 
   /**
-   * 更新师生关系备注
+   * 更新师生关系
    * @route PUT /api/h5/relations/:id
    */
   static updateRelation = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
-    const { coach_remark, student_remark, remaining_lessons } = req.body;
+    const { coach_remark, student_remark, category_lessons } = req.body;
 
-    const relation = await StudentCoachRelation.findOne({
-      where: {
-        id,
-        [Op.or]: [
-          { student_id: userId },
-          { coach_id: userId }
-        ]
+    try {
+      const relation = await StudentCoachRelation.findOne({
+        where: {
+          id,
+          [Op.or]: [
+            { student_id: userId },
+            { coach_id: userId }
+          ]
+        }
+      });
+
+      if (!relation) {
+        return ResponseUtil.notFound(res, '师生关系不存在或无权限修改');
       }
-    });
 
-    if (!relation) {
-      return ResponseUtil.notFound(res, '师生关系不存在或无权限修改');
+      const updateData = {};
+
+      // 根据用户角色确定可以更新的字段
+      if (relation.coach_id === userId) {
+        // 教练可以更新教练备注和分类课时
+        if (coach_remark !== undefined) updateData.coach_remark = coach_remark;
+        
+        // 处理分类课时更新
+        if (category_lessons && Array.isArray(category_lessons)) {
+          // 验证分类课时数据格式
+          for (const lesson of category_lessons) {
+            if (typeof lesson.category_id !== 'number' || typeof lesson.remaining_lessons !== 'number' || lesson.remaining_lessons < 0) {
+              return ResponseUtil.validationError(res, '分类课时数据格式错误');
+            }
+          }
+
+          // 获取教练的分类信息，验证分类是否存在
+          const coach = await User.findByPk(relation.coach_id);
+          const categories = coach.course_categories || [];
+          
+          for (const lesson of category_lessons) {
+            const categoryExists = categories.some(cat => cat.id === lesson.category_id);
+            if (!categoryExists) {
+              return ResponseUtil.validationError(res, `分类ID ${lesson.category_id} 不存在`);
+            }
+          }
+
+          updateData.lessons = category_lessons;
+        }
+      }
+
+      if (relation.student_id === userId) {
+        // 学员可以更新学员备注
+        if (student_remark !== undefined) updateData.student_remark = student_remark;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return ResponseUtil.validationError(res, '没有可更新的字段');
+      }
+
+      await relation.update(updateData);
+      logger.info('师生关系更新:', { relationId: id, userId, updateData });
+
+      return ResponseUtil.success(res, relation, '师生关系更新成功');
+    } catch (error) {
+      logger.error('更新师生关系失败:', { relationId: id, userId, error: error.message });
+      return ResponseUtil.serverError(res, '更新师生关系失败');
     }
-
-    const updateData = {};
-
-    // 根据用户角色确定可以更新的字段
-    if (relation.coach_id === userId) {
-      // 教练可以更新教练备注和剩余课时
-      if (coach_remark !== undefined) updateData.coach_remark = coach_remark;
-      if (remaining_lessons !== undefined) updateData.remaining_lessons = remaining_lessons;
-    }
-
-    if (relation.student_id === userId) {
-      // 学员可以更新学员备注
-      if (student_remark !== undefined) updateData.student_remark = student_remark;
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return ResponseUtil.validationError(res, '没有可更新的字段');
-    }
-
-    await relation.update(updateData);
-    logger.info('师生关系更新:', { relationId: id, userId, updateData });
-
-    return ResponseUtil.success(res, relation, '师生关系更新成功');
   });
 
   /**
@@ -260,8 +312,7 @@ class RelationController {
           lesson_stats: {
             total_lessons: totalLessons,
             completed_lessons: completedLessons,
-            upcoming_lessons: upcomingLessons,
-            remaining_lessons: relation.remaining_lessons || 0
+            upcoming_lessons: upcomingLessons
           }
         };
       }));
@@ -297,44 +348,82 @@ class RelationController {
     const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
-    const { count, rows: relations } = await StudentCoachRelation.findAndCountAll({
-      where: {
-        coach_id: coachId,
-        relation_status: 1
-      },
-      attributes: [
-        'id', 'student_id', 'coach_id', 'remaining_lessons', 
-        'student_remark', 'coach_remark', 'relation_status', 
-        'createdAt', 'updatedAt'
-      ],
-      include: [
-        {
-          model: User,
-          as: 'student',
-          attributes: ['id', 'nickname', 'avatar_url', 'phone']
+    try {
+      const { count, rows: relations } = await StudentCoachRelation.findAndCountAll({
+        where: {
+          coach_id: coachId,
+          relation_status: 1
+        },
+        attributes: [
+          'id', 'student_id', 'coach_id', 'lessons',
+          'student_remark', 'coach_remark', 'relation_status', 
+          'createdAt', 'updatedAt'
+        ],
+        include: [
+          {
+            model: User,
+            as: 'student',
+            attributes: ['id', 'nickname', 'avatar_url', 'phone']
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset
+      });
+
+      // 获取教练的分类信息
+      const coach = await User.findByPk(coachId, {
+        attributes: ['id', 'course_categories']
+      });
+      const categories = coach.course_categories || [];
+
+      // 为每个学员关系添加分类课时信息
+      const studentsWithCategoryLessons = relations.map(relation => {
+        const lessons = relation.getAllCategoryLessons();
+        
+        // 整合分类和课时信息
+        const categoryLessons = categories.map(category => {
+          const categoryLesson = lessons.find(lesson => lesson.category_id === category.id);
+          return {
+            category: category,
+            remaining_lessons: categoryLesson ? categoryLesson.remaining_lessons : 0
+          };
+        });
+
+        // 计算总课时数（向后兼容）
+        const totalRemainingLessons = lessons.reduce((total, lesson) => {
+          return total + (lesson.remaining_lessons || 0);
+        }, 0);
+
+        return {
+          ...relation.toJSON(),
+          category_lessons: categoryLessons,
+          remaining_lessons: totalRemainingLessons
+        };
+      });
+
+      const totalPages = Math.ceil(count / limit);
+
+      return ResponseUtil.success(res, {
+        list: studentsWithCategoryLessons,
+        total: count,
+        totalPages: totalPages,
+        page: parseInt(page),
+        pageSize: parseInt(limit),
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: totalPages,
+          total_count: count,
+          limit: parseInt(limit)
         }
-      ],
-      order: [['createdAt', 'DESC']],
-      limit: parseInt(limit),
-      offset
-    });
-
-    const totalPages = Math.ceil(count / limit);
-
-    return ResponseUtil.success(res, {
-      list: relations,
-      total: count,
-      totalPages: totalPages,
-      page: parseInt(page),
-      pageSize: parseInt(limit),
-      pagination: {
-        current_page: parseInt(page),
-        total_pages: totalPages,
-        total_count: count,
-        limit: parseInt(limit)
-      }
-    }, '获取我的学员列表成功');
+      }, '获取我的学员列表成功');
+    } catch (error) {
+      logger.error('获取我的学员列表失败:', { coachId, error: error.message });
+      return ResponseUtil.serverError(res, '获取我的学员列表失败');
+    }
   });
+
+
 }
 
 module.exports = RelationController; 
