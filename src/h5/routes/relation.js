@@ -26,8 +26,14 @@ router.post('/', authenticateToken, relationBindValidation, validateRequest, Rel
 // 获取我的教练列表
 router.get('/my-coaches', authenticateToken, RelationController.getMyCoaches);
 
+// 获取我的教练详情（学员视角）
+router.get('/my-coaches/:id', authenticateToken, idParamValidation, validateRequest, RelationController.getMyCoachDetail);
+
 // 获取我的学员列表
 router.get('/my-students', authenticateToken, RelationController.getMyStudents);
+
+// 获取我的学员详情（教练视角）
+router.get('/my-students/:id', authenticateToken, idParamValidation, validateRequest, RelationController.getMyStudentDetail);
 
 
 // 更新师生关系

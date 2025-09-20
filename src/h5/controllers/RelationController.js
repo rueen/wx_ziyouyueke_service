@@ -473,6 +473,181 @@ class RelationController {
     }
   });
 
+  /**
+   * 获取我的教练详情（学员视角）
+   * @route GET /api/h5/relations/my-coaches/:id
+   * @description 获取指定教练的详情信息，包含课程统计和分类课时信息
+   */
+  static getMyCoachDetail = asyncHandler(async (req, res) => {
+    const studentId = req.user.id;
+    const relationId = req.params.id;
+
+    try {
+      const relation = await StudentCoachRelation.findOne({
+        where: {
+          id: relationId,
+          student_id: studentId,
+          relation_status: 1
+        },
+        include: [
+          {
+            model: User,
+            as: 'coach',
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'gender', 'course_categories']
+          }
+        ]
+      });
+
+      if (!relation) {
+        return ResponseUtil.notFound(res, '师生关系不存在');
+      }
+
+      const coachId = relation.coach_id;
+      
+      // 获取教练的分类信息
+      const coach = relation.coach;
+      const categories = coach.course_categories || [];
+
+      // 获取与该教练的课程统计
+      const { CourseBooking } = require('../../shared/models');
+      const [totalLessons, completedLessons, upcomingLessons] = await Promise.all([
+        // 总课程数
+        CourseBooking.count({
+          where: {
+            student_id: studentId,
+            coach_id: coachId
+          }
+        }),
+        // 已完成课程数
+        CourseBooking.count({
+          where: {
+            student_id: studentId,
+            coach_id: coachId,
+            booking_status: 3
+          }
+        }),
+        // 未来课程数（待确认、已确认）
+        CourseBooking.count({
+          where: {
+            student_id: studentId,
+            coach_id: coachId,
+            booking_status: {
+              [Op.in]: [1, 2]
+            },
+            course_date: {
+              [Op.gte]: new Date().toISOString().split('T')[0]
+            }
+          }
+        })
+      ]);
+
+      // 获取学员与教练的课时信息
+      const lessons = relation.getAllCategoryLessons();
+      
+      // 整合分类和课时信息
+      const categoryLessons = categories.map(category => {
+        const categoryLesson = lessons.find(lesson => lesson.category_id === category.id);
+        return {
+          category: category,
+          remaining_lessons: categoryLesson ? categoryLesson.remaining_lessons : 0
+        };
+      });
+
+      // 计算总课时数（向后兼容）
+      const totalRemainingLessons = lessons.reduce((total, lesson) => {
+        return total + (lesson.remaining_lessons || 0);
+      }, 0);
+
+      const coachDetail = {
+        ...relation.toJSON(),
+        category_lessons: categoryLessons,
+        remaining_lessons: totalRemainingLessons, // 兼容字段：总课时数
+        lesson_stats: {
+          total_lessons: totalLessons,
+          completed_lessons: completedLessons,
+          upcoming_lessons: upcomingLessons
+        }
+      };
+
+      return ResponseUtil.success(res, coachDetail, '获取教练详情成功');
+
+    } catch (error) {
+      logger.error('获取教练详情失败:', error);
+      return ResponseUtil.error(res, '获取教练详情失败');
+    }
+  });
+
+  /**
+   * 获取我的学员详情（教练视角）
+   * @route GET /api/h5/relations/my-students/:id
+   * @description 获取指定学员的详情信息，包含分类课时信息
+   */
+  static getMyStudentDetail = asyncHandler(async (req, res) => {
+    const coachId = req.user.id;
+    const relationId = req.params.id;
+
+    try {
+      const relation = await StudentCoachRelation.findOne({
+        where: {
+          id: relationId,
+          coach_id: coachId,
+          relation_status: 1
+        },
+        attributes: [
+          'id', 'student_id', 'coach_id', 'lessons',
+          'student_remark', 'coach_remark', 'relation_status', 
+          'createdAt', 'updatedAt'
+        ],
+        include: [
+          {
+            model: User,
+            as: 'student',
+            attributes: ['id', 'nickname', 'avatar_url', 'phone']
+          }
+        ]
+      });
+
+      if (!relation) {
+        return ResponseUtil.notFound(res, '师生关系不存在');
+      }
+
+      // 获取教练的分类信息
+      const coach = await User.findByPk(coachId, {
+        attributes: ['id', 'course_categories']
+      });
+      const categories = coach.course_categories || [];
+
+      // 获取学员的课时信息
+      const lessons = relation.getAllCategoryLessons();
+      
+      // 整合分类和课时信息
+      const categoryLessons = categories.map(category => {
+        const categoryLesson = lessons.find(lesson => lesson.category_id === category.id);
+        return {
+          category: category,
+          remaining_lessons: categoryLesson ? categoryLesson.remaining_lessons : 0
+        };
+      });
+
+      // 计算总课时数（向后兼容）
+      const totalRemainingLessons = lessons.reduce((total, lesson) => {
+        return total + (lesson.remaining_lessons || 0);
+      }, 0);
+
+      const studentDetail = {
+        ...relation.toJSON(),
+        category_lessons: categoryLessons,
+        remaining_lessons: totalRemainingLessons
+      };
+
+      return ResponseUtil.success(res, studentDetail, '获取学员详情成功');
+
+    } catch (error) {
+      logger.error('获取学员详情失败:', error);
+      return ResponseUtil.error(res, '获取学员详情失败');
+    }
+  });
+
 
 }
 
