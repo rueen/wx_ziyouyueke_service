@@ -297,6 +297,7 @@ class CategoryController {
         const lessons = relation.getCategoryLessons(categoryId);
         categoryStats.totalLessons += lessons;
         categoryStats.studentLessons.push({
+          relationId: relation.id, // 新增：师生关系ID
           studentId: relation.student_id,
           studentName: relation.student?.nickname || '未设置昵称',
           studentAvatar: relation.student?.avatar_url || '',
