@@ -193,4 +193,28 @@ StudentCoachRelation.prototype.getAllCategoryLessons = function() {
   return this.lessons || [];
 };
 
+/**
+ * 实例方法：获取指定分类的可用课时（总课时 - 未完成预约占用的课时）
+ * @param {number} categoryId 课程分类ID
+ * @returns {Promise<number>} 可用课时数
+ */
+StudentCoachRelation.prototype.getAvailableLessons = async function(categoryId) {
+  // 1. 获取总剩余课时
+  const totalLessons = this.getCategoryLessons(categoryId);
+  
+  // 2. 查询该师生关系下未完成的预约数量（占用的课时）
+  // 使用 sequelize.models 来避免循环引用问题
+  const CourseBooking = this.sequelize.models.course_bookings;
+  const occupiedLessons = await CourseBooking.count({
+    where: {
+      relation_id: this.id,
+      category_id: categoryId,
+      booking_status: [1, 2], // 待确认、已确认的课程占用课时
+    }
+  });
+  
+  // 3. 可用课时 = 总课时 - 已占用课时
+  return Math.max(totalLessons - occupiedLessons, 0);
+};
+
 module.exports = StudentCoachRelation; 

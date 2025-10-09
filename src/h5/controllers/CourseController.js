@@ -88,10 +88,10 @@ class CourseController {
         }
       }
 
-      // 检查指定分类的剩余课时
-      const categoryLessons = relation.getCategoryLessons(category_id);
-      if (categoryLessons <= 0) {
-        return ResponseUtil.validationError(res, '该分类剩余课时不足，无法预约课程');
+      // 检查指定分类的可用课时（考虑已预约但未完成的课程占用）
+      const availableLessons = await relation.getAvailableLessons(category_id);
+      if (availableLessons <= 0) {
+        return ResponseUtil.validationError(res, '该分类可用课时不足，无法预约课程');
       }
 
       // 检查教练时间段人数限制
