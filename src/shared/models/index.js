@@ -10,6 +10,8 @@ const Notification = require('./Notification');
 const OperationLog = require('./OperationLog');
 const Address = require('./Address');
 const Waiter = require('./Waiter');
+const GroupCourse = require('./GroupCourse');
+const GroupCourseRegistration = require('./GroupCourseRegistration');
 
 /**
  * 设置模型关联关系
@@ -139,6 +141,71 @@ CourseBooking.belongsTo(Address, {
   as: 'address' 
 });
 
+// User 与 GroupCourse 的关联
+User.hasMany(GroupCourse, { 
+  foreignKey: 'coach_id', 
+  as: 'groupCourses'
+});
+
+GroupCourse.belongsTo(User, { 
+  foreignKey: 'coach_id', 
+  as: 'coach' 
+});
+
+// Address 与 GroupCourse 的关联
+Address.hasMany(GroupCourse, { 
+  foreignKey: 'address_id', 
+  as: 'groupCourses'
+});
+
+GroupCourse.belongsTo(Address, { 
+  foreignKey: 'address_id', 
+  as: 'address' 
+});
+
+// GroupCourse 与 GroupCourseRegistration 的关联
+GroupCourse.hasMany(GroupCourseRegistration, { 
+  foreignKey: 'group_course_id', 
+  as: 'registrations'
+});
+
+GroupCourseRegistration.belongsTo(GroupCourse, { 
+  foreignKey: 'group_course_id', 
+  as: 'groupCourse' 
+});
+
+// User 与 GroupCourseRegistration 的关联
+User.hasMany(GroupCourseRegistration, { 
+  foreignKey: 'student_id', 
+  as: 'groupCourseRegistrations'
+});
+
+User.hasMany(GroupCourseRegistration, { 
+  foreignKey: 'coach_id', 
+  as: 'coachGroupRegistrations'
+});
+
+GroupCourseRegistration.belongsTo(User, { 
+  foreignKey: 'student_id', 
+  as: 'student' 
+});
+
+GroupCourseRegistration.belongsTo(User, { 
+  foreignKey: 'coach_id', 
+  as: 'coach' 
+});
+
+// StudentCoachRelation 与 GroupCourseRegistration 的关联
+StudentCoachRelation.hasMany(GroupCourseRegistration, { 
+  foreignKey: 'relation_id', 
+  as: 'groupRegistrations'
+});
+
+GroupCourseRegistration.belongsTo(StudentCoachRelation, { 
+  foreignKey: 'relation_id', 
+  as: 'relation' 
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -152,5 +219,7 @@ module.exports = {
   Notification,
   OperationLog,
   Address,
-  Waiter
+  Waiter,
+  GroupCourse,
+  GroupCourseRegistration
 }; 

@@ -202,19 +202,63 @@ StudentCoachRelation.prototype.getAvailableLessons = async function(categoryId) 
   // 1. 获取总剩余课时
   const totalLessons = this.getCategoryLessons(categoryId);
   
-  // 2. 查询该师生关系下未完成的预约数量（占用的课时）
+  // 2. 并行查询常规课和团课占用的课时
+  const [regularOccupied, groupOccupied] = await Promise.all([
+    this.getRegularCourseOccupied(categoryId),
+    this.getGroupCourseOccupied(categoryId)
+  ]);
+  
+  // 3. 可用课时 = 总课时 - 已占用课时（常规课 + 团课）
+  const totalOccupied = regularOccupied + groupOccupied;
+  return Math.max(totalLessons - totalOccupied, 0);
+};
+
+/**
+ * 实例方法：获取常规课占用的课时数
+ * @param {number} categoryId 课程分类ID
+ * @returns {Promise<number>} 占用的课时数
+ */
+StudentCoachRelation.prototype.getRegularCourseOccupied = async function(categoryId) {
   // 使用 sequelize.models 来避免循环引用问题
   const CourseBooking = this.sequelize.models.course_bookings;
-  const occupiedLessons = await CourseBooking.count({
+  return await CourseBooking.count({
     where: {
       relation_id: this.id,
       category_id: categoryId,
       booking_status: [1, 2], // 待确认、已确认的课程占用课时
     }
   });
+};
+
+/**
+ * 实例方法：获取团课占用的课时数
+ * @param {number} categoryId 课程分类ID
+ * @returns {Promise<number>} 占用的课时数
+ */
+StudentCoachRelation.prototype.getGroupCourseOccupied = async function(categoryId) {
+  const GroupCourseRegistration = this.sequelize.models.group_course_registrations;
+  const GroupCourse = this.sequelize.models.group_courses;
   
-  // 3. 可用课时 = 总课时 - 已占用课时
-  return Math.max(totalLessons - occupiedLessons, 0);
+  const registrations = await GroupCourseRegistration.findAll({
+    where: {
+      relation_id: this.id,           // 通过 relation_id 关联
+      registration_status: [1, 2],    // 待确认、已确认
+      payment_type: 1                 // 只统计扣课时的团课
+    },
+    include: [{
+      model: GroupCourse,
+      as: 'groupCourse',
+      where: {
+        category_id: categoryId
+      },
+      attributes: ['lesson_cost']
+    }]
+  });
+  
+  // 计算总占用课时数（团课可能一次扣多节）
+  return registrations.reduce((total, reg) => {
+    return total + (reg.groupCourse?.lesson_cost || 1);
+  }, 0);
 };
 
 module.exports = StudentCoachRelation; 
