@@ -143,6 +143,28 @@ class GroupCourseController {
     const total = await GroupCourse.count({ where });
     const courses = await GroupCourse.findAll({
       where,
+      include: [
+        {
+          model: User,
+          as: 'coach',
+          attributes: ['id', 'nickname', 'avatar_url', 'course_categories']
+        },
+        {
+          model: Address,
+          as: 'address',
+          attributes: ['id', 'name', 'address', 'latitude', 'longitude']
+        },
+        {
+          model: GroupCourseRegistration,
+          as: 'registrations',
+          required: false,
+          include: [{
+            model: User,
+            as: 'student',
+            attributes: ['id', 'nickname', 'avatar_url']
+          }]
+        }
+      ],
       order: [['course_date', 'ASC'], ['start_time', 'ASC']],
       limit: parseInt(limit),
       offset
@@ -426,23 +448,32 @@ class GroupCourseController {
   static cancelRegistration = asyncHandler(async (req, res) => {
     const studentId = req.user.id;
     const { id: groupCourseId } = req.params;
-    const { cancel_reason = '学员取消' } = req.body;
 
     const registration = await GroupCourseRegistration.findOne({
       where: {
         group_course_id: groupCourseId,
         student_id: studentId,
         registration_status: [1, 2] // 待确认或已确认
-      }
+      },
+      include: [{
+        model: GroupCourse,
+        as: 'groupCourse'
+      }]
     });
 
     if (!registration) {
       return ResponseUtil.notFound(res, '报名记录不存在或已取消');
     }
 
-    await registration.cancel(cancel_reason, studentId);
+    // 如果已确认报名，需要减少团课参与人数
+    if (registration.registration_status === 2) {
+      await registration.groupCourse.decreaseParticipants(1);
+    }
+
+    // 直接删除报名记录
+    await registration.destroy();
     
-    logger.info(`学员 ${studentId} 取消团课 ${groupCourseId} 报名`);
+    logger.info(`学员 ${studentId} 取消团课 ${groupCourseId} 报名（真删除）`);
     return ResponseUtil.success(res, null, '取消报名成功');
   });
 

@@ -132,7 +132,7 @@ is_published=1            // 发布状态：0-草稿，1-已发布，不传默�
 {
   "success": true,
   "data": {
-    "courses": [
+    "list": [
       {
         "id": 1,
         "title": "瑜伽团课",
@@ -156,16 +156,27 @@ is_published=1            // 发布状态：0-草稿，1-已发布，不传默�
         "address": {
           "id": 1,
           "name": "健身房A",
-          "address": "北京市朝阳区..."
-        }
+          "address": "北京市朝阳区...",
+          "latitude": "39.123456",
+          "longitude": "116.123456"
+        },
+        "registrations": [
+          {
+            "id": 1,
+            "registration_status": 2,
+            "student": {
+              "id": 456,
+              "nickname": "学员小王",
+              "avatar_url": "student_avatar.jpg"
+            }
+          }
+        ]
       }
     ],
-    "pagination": {
-      "current_page": 1,
-      "per_page": 10,
-      "total": 1,
-      "total_pages": 1
-    }
+    "page": 1,
+    "pageSize": 10,
+    "total": 1,
+    "totalPages": 1
   }
 }
 ```
