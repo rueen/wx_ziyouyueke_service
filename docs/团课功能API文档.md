@@ -553,6 +553,43 @@ Authorization: Bearer <token>
 }
 ```
 
+#### 2.6 完成团课
+
+**接口地址：** `PUT /api/h5/group-courses/:id/complete`
+
+**请求头：**
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**请求参数：**
+```json
+{
+  "feedback": "课程总结和反馈"  // 可选
+}
+```
+
+**响应示例：**
+```json
+{
+  "success": true,
+  "message": "团课完成成功",
+  "data": {
+    "id": 1,
+    "title": "瑜伽团课",
+    "status": 2,
+    "completed_at": "2025-01-15T16:00:00Z"
+  }
+}
+```
+
+**业务说明：**
+- 只有团课创建者（教练）可以标记团课完成
+- 只有"报名中"状态的团课可以标记完成
+- 完成后的团课状态变为"已结束"
+- 可选的反馈内容用于记录课程总结
+
 ## 业务逻辑说明
 
 ### 课时管理集成

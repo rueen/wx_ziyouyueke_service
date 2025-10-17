@@ -202,4 +202,18 @@ router.post('/:courseId/registrations/:registrationId/check-in',
   GroupCourseController.checkInRegistration
 );
 
+/**
+ * 完成团课
+ * PUT /api/h5/group-courses/:id/complete
+ */
+router.put('/:id/complete', 
+  authenticateToken,
+  [
+    param('id').isInt({ min: 1 }).withMessage('团课ID必须是正整数'),
+    body('feedback').optional().isString().withMessage('反馈内容必须是字符串')
+  ],
+  validateRequest, 
+  GroupCourseController.completeGroupCourse
+);
+
 module.exports = router;

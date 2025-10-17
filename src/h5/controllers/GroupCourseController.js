@@ -647,6 +647,43 @@ class GroupCourseController {
     return ResponseUtil.success(res, registration, '签到成功');
   });
 
+  /**
+   * 完成团课
+   * PUT /api/h5/group-courses/:id/complete
+   */
+  static completeGroupCourse = asyncHandler(async (req, res) => {
+    const coachId = req.user.id;
+    const { id: groupCourseId } = req.params;
+    const { feedback = '' } = req.body;
+
+    // 查找团课
+    const groupCourse = await GroupCourse.findByPk(groupCourseId);
+
+    if (!groupCourse) {
+      return ResponseUtil.notFound(res, '团课不存在');
+    }
+
+    // 检查权限：只有团课创建者可以标记完成
+    if (groupCourse.coach_id !== coachId) {
+      return ResponseUtil.forbidden(res, '只有团课创建者可以标记完成');
+    }
+
+    // 检查状态：只有"报名中"状态的团课可以标记完成
+    if (groupCourse.status !== 1) {
+      return ResponseUtil.validationError(res, '只有报名中状态的团课可以标记完成');
+    }
+
+    // 标记团课完成
+    await groupCourse.completeCourse();
+
+    // 如果有反馈内容，可以记录到团课描述或其他字段中
+    // 这里暂时不存储feedback，因为模型中没有专门字段
+    // 如果需要存储反馈，可以考虑添加到content字段或新增feedback字段
+
+    logger.info(`教练 ${coachId} 完成团课 ${groupCourseId}，反馈：${feedback}`);
+    return ResponseUtil.success(res, groupCourse, '团课完成成功');
+  });
+
 }
 
 module.exports = GroupCourseController;
