@@ -133,12 +133,6 @@ const GroupCourse = sequelize.define('group_courses', {
     defaultValue: 0,
     comment: '课程状态：0-待发布，1-报名中，2-已结束（已取消、人数不足取消、已完成等）'
   },
-  is_published: {
-    type: DataTypes.TINYINT(1),
-    allowNull: false,
-    defaultValue: 0,
-    comment: '发布状态：0-草稿，1-已发布'
-  },
   
   // 时间戳
   published_at: {
@@ -172,7 +166,6 @@ const GroupCourse = sequelize.define('group_courses', {
     { fields: ['category_id'] },
     { fields: ['course_date'] },
     { fields: ['status'] },
-    { fields: ['is_published'] },
     { fields: ['enrollment_scope'] },
     { fields: ['coach_id', 'status'] },
     { fields: ['course_date', 'status'] },
@@ -185,8 +178,7 @@ const GroupCourse = sequelize.define('group_courses', {
  * 实例方法：检查是否可以报名
  */
 GroupCourse.prototype.canEnroll = function() {
-  return this.is_published === 1 && 
-         this.status === 1 && // 报名中
+  return this.status === 1 && // 报名中
          this.current_participants < this.max_participants;
 };
 

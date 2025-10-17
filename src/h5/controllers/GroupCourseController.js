@@ -1,3 +1,10 @@
+/*
+ * @Author: diaochan
+ * @Date: 2025-10-09 19:16:44
+ * @LastEditors: diaochan
+ * @LastEditTime: 2025-10-17 18:24:50
+ * @Description: 
+ */
 const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation } = require('../../shared/models');
 const ResponseUtil = require('../../shared/utils/response');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
@@ -75,7 +82,7 @@ class GroupCourseController {
       price_amount,
       enrollment_scope,
       auto_confirm,
-      is_published: 0, // 默认为草稿状态
+      // 默认为草稿状态（status = 0）
       status: 0 // 草稿状态：0-待发布
     });
 
@@ -95,34 +102,37 @@ class GroupCourseController {
       category_id,
       status,
       course_date_start,
-      course_date_end,
-      is_published // 发布状态：0-草稿，1-已发布，不传则默认只显示已发布
+      course_date_end
     } = req.query;
 
     const offset = (page - 1) * limit;
     const where = {};
     
-    // 发布状态筛选
-    if (is_published !== undefined) {
-      // 如果指定了发布状态
-      where.is_published = parseInt(is_published);
+    // 状态筛选逻辑
+    if (status !== undefined) {
+      const statusValue = parseInt(status);
       
-      // 如果查看草稿（is_published=0），必须是登录用户且只能查看自己的
-      if (parseInt(is_published) === 0) {
+      if (statusValue === 0) {
+        // 查看待发布状态，必须是登录用户且只能查看自己的
         if (!req.user) {
           return ResponseUtil.unauthorized(res, '查看草稿需要登录');
         }
+        where.status = 0;
         where.coach_id = req.user.id;
+      } else {
+        // 查看其他状态（报名中、已结束）
+        where.status = statusValue;
       }
     } else {
-      // 默认只显示已发布的团课
-      where.is_published = 1;
+      // 默认只显示已发布的团课（status > 0）
+      where.status = {
+        [Op.gt]: 0
+      };
     }
 
     // 筛选条件
     if (coach_id) where.coach_id = coach_id;
     if (category_id !== undefined) where.category_id = category_id;
-    if (status) where.status = status;
     
     // 日期范围筛选
     if (course_date_start && course_date_end) {
@@ -285,13 +295,12 @@ class GroupCourseController {
       return ResponseUtil.notFound(res, '团课不存在或无权限');
     }
 
-    if (course.is_published !== 0) {
+    if (course.status !== 0) {
       return ResponseUtil.validationError(res, '只能发布草稿状态的团课');
     }
 
     // 发布团课
     await course.update({
-      is_published: 1,
       status: 1, // 发布后状态改为报名中
       published_at: new Date()
     });

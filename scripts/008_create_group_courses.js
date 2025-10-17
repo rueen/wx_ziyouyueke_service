@@ -3,7 +3,7 @@
  * @Date: 2025-01-09 00:00:00
  * @LastEditors: diaochan
  * @LastEditTime: 2025-01-09 00:00:00
- * @Description: 创建团课表（简化版本，整合了011脚本的简化逻辑）
+ * @Description: 创建团课表（简化版本，整合了011脚本的简化逻辑，移除了is_published字段）
  */
 
 const { sequelize } = require('../src/shared/models');
@@ -47,7 +47,6 @@ async function createGroupCoursesTable() {
         
         -- 状态管理（简化版本）
         \`status\` tinyint(1) NOT NULL DEFAULT 0 COMMENT '课程状态：0-待发布，1-报名中，2-已结束（已取消、人数不足取消、已完成等）',
-        \`is_published\` tinyint(1) NOT NULL DEFAULT 0 COMMENT '发布状态：0-草稿，1-已发布',
         
         -- 时间戳
         \`published_at\` datetime DEFAULT NULL COMMENT '发布时间',
@@ -62,7 +61,6 @@ async function createGroupCoursesTable() {
         KEY \`idx_category_id\` (\`category_id\`),
         KEY \`idx_course_date\` (\`course_date\`),
         KEY \`idx_status\` (\`status\`),
-        KEY \`idx_published\` (\`is_published\`),
         KEY \`idx_enrollment_scope\` (\`enrollment_scope\`),
         KEY \`idx_coach_status\` (\`coach_id\`, \`status\`),
         KEY \`idx_date_status\` (\`course_date\`, \`status\`),

@@ -31,7 +31,6 @@
 | enrollment_scope | TINYINT | 报名范围：1-仅学员，2-所有人 |
 | auto_confirm | TINYINT | 是否自动确认：0-需审核，1-自动确认 |
 | status | TINYINT | 课程状态：0-待发布，1-报名中，2-已结束 |
-| is_published | TINYINT | 发布状态：0-草稿，1-已发布 |
 
 ### 团课报名表 (group_course_registrations)
 
@@ -103,13 +102,12 @@ Content-Type: application/json
     "max_participants": 10,
     "current_participants": 0,
     "status": 1,
-    "is_published": 0,
     "created_at": "2025-01-09T12:00:00Z"
   }
 }
 ```
 
-**说明：** 团课创建后默认为草稿状态（is_published=0），需要调用发布接口才能公开显示。
+**说明：** 团课创建后默认为草稿状态（status=0），需要调用发布接口才能公开显示。
 
 #### 1.2 获取团课列表
 
@@ -121,10 +119,9 @@ page=1                    // 页码，默认1
 limit=10                  // 每页数量，默认10
 coach_id=123              // 教练ID，可选
 category_id=0             // 课程分类ID，可选
-status=1                  // 课程状态，可选
+status=1                  // 课程状态：0-待发布，1-报名中，2-已结束，可选（查看草稿需要登录）
 course_date_start=2025-01-10  // 开始日期，可选
 course_date_end=2025-01-20    // 结束日期，可选
-is_published=1            // 发布状态：0-草稿，1-已发布，不传默认显示已发布（查看草稿需要登录）
 ```
 
 **响应示例：**
@@ -284,7 +281,6 @@ Authorization: Bearer <token>
   "data": {
     "id": 1,
     "title": "瑜伽团课",
-    "is_published": 1,
     "published_at": "2025-01-09T12:30:00Z",
     "status": 1
   }
