@@ -119,9 +119,26 @@ page=1                    // 页码，默认1
 limit=10                  // 每页数量，默认10
 coach_id=123              // 教练ID，可选
 category_id=0             // 课程分类ID，可选
-status=1                  // 课程状态：0-待发布，1-报名中，2-已结束，可选（查看草稿需要登录）
+status=1                  // 课程状态：0-待发布，1-报名中，2-已结束，支持单个值或数组格式
+                         // 单个值：status=1
+                         // 数组格式：status=[0,1] 或 status=["0","1"]（查看草稿需要登录）
 course_date_start=2025-01-10  // 开始日期，可选
 course_date_end=2025-01-20    // 结束日期，可选
+```
+
+**使用示例：**
+```
+# 查看所有已发布团课（默认）
+GET /api/h5/group-courses
+
+# 查看报名中的团课
+GET /api/h5/group-courses?status=1
+
+# 查看多个状态的团课
+GET /api/h5/group-courses?status=[1,2]
+
+# 查看草稿和报名中的团课（需要登录）
+GET /api/h5/group-courses?status=[0,1]
 ```
 
 **响应示例：**

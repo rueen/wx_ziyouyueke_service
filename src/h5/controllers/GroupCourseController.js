@@ -110,18 +110,45 @@ class GroupCourseController {
     
     // 状态筛选逻辑
     if (status !== undefined) {
-      const statusValue = parseInt(status);
+      let statusArray;
       
-      if (statusValue === 0) {
-        // 查看待发布状态，必须是登录用户且只能查看自己的
+      // 解析状态参数，支持单个值和数组格式
+      if (typeof status === 'string') {
+        try {
+          // 尝试解析为JSON数组
+          const parsed = JSON.parse(status);
+          statusArray = Array.isArray(parsed) ? parsed.map(s => parseInt(s)) : [parseInt(status)];
+        } catch {
+          // 如果不是JSON格式，则当作单个值处理
+          statusArray = [parseInt(status)];
+        }
+      } else {
+        statusArray = Array.isArray(status) ? status.map(s => parseInt(s)) : [parseInt(status)];
+      }
+      
+      // 确保 statusArray 是数组
+      if (!Array.isArray(statusArray)) {
+        statusArray = [statusArray];
+      }
+      
+      // 检查是否包含草稿状态（0）
+      const hasDraftStatus = statusArray.includes(0);
+      
+      if (hasDraftStatus) {
+        // 如果包含草稿状态，必须是登录用户且只能查看自己的
         if (!req.user) {
           return ResponseUtil.unauthorized(res, '查看草稿需要登录');
         }
-        where.status = 0;
         where.coach_id = req.user.id;
+      }
+      
+      // 设置状态筛选条件
+      if (statusArray.length === 1) {
+        where.status = statusArray[0];
       } else {
-        // 查看其他状态（报名中、已结束）
-        where.status = statusValue;
+        where.status = {
+          [Op.in]: statusArray
+        };
       }
     } else {
       // 默认只显示已发布的团课（status > 0）
