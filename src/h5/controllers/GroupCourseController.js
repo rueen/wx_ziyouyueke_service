@@ -262,6 +262,14 @@ class GroupCourseController {
     const courseData = course.toJSON();
     courseData.end_reason = course.getEndReason();
 
+    // 添加分类名称
+    if (course.coach && course.coach.course_categories) {
+      const category = course.coach.course_categories.find(cat => cat.id === course.category_id);
+      courseData.category_name = category ? category.name : '未知分类';
+    } else {
+      courseData.category_name = '未知分类';
+    }
+
     return ResponseUtil.success(res, courseData);
   });
 
