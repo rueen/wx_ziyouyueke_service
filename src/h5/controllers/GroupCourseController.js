@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-10-09 19:16:44
  * @LastEditors: diaochan
- * @LastEditTime: 2025-10-17 18:24:50
+ * @LastEditTime: 2025-10-18 16:33:48
  * @Description: 
  */
 const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation } = require('../../shared/models');
@@ -599,13 +599,11 @@ class GroupCourseController {
     });
 
     return ResponseUtil.success(res, {
-      registrations,
-      pagination: {
-        current_page: parseInt(page),
-        per_page: parseInt(limit),
-        total,
-        total_pages: Math.ceil(total / limit)
-      }
+      list: registrations,
+      page: parseInt(page),
+      pageSize: parseInt(limit),
+      total,
+      totalPages: Math.ceil(total / limit)
     });
   });
 
@@ -623,7 +621,7 @@ class GroupCourseController {
         id: registrationId,
         group_course_id: courseId,
         coach_id: coachId,
-        registration_status: 2 // 已确认
+        registration_status: 1 // 已报名
       }
     });
 
