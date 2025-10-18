@@ -249,7 +249,8 @@ StudentCoachRelation.prototype.getGroupCourseOccupied = async function(categoryI
       model: GroupCourse,
       as: 'groupCourse',
       where: {
-        category_id: categoryId
+        category_id: categoryId,
+        status: 1  // 只统计报名中的团课
       },
       attributes: ['lesson_cost']
     }]
