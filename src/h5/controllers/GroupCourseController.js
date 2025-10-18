@@ -665,6 +665,21 @@ class GroupCourseController {
       return ResponseUtil.validationError(res, '只有报名中状态的团课可以标记完成');
     }
 
+    // 在标记团课完成之前，先处理未签到的学员
+    const unCheckedRegistrations = await GroupCourseRegistration.findAll({
+      where: {
+        group_course_id: groupCourseId,
+        registration_status: 1, // 已报名
+        check_in_status: 0      // 未签到
+      }
+    });
+
+    // 批量标记未签到的学员为缺席
+    for (const registration of unCheckedRegistrations) {
+      await registration.markAbsent();
+      logger.info(`自动标记学员 ${registration.student_id} 为缺席（团课 ${groupCourseId}）`);
+    }
+
     // 标记团课完成
     await groupCourse.completeCourse();
 
@@ -672,8 +687,11 @@ class GroupCourseController {
     // 这里暂时不存储feedback，因为模型中没有专门字段
     // 如果需要存储反馈，可以考虑添加到content字段或新增feedback字段
 
-    logger.info(`教练 ${coachId} 完成团课 ${groupCourseId}，反馈：${feedback}`);
-    return ResponseUtil.success(res, groupCourse, '团课完成成功');
+    logger.info(`教练 ${coachId} 完成团课 ${groupCourseId}，反馈：${feedback}，自动标记 ${unCheckedRegistrations.length} 名未签到学员为缺席`);
+    return ResponseUtil.success(res, {
+      ...groupCourse.toJSON(),
+      auto_absent_count: unCheckedRegistrations.length
+    }, '团课完成成功');
   });
 
 }
