@@ -242,7 +242,7 @@ StudentCoachRelation.prototype.getGroupCourseOccupied = async function(categoryI
   const registrations = await GroupCourseRegistration.findAll({
     where: {
       relation_id: this.id,           // 通过 relation_id 关联
-      registration_status: 1,          // 已报名
+      registration_status: 1,          // 只统计已报名的记录
       payment_type: 1                 // 只统计扣课时的团课
     },
     include: [{

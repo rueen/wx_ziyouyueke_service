@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-10-09 19:16:44
  * @LastEditors: diaochan
- * @LastEditTime: 2025-10-18 16:33:48
+ * @LastEditTime: 2025-10-18 19:15:00
  * @Description: 
  */
 const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation } = require('../../shared/models');
@@ -424,17 +424,27 @@ class GroupCourseController {
       return ResponseUtil.validationError(res, '当前团课不可报名');
     }
 
-    // 检查是否已报名
+    // 检查是否已报名（只检查有效的报名记录）
     const existingRegistration = await GroupCourseRegistration.findOne({
       where: {
         group_course_id: groupCourseId,
-        student_id: studentId
+        student_id: studentId,
+        registration_status: 1 // 只检查已报名的记录
       }
     });
 
     if (existingRegistration) {
       return ResponseUtil.validationError(res, '您已报名该团课');
     }
+
+    // 检查是否有已取消的报名记录
+    const cancelledRegistration = await GroupCourseRegistration.findOne({
+      where: {
+        group_course_id: groupCourseId,
+        student_id: studentId,
+        registration_status: 2 // 已取消的记录
+      }
+    });
 
     let relationId = null;
     
@@ -462,20 +472,35 @@ class GroupCourseController {
       }
     }
 
-    // 创建报名记录（用户报名即确认）
-    const registration = await GroupCourseRegistration.create({
-      group_course_id: groupCourseId,
-      student_id: studentId,
-      coach_id: course.coach_id,
-      relation_id: relationId,
-      payment_type: course.price_type,
-      registration_status: 1 // 已报名
-    });
+    let registration;
+    
+    if (cancelledRegistration) {
+      // 如果有已取消的记录，修改状态为已报名
+      registration = cancelledRegistration;
+      registration.registration_status = 1; // 已报名
+      registration.cancelled_at = null; // 清除取消时间
+      registration.cancel_reason = null; // 清除取消原因
+      registration.cancelled_by = null; // 清除取消操作人
+      await registration.save();
+      
+      logger.info(`学员 ${studentId} 重新报名团课 ${groupCourseId}（修改状态）`);
+    } else {
+      // 如果没有记录，创建新的报名记录
+      registration = await GroupCourseRegistration.create({
+        group_course_id: groupCourseId,
+        student_id: studentId,
+        coach_id: course.coach_id,
+        relation_id: relationId,
+        payment_type: course.price_type,
+        registration_status: 1 // 已报名
+      });
+      
+      logger.info(`学员 ${studentId} 首次报名团课 ${groupCourseId}（创建记录）`);
+    }
 
     // 报名即确认，增加参与人数
     await course.increaseParticipants(1);
 
-    logger.info(`学员 ${studentId} 报名团课 ${groupCourseId} 成功`);
     return ResponseUtil.success(res, registration, '报名成功');
   });
 
@@ -524,9 +549,10 @@ class GroupCourseController {
     const { page = 1, limit = 10, status } = req.query;
 
     const offset = (page - 1) * limit;
-    const where = { student_id: studentId };
-    
-    if (status) where.registration_status = status;
+    const where = { 
+      student_id: studentId,
+      registration_status: status || 1 // 默认只显示已报名，支持按状态筛选
+    };
 
     const { rows: registrations, count: total } = await GroupCourseRegistration.findAndCountAll({
       where,
@@ -583,9 +609,10 @@ class GroupCourseController {
     }
 
     const offset = (page - 1) * limit;
-    const where = { group_course_id: groupCourseId };
-    
-    if (status) where.registration_status = status;
+    const where = { 
+      group_course_id: groupCourseId,
+      registration_status: status || 1 // 默认只显示已报名，支持按状态筛选
+    };
 
     const { rows: registrations, count: total } = await GroupCourseRegistration.findAndCountAll({
       where,
