@@ -43,7 +43,6 @@ async function createGroupCoursesTable() {
         
         -- 报名设置（简化版本）
         \`enrollment_scope\` tinyint(1) NOT NULL DEFAULT 1 COMMENT '报名范围：1-仅学员可报名，2-所有人可报名',
-        \`auto_confirm\` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否自动确认：0-需审核，1-自动确认',
         
         -- 状态管理（简化版本）
         \`status\` tinyint(1) NOT NULL DEFAULT 0 COMMENT '课程状态：0-待发布，1-报名中，2-已结束（已取消、人数不足取消、已完成等）',

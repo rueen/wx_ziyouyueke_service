@@ -21,7 +21,7 @@ async function createGroupCourseRegistrationsTable() {
         \`relation_id\` bigint(20) unsigned DEFAULT NULL COMMENT '师生关系ID（仅学员报名时有值，enrollment_scope=1时必填）',
         
         -- 报名状态
-        \`registration_status\` tinyint(1) NOT NULL DEFAULT 1 COMMENT '报名状态：1-待确认，2-已确认，3-已完成，4-已取消，5-已拒绝',
+        \`registration_status\` tinyint(1) NOT NULL DEFAULT 1 COMMENT '报名状态：1-已报名，2-已取消',
         
         -- 支付信息
         \`payment_type\` tinyint(1) NOT NULL COMMENT '支付方式：1-课时，2-金额，3-免费',
@@ -36,7 +36,6 @@ async function createGroupCourseRegistrationsTable() {
         
         -- 时间管理
         \`registered_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '报名时间',
-        \`confirmed_at\` datetime DEFAULT NULL COMMENT '确认时间',
         \`cancelled_at\` datetime DEFAULT NULL COMMENT '取消时间',
         \`cancel_reason\` varchar(200) DEFAULT NULL COMMENT '取消原因',
         \`cancelled_by\` bigint(20) unsigned DEFAULT NULL COMMENT '取消操作人ID',

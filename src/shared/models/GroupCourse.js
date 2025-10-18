@@ -119,12 +119,6 @@ const GroupCourse = sequelize.define('group_courses', {
     defaultValue: 1,
     comment: '报名范围：1-仅学员可报名，2-所有人可报名'
   },
-  auto_confirm: {
-    type: DataTypes.TINYINT(1),
-    allowNull: false,
-    defaultValue: 1,
-    comment: '是否自动确认：0-需审核，1-自动确认'
-  },
   
   // 状态管理
   status: {

@@ -39,7 +39,6 @@ class GroupCourseController {
       lesson_cost = 1,
       price_amount = 0,
       enrollment_scope = 1,
-      auto_confirm = 1
     } = req.body;
 
     // 验证教练的课程分类
@@ -81,7 +80,6 @@ class GroupCourseController {
       lesson_cost,
       price_amount,
       enrollment_scope,
-      auto_confirm,
       // 默认为草稿状态（status = 0）
       status: 0 // 草稿状态：0-待发布
     });
@@ -245,7 +243,7 @@ class GroupCourseController {
         {
           model: GroupCourseRegistration,
           as: 'registrations',
-          where: { registration_status: [1, 2, 3] }, // 有效报名
+          where: { registration_status: 1 }, // 有效报名（已报名）
           required: false,
           include: [{
             model: User,
@@ -283,9 +281,9 @@ class GroupCourseController {
       return ResponseUtil.notFound(res, '团课不存在或无权限');
     }
 
-    // 已开始的课程不能修改核心信息
-    if (course.status !== 1) {
-      return ResponseUtil.validationError(res, '课程已开始，无法修改');
+    // 已结束的课程不能修改核心信息
+    if (course.status === 2) {
+      return ResponseUtil.validationError(res, '课程已结束，无法修改');
     }
 
     const updateData = req.body;
@@ -456,22 +454,18 @@ class GroupCourseController {
       }
     }
 
-    // 创建报名记录
+    // 创建报名记录（用户报名即确认）
     const registration = await GroupCourseRegistration.create({
       group_course_id: groupCourseId,
       student_id: studentId,
       coach_id: course.coach_id,
       relation_id: relationId,
       payment_type: course.price_type,
-      registration_status: course.auto_confirm ? 2 : 1 // 自动确认或待确认
+      registration_status: 1 // 已报名
     });
 
-    // 如果自动确认，增加参与人数
-    if (course.auto_confirm) {
-      await course.increaseParticipants(1);
-      registration.confirmed_at = new Date();
-      await registration.save();
-    }
+    // 报名即确认，增加参与人数
+    await course.increaseParticipants(1);
 
     logger.info(`学员 ${studentId} 报名团课 ${groupCourseId} 成功`);
     return ResponseUtil.success(res, registration, '报名成功');
@@ -489,7 +483,7 @@ class GroupCourseController {
       where: {
         group_course_id: groupCourseId,
         student_id: studentId,
-        registration_status: [1, 2] // 待确认或已确认
+        registration_status: 1 // 已报名
       },
       include: [{
         model: GroupCourse,
@@ -501,13 +495,13 @@ class GroupCourseController {
       return ResponseUtil.notFound(res, '报名记录不存在或已取消');
     }
 
-    // 如果已确认报名，需要减少团课参与人数
-    if (registration.registration_status === 2) {
-      await registration.groupCourse.decreaseParticipants(1);
-    }
-
-    // 直接删除报名记录
-    await registration.destroy();
+    // 更新报名状态为已取消，减少团课参与人数
+    registration.registration_status = 2; // 已取消
+    registration.cancelled_at = new Date();
+    registration.cancelled_by = studentId;
+    await registration.save();
+    
+    await registration.groupCourse.decreaseParticipants(1);
     
     logger.info(`学员 ${studentId} 取消团课 ${groupCourseId} 报名（真删除）`);
     return ResponseUtil.success(res, null, '取消报名成功');

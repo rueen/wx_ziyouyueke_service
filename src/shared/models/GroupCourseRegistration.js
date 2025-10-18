@@ -37,7 +37,7 @@ const GroupCourseRegistration = sequelize.define('group_course_registrations', {
     type: DataTypes.TINYINT(1),
     allowNull: false,
     defaultValue: 1,
-    comment: '报名状态：1-待确认，2-已确认，3-已完成，4-已取消，5-已拒绝'
+    comment: '报名状态：1-已报名，2-已取消'
   },
   
   // 支付信息
@@ -90,11 +90,6 @@ const GroupCourseRegistration = sequelize.define('group_course_registrations', {
     defaultValue: DataTypes.NOW,
     comment: '报名时间'
   },
-  confirmed_at: {
-    type: DataTypes.DATE,
-    allowNull: true,
-    comment: '确认时间'
-  },
   cancelled_at: {
     type: DataTypes.DATE,
     allowNull: true,
@@ -131,23 +126,8 @@ const GroupCourseRegistration = sequelize.define('group_course_registrations', {
 });
 
 /**
- * 实例方法：确认报名
+ * 实例方法：取消报名（简化版本）
  */
-GroupCourseRegistration.prototype.confirm = async function() {
-  this.registration_status = 2; // 已确认
-  this.confirmed_at = new Date();
-  return await this.save();
-};
-
-/**
- * 实例方法：拒绝报名
- */
-GroupCourseRegistration.prototype.reject = async function(reason) {
-  this.registration_status = 5; // 已拒绝
-  this.cancel_reason = reason;
-  this.cancelled_at = new Date();
-  return await this.save();
-};
 
 /**
  * 实例方法：取消报名
@@ -157,14 +137,14 @@ GroupCourseRegistration.prototype.cancel = async function(reason, operatorId) {
   
   try {
     // 1. 更新报名状态
-    this.registration_status = 4; // 已取消
+    this.registration_status = 2; // 已取消
     this.cancelled_at = new Date();
     this.cancel_reason = reason;
     this.cancelled_by = operatorId;
     await this.save({ transaction });
     
-    // 2. 减少团课参与人数（如果之前已确认）
-    if (this.registration_status === 2) {
+    // 2. 减少团课参与人数（如果之前已报名）
+    if (this.registration_status === 1) {
       const GroupCourse = this.sequelize.models.group_courses;
       const groupCourse = await GroupCourse.findByPk(this.group_course_id);
       if (groupCourse) {
@@ -205,11 +185,11 @@ GroupCourseRegistration.prototype.checkIn = async function(operatorId) {
       }
     }
     
-    // 更新签到状态
+    // 更新签到状态（签到即完成，但报名状态保持为已报名）
     this.check_in_status = 1; // 已签到
     this.check_in_time = new Date();
     this.checked_in_by = operatorId;
-    this.registration_status = 3; // 已完成
+    // registration_status 保持为 1（已报名），不再更改
     
     await this.save({ transaction });
     await transaction.commit();

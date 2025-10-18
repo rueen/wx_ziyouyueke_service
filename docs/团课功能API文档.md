@@ -29,7 +29,6 @@
 | lesson_cost | INT | 扣除课时数 |
 | price_amount | DECIMAL(10,2) | 费用金额 |
 | enrollment_scope | TINYINT | 报名范围：1-仅学员，2-所有人 |
-| auto_confirm | TINYINT | 是否自动确认：0-需审核，1-自动确认 |
 | status | TINYINT | 课程状态：0-待发布，1-报名中，2-已结束 |
 
 ### 团课报名表 (group_course_registrations)
@@ -41,7 +40,7 @@
 | student_id | BIGINT | 学员ID |
 | coach_id | BIGINT | 教练ID（冗余字段） |
 | relation_id | BIGINT | 师生关系ID（可选） |
-| registration_status | TINYINT | 报名状态：1-待确认，2-已确认，3-已完成，4-已取消，5-已拒绝 |
+| registration_status | TINYINT | 报名状态：1-已报名，2-已取消 |
 | payment_type | TINYINT | 支付方式：1-课时，2-金额，3-免费 |
 | lesson_deducted | INT | 已扣除的课时数 |
 | amount_paid | DECIMAL(10,2) | 支付金额 |
@@ -82,8 +81,7 @@ Content-Type: application/json
   "price_type": 1,                     // 收费方式，默认1
   "lesson_cost": 1,                    // 扣除课时数，默认1
   "price_amount": 0,                   // 费用金额，默认0
-  "enrollment_scope": 1,               // 报名范围，默认1
-  "auto_confirm": 1                    // 是否自动确认，默认1
+  "enrollment_scope": 1                // 报名范围，默认1
 }
 ```
 
@@ -602,8 +600,8 @@ Content-Type: application/json
 
 1. **权限检查**：根据 `enrollment_scope` 检查报名权限
 2. **课时验证**：扣课时类型需验证可用课时是否足够
-3. **自动确认**：根据 `auto_confirm` 决定是否自动确认报名
-4. **人数管理**：确认报名时增加 `current_participants`
+3. **即时确认**：用户报名即确认，无需审核流程
+4. **人数管理**：报名时立即增加 `current_participants`
 5. **简化逻辑**：课程创建后立即可报名，无时间限制
 
 ### 签到流程
@@ -648,11 +646,8 @@ Content-Type: application/json
 - `"已取消"`: 其他已结束情况
 
 ### 报名记录状态 (registration_status)
-- 1: 待确认
-- 2: 已确认
-- 3: 已完成
-- 4: 已取消
-- 5: 已拒绝
+- 1: 已报名
+- 2: 已取消
 
 ### 签到状态 (check_in_status)
 - 0: 未签到
