@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-10-09 19:16:44
  * @LastEditors: diaochan
- * @LastEditTime: 2025-10-18 19:15:00
+ * @LastEditTime: 2025-10-18 19:43:03
  * @Description: 
  */
 const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation } = require('../../shared/models');
@@ -453,7 +453,8 @@ class GroupCourseController {
       const relation = await StudentCoachRelation.findOne({
         where: {
           student_id: studentId,
-          coach_id: course.coach_id
+          coach_id: course.coach_id,
+          relation_status: 1 // 只查找有效的师生关系
         }
       });
 
@@ -467,7 +468,7 @@ class GroupCourseController {
       if (course.price_type === 1) {
         const availableLessons = await relation.getAvailableLessons(course.category_id);
         if (availableLessons < course.lesson_cost) {
-          return ResponseUtil.validationError(res, '该分类可用课时不足，无法报名团课');
+          return ResponseUtil.validationError(res, '课程分类可用课时不足，无法报名');
         }
       }
     }
