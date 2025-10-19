@@ -547,7 +547,7 @@ class GroupCourseController {
    */
   static getMyRegistrations = asyncHandler(async (req, res) => {
     const studentId = req.user.id;
-    const { page = 1, limit = 10, check_in_status } = req.query;
+    const { page = 1, limit = 10, check_in_status, id } = req.query;
 
     const offset = (page - 1) * limit;
     const where = { 
@@ -560,6 +560,11 @@ class GroupCourseController {
       // 支持逗号分隔的字符串格式，如 "1,2"
       const statusArray = check_in_status.split(',').map(s => parseInt(s.trim()));
       where.check_in_status = statusArray;
+    }
+
+    // 支持根据ID筛选
+    if (id) {
+      where.id = parseInt(id);
     }
 
     const { rows: registrations, count: total } = await GroupCourseRegistration.findAndCountAll({
