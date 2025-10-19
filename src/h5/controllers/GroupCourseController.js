@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-10-09 19:16:44
  * @LastEditors: diaochan
- * @LastEditTime: 2025-10-18 19:43:03
+ * @LastEditTime: 2025-10-19 16:06:36
  * @Description: 
  */
 const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation } = require('../../shared/models');
@@ -547,13 +547,20 @@ class GroupCourseController {
    */
   static getMyRegistrations = asyncHandler(async (req, res) => {
     const studentId = req.user.id;
-    const { page = 1, limit = 10, status } = req.query;
+    const { page = 1, limit = 10, check_in_status } = req.query;
 
     const offset = (page - 1) * limit;
     const where = { 
       student_id: studentId,
-      registration_status: status || 1 // 默认只显示已报名，支持按状态筛选
+      registration_status: 1 // 只显示已报名的记录
     };
+
+    // 支持 check_in_status 筛选，支持字符串格式
+    if (check_in_status) {
+      // 支持逗号分隔的字符串格式，如 "1,2"
+      const statusArray = check_in_status.split(',').map(s => parseInt(s.trim()));
+      where.check_in_status = statusArray;
+    }
 
     const { rows: registrations, count: total } = await GroupCourseRegistration.findAndCountAll({
       where,
@@ -581,13 +588,11 @@ class GroupCourseController {
     });
 
     return ResponseUtil.success(res, {
-      registrations,
-      pagination: {
-        current_page: parseInt(page),
-        per_page: parseInt(limit),
-        total,
-        total_pages: Math.ceil(total / limit)
-      }
+      list: registrations,
+      page: parseInt(page),
+      pageSize: parseInt(limit),
+      total,
+      totalPages: Math.ceil(total / limit)
     });
   });
 

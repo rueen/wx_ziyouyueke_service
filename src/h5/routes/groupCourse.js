@@ -62,7 +62,27 @@ const paginationValidation = [
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须是1-100之间的整数')
 ];
 
+/**
+ * 我的团课报名列表验证
+ */
+const myRegistrationsValidation = [
+  query('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须是1-100之间的整数'),
+  query('check_in_status').optional() // 非必填参数，不限制具体值
+];
+
 // ==================== 团课管理接口 ====================
+
+/**
+ * 获取我的团课报名列表（学员视角）
+ * GET /api/h5/group-courses/my-registrations
+ */
+router.get('/my-registrations', 
+  authenticateToken, 
+  myRegistrationsValidation, 
+  validateRequest, 
+  GroupCourseController.getMyRegistrations
+);
 
 /**
  * 创建团课
@@ -163,17 +183,6 @@ router.delete('/:id/register',
   idParamValidation, 
   validateRequest, 
   GroupCourseController.cancelRegistration
-);
-
-/**
- * 获取我的团课报名列表（学员视角）
- * GET /api/h5/group-courses/my-registrations
- */
-router.get('/my-registrations', 
-  authenticateToken, 
-  paginationValidation, 
-  validateRequest, 
-  GroupCourseController.getMyRegistrations
 );
 
 /**
