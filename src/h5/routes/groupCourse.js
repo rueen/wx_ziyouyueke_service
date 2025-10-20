@@ -68,8 +68,8 @@ const paginationValidation = [
 const myRegistrationsValidation = [
   query('page').optional().isInt({ min: 1 }).withMessage('页码必须是正整数'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('每页数量必须是1-100之间的整数'),
-  query('check_in_status').optional(), // 非必填参数，不限制具体值
-  query('id').optional().isInt({ min: 1 }).withMessage('ID必须是正整数')
+  query('id').optional().isInt({ min: 1 }).withMessage('ID必须是正整数'),
+  query('status').optional().isIn(['0', '1']).withMessage('状态必须是0或1')
 ];
 
 // ==================== 团课管理接口 ====================

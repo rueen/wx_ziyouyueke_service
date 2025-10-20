@@ -6,10 +6,10 @@
  * @Description: 
  */
 const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation } = require('../../shared/models');
+const { Op } = require('sequelize');
 const ResponseUtil = require('../../shared/utils/response');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const logger = require('../../shared/utils/logger');
-const { Op } = require('sequelize');
 
 /**
  * 团课控制器
@@ -560,7 +560,7 @@ class GroupCourseController {
    */
   static getMyRegistrations = asyncHandler(async (req, res) => {
     const studentId = req.user.id;
-    const { page = 1, limit = 10, check_in_status, id } = req.query;
+    const { page = 1, limit = 10, status, id } = req.query;
 
     const offset = (page - 1) * limit;
     const where = { 
@@ -568,16 +568,28 @@ class GroupCourseController {
       registration_status: 1 // 只显示已报名的记录
     };
 
-    // 支持 check_in_status 筛选，支持字符串格式
-    if (check_in_status) {
-      // 支持逗号分隔的字符串格式，如 "1,2"
-      const statusArray = check_in_status.split(',').map(s => parseInt(s.trim()));
-      where.check_in_status = statusArray;
-    }
-
     // 支持根据ID筛选
     if (id) {
       where.id = parseInt(id);
+    }
+
+    // 构建团课状态筛选条件
+    const groupCourseWhere = {};
+    if (status) {
+      const statusValue = parseInt(status);
+      if (statusValue === 0) {
+        // 0 进行中：课程状态为1 并且 签到状态为0
+        groupCourseWhere.status = 1;
+        where.check_in_status = 0;
+      } else if (statusValue === 1) {
+        // 1 已结束：课程状态为2 或者 (课程状态为1 但是 签到状态为1或2)
+        groupCourseWhere.status = { [Op.or]: [2, 1] };
+        // 如果课程状态为1，则签到状态必须为1或2
+        where[Op.or] = [
+          { check_in_status: { [Op.in]: [1, 2] } },
+          { '$groupCourse.status$': 2 }
+        ];
+      }
     }
 
     const { rows: registrations, count: total } = await GroupCourseRegistration.findAndCountAll({
@@ -586,6 +598,7 @@ class GroupCourseController {
         {
           model: GroupCourse,
           as: 'groupCourse',
+          where: groupCourseWhere,
           include: [
             {
               model: User,
