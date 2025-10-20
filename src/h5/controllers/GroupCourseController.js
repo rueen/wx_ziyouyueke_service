@@ -193,6 +193,8 @@ class GroupCourseController {
           model: GroupCourseRegistration,
           as: 'registrations',
           required: false,
+          separate: true,
+          order: [['created_at', 'DESC']],
           include: [{
             model: User,
             as: 'student',
@@ -245,6 +247,8 @@ class GroupCourseController {
           as: 'registrations',
           where: { registration_status: 1 }, // 有效报名（已报名）
           required: false,
+          separate: true,
+          order: [['created_at', 'DESC']],
           include: [{
             model: User,
             as: 'student',
@@ -665,7 +669,7 @@ class GroupCourseController {
           attributes: ['id', 'student_remark', 'coach_remark']
         }
       ],
-      order: [['created_at', 'ASC']],
+      order: [['created_at', 'DESC']],
       limit: parseInt(limit),
       offset
     });
