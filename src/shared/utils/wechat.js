@@ -165,24 +165,45 @@ class WeChatUtil {
   }
 
   /**
-   * 获取小程序二维码
-   * @param {string} scene - 场景值
-   * @param {string} page - 页面路径
-   * @param {number} width - 二维码宽度
-   * @returns {Promise<Buffer>} 二维码图片数据
+   * 获取不限制的小程序码
+   * @param {Object} options - 配置选项
+   * @param {string} options.scene - 场景值，最大32个可见字符
+   * @param {string} options.page - 页面路径，默认为主页
+   * @param {boolean} options.check_path - 是否检查page路径，默认true
+   * @param {string} options.env_version - 版本，release/trial/develop，默认release
+   * @param {number} options.width - 二维码宽度，280-1280px，默认430
+   * @param {boolean} options.auto_color - 自动配置线条颜色，默认false
+   * @param {Object} options.line_color - 线条颜色，默认黑色
+   * @param {boolean} options.is_hyaline - 是否透明底色，默认false
+   * @returns {Promise<Buffer>} 小程序码图片数据
    */
-  async getQRCode(scene, page = 'pages/index/index', width = 430) {
+  async getUnlimitedQRCode(options = {}) {
     try {
       const accessToken = await this.getAccessToken();
       const url = `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`;
 
+      // 参数验证
+      if (!options.scene) {
+        throw new WeChatError('scene参数不能为空');
+      }
+
+      if (options.scene.length > 32) {
+        throw new WeChatError('scene参数最大32个字符');
+      }
+
+      // 构建请求参数
       const requestData = {
-        scene: scene,
-        page: page,
-        width: width,
-        auto_color: false,
-        line_color: { r: 0, g: 0, b: 0 }
+        scene: options.scene,
+        page: options.page || 'pages/index/index',
+        check_path: false,// options.check_path !== false,
+        env_version: options.env_version || 'release',
+        width: Math.min(Math.max(options.width || 430, 280), 1280),
+        auto_color: options.auto_color || false,
+        line_color: options.line_color || { r: 0, g: 0, b: 0 },
+        is_hyaline: options.is_hyaline || false
       };
+
+      logger.debug('生成小程序码请求参数:', requestData);
 
       const response = await axios.post(url, requestData, {
         responseType: 'arraybuffer'
@@ -192,15 +213,46 @@ class WeChatUtil {
       const contentType = response.headers['content-type'];
       if (contentType && contentType.includes('application/json')) {
         const errorData = JSON.parse(response.data.toString());
-        throw new WeChatError(`生成二维码失败: ${errorData.errmsg}`);
+        
+        // 根据错误码提供更详细的错误信息
+        let errorMessage = `生成小程序码失败: ${errorData.errmsg}`;
+        switch (errorData.errcode) {
+          case 40001:
+            errorMessage = '生成小程序码失败: access_token无效或已过期';
+            break;
+          case 40129:
+            errorMessage = '生成小程序码失败: scene参数格式错误，只支持数字、大小写英文及部分特殊字符';
+            break;
+          case 41030:
+            errorMessage = '生成小程序码失败: page路径不正确，请检查页面路径是否存在';
+            break;
+          case 85096:
+            errorMessage = '生成小程序码失败: scancode_time为系统保留参数，不允许配置';
+            break;
+          case 40097:
+            errorMessage = '生成小程序码失败: 参数错误';
+            break;
+          case 40169:
+            errorMessage = '生成小程序码失败: scene参数不合法';
+            break;
+        }
+        
+        throw new WeChatError(errorMessage);
       }
 
+      logger.info('生成小程序码成功:', { scene: options.scene, page: options.page });
       return Buffer.from(response.data);
     } catch (error) {
-      logger.error('生成小程序二维码失败:', error);
-      throw new WeChatError('生成二维码失败');
+      logger.error('生成小程序码失败:', error);
+      
+      if (error instanceof WeChatError) {
+        throw error;
+      }
+      
+      throw new WeChatError('生成小程序码服务暂时不可用');
     }
   }
+
 
   /**
    * 解密微信手机号

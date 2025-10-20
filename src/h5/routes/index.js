@@ -17,6 +17,7 @@ const timeTemplateRoutes = require('./timeTemplate');
 const addressRoutes = require('./address');
 const categoryRoutes = require('./category');
 const groupCourseRoutes = require('./groupCourse');
+const qrcodeRoutes = require('./qrcode');
 
 /**
  * H5端路由配置
@@ -56,5 +57,8 @@ router.use('/categories', categoryRoutes);
 
 // 团课相关路由
 router.use('/group-courses', groupCourseRoutes);
+
+// 小程序码相关路由
+router.use('/qrcode', qrcodeRoutes);
 
 module.exports = router;
