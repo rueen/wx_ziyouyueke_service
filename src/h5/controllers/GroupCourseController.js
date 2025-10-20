@@ -363,6 +363,19 @@ class GroupCourseController {
       return ResponseUtil.validationError(res, '只能取消报名中的团课');
     }
 
+    // 检查是否已有签到记录
+    const checkedInCount = await GroupCourseRegistration.count({
+      where: {
+        group_course_id: id,
+        registration_status: 1, // 已报名
+        check_in_status: 1      // 已签到
+      }
+    });
+
+    if (checkedInCount > 0) {
+      return ResponseUtil.validationError(res, '已有学员签到，无法取消团课');
+    }
+
     await course.cancelCourse(cancel_reason);
     
     logger.info(`教练 ${coachId} 取消团课 ${id}，原因: ${cancel_reason}`);
