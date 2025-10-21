@@ -6,6 +6,13 @@
  * @Description: 创建团课报名表
  */
 
+// 加载环境变量
+try {
+  require('dotenv').config();
+} catch (error) {
+  console.log('dotenv 模块未安装或 .env 文件不存在，使用默认配置');
+}
+
 const { sequelize } = require('../src/shared/models');
 
 async function createGroupCourseRegistrationsTable() {

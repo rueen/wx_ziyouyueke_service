@@ -5,6 +5,14 @@
  * @LastEditTime: 2025-07-08 15:22:30
  * @Description: 
  */
+
+// 加载环境变量
+try {
+  require('dotenv').config();
+} catch (error) {
+  console.log('dotenv 模块未安装或 .env 文件不存在，使用默认配置');
+}
+
 /**
  * 运行所有迁移脚本
  */
