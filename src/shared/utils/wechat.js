@@ -195,7 +195,7 @@ class WeChatUtil {
       const requestData = {
         scene: options.scene,
         page: options.page || 'pages/index/index',
-        check_path: false,// options.check_path !== false,
+        check_path: options.check_path !== false,
         env_version: options.env_version || 'release',
         width: Math.min(Math.max(options.width || 430, 280), 1280),
         auto_color: options.auto_color || false,
