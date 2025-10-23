@@ -69,6 +69,7 @@ class RelationController {
         await existingRelation.update({
           relation_status: 1,
           lessons: lessons,
+          student_name: existingRelation.student_name || student.nickname, // 如果没有student_name则使用nickname
           student_remark: student_remark || existingRelation.student_remark
         });
         
@@ -95,6 +96,7 @@ class RelationController {
     const relation = await StudentCoachRelation.create({
       student_id: finalStudentId,
       coach_id: finalCoachId,
+      student_name: student.nickname, // 默认使用学员的nickname
       lessons: lessons,
       student_remark,
       relation_status: 1
@@ -133,7 +135,7 @@ class RelationController {
   static updateRelation = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
-    const { coach_remark, student_remark, category_lessons, remaining_lessons } = req.body;
+    const { coach_remark, student_remark, category_lessons, remaining_lessons, student_name } = req.body;
 
     try {
       const relation = await StudentCoachRelation.findOne({
@@ -154,8 +156,9 @@ class RelationController {
 
       // 根据用户角色确定可以更新的字段
       if (relation.coach_id === userId) {
-        // 教练可以更新教练备注和分类课时
+        // 教练可以更新教练备注、学员姓名和分类课时
         if (coach_remark !== undefined) updateData.coach_remark = coach_remark;
+        if (student_name !== undefined) updateData.student_name = student_name;
         
         // 处理分类课时更新
         if (category_lessons && Array.isArray(category_lessons)) {
@@ -405,7 +408,7 @@ class RelationController {
           relation_status: 1
         },
         attributes: [
-          'id', 'student_id', 'coach_id', 'lessons',
+          'id', 'student_id', 'coach_id', 'student_name', 'lessons',
           'student_remark', 'coach_remark', 'relation_status', 
           'createdAt', 'updatedAt'
         ],
@@ -413,7 +416,7 @@ class RelationController {
           {
             model: User,
             as: 'student',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone']
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro']
           }
         ],
         order: [['createdAt', 'DESC']],
@@ -594,7 +597,7 @@ class RelationController {
           relation_status: 1
         },
         attributes: [
-          'id', 'student_id', 'coach_id', 'lessons',
+          'id', 'student_id', 'coach_id', 'student_name', 'lessons',
           'student_remark', 'coach_remark', 'relation_status', 
           'createdAt', 'updatedAt'
         ],
@@ -602,7 +605,7 @@ class RelationController {
           {
             model: User,
             as: 'student',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone']
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro']
           }
         ]
       });

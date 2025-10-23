@@ -21,6 +21,11 @@ const StudentCoachRelation = sequelize.define('student_coach_relations', {
     allowNull: false,
     comment: '教练ID'
   },
+  student_name: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '学员姓名（教练可维护）'
+  },
   lessons: {
     type: DataTypes.JSON,
     allowNull: false,
