@@ -21,6 +21,7 @@ class UserController {
         where: { id: id },
         attributes: [
           'id', 'nickname', 'avatar_url', 'phone', 'gender', 'intro', 
+          'certification', 'motto', 'poster_image',
           'register_time', 'last_login_time'
           // 注意：移除了 openid 等敏感字段，保护用户隐私
         ]
@@ -58,6 +59,9 @@ class UserController {
       phone: user.phone,
       gender: user.gender,
       intro: user.intro,
+      certification: user.certification,
+      motto: user.motto,
+      poster_image: user.poster_image,
       register_time: user.register_time,
       last_login_time: user.last_login_time,
       status: user.status
@@ -70,7 +74,7 @@ class UserController {
    */
   static updateProfile = asyncHandler(async (req, res) => {
     const user = req.user;
-    const { nickname, phone, gender, intro, avatar_url } = req.body;
+    const { nickname, phone, gender, intro, avatar_url, certification, motto, poster_image } = req.body;
 
     // 准备更新数据
     const updateData = {};
@@ -79,6 +83,9 @@ class UserController {
     if (gender !== undefined) updateData.gender = gender;
     if (intro !== undefined) updateData.intro = intro;
     if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
+    if (certification !== undefined) updateData.certification = certification;
+    if (motto !== undefined) updateData.motto = motto;
+    if (poster_image !== undefined) updateData.poster_image = poster_image;
 
     // 检查手机号是否已被其他用户使用
     if (phone && phone !== user.phone) {
@@ -103,6 +110,9 @@ class UserController {
       phone: user.phone,
       gender: user.gender,
       intro: user.intro,
+      certification: user.certification,
+      motto: user.motto,
+      poster_image: user.poster_image,
       register_time: user.register_time,
       last_login_time: user.last_login_time,
       status: user.status

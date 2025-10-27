@@ -50,7 +50,7 @@ class UploadController {
       const directory = req.body.directory || 'images';
       
       // 验证目录参数安全性
-      const allowedDirectories = ['images', 'avatar', 'groupCourse'];
+      const allowedDirectories = ['images', 'avatar', 'groupCourse', 'poster'];
       if (!allowedDirectories.includes(directory)) {
         return ResponseUtil.validationError(res, '不支持的上传目录');
       }

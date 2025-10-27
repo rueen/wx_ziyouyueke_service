@@ -55,6 +55,21 @@ const User = sequelize.define('users', {
     allowNull: true,
     comment: '个人介绍'
   },
+  certification: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '专业认证（如：国际健身教练认证、瑜伽教练资格证等）'
+  },
+  motto: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+    comment: '格言/座右铭'
+  },
+  poster_image: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: '海报图片URL'
+  },
   register_time: {
     type: DataTypes.DATE,
     allowNull: false,

@@ -112,7 +112,8 @@ class UserController {
       const user = await User.findByPk(id, {
         attributes: [
           'id', 'openid', 'unionid', 'nickname', 'avatar_url', 
-          'phone', 'gender', 'intro', 'register_time', 
+          'phone', 'gender', 'intro', 'certification', 'motto', 
+          'poster_image', 'register_time', 
           'last_login_time', 'status'
         ]
       });
@@ -132,6 +133,9 @@ class UserController {
         gender: user.gender === 1 ? '男' : user.gender === 2 ? '女' : '未知',
         gender_value: user.gender,
         intro: user.intro || '暂无介绍',
+        certification: user.certification || '暂无认证',
+        motto: user.motto || '暂无格言',
+        poster_image: user.poster_image,
         register_time: user.register_time,
         last_login_time: user.last_login_time,
         status: user.status,

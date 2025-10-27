@@ -119,7 +119,7 @@ class RelationController {
         {
           model: User,
           as: 'coach',
-          attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro']
+          attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image']
         }
       ]
     });
@@ -292,7 +292,7 @@ class RelationController {
           {
             model: User,
             as: 'coach',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'gender', 'course_categories']
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image', 'gender', 'course_categories']
           }
         ],
         order: [['createdAt', 'DESC']],
@@ -416,7 +416,7 @@ class RelationController {
           {
             model: User,
             as: 'student',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro']
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image']
           }
         ],
         order: [['createdAt', 'DESC']],
@@ -496,7 +496,7 @@ class RelationController {
           {
             model: User,
             as: 'coach',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'gender', 'course_categories']
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image', 'gender', 'course_categories']
           }
         ]
       });
@@ -605,7 +605,7 @@ class RelationController {
           {
             model: User,
             as: 'student',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro']
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image']
           }
         ]
       });

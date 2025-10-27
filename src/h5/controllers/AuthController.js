@@ -148,6 +148,9 @@ class AuthController {
         phone: user.phone,
         gender: user.gender,
         intro: user.intro,
+        certification: user.certification,
+        motto: user.motto,
+        poster_image: user.poster_image,
         register_time: user.register_time,
         last_login_time: user.last_login_time
       },
@@ -203,7 +206,10 @@ class AuthController {
         avatar_url: user.avatar_url,
         phone: user.phone,
         gender: user.gender,
-        intro: user.intro
+        intro: user.intro,
+        certification: user.certification,
+        motto: user.motto,
+        poster_image: user.poster_image
       }
     }, 'Token有效');
   });

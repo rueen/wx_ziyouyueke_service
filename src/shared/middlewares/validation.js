@@ -72,7 +72,27 @@ const updateProfileValidation = [
       return true;
     })
     .isLength({ max: 500 })
-    .withMessage('头像URL长度不能超过500个字符')
+    .withMessage('头像URL长度不能超过500个字符'),
+  body('certification')
+    .optional()
+    .isLength({ max: 1000 })
+    .withMessage('专业认证不能超过1000个字符'),
+  body('motto')
+    .optional()
+    .isLength({ max: 200 })
+    .withMessage('格言不能超过200个字符'),
+  body('poster_image')
+    .optional()
+    .custom((value) => {
+      // 自定义URL验证，支持localhost和开发环境
+      const urlRegex = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$|^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:[0-9]+)?(\/.*)?$/;
+      if (!urlRegex.test(value)) {
+        throw new Error('海报图片URL格式不正确');
+      }
+      return true;
+    })
+    .isLength({ max: 500 })
+    .withMessage('海报图片URL长度不能超过500个字符')
 ];
 
 /**

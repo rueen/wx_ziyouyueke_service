@@ -335,7 +335,7 @@ class CourseController {
           {
             model: User,
             as: 'coach',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'gender', 'intro', 'course_categories']
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'gender', 'intro', 'certification', 'motto', 'poster_image', 'course_categories']
           },
           {
             model: Address,
