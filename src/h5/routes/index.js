@@ -11,6 +11,7 @@ const router = express.Router();
 // 引入子路由
 const authRoutes = require('./auth');
 const userRoutes = require('./user');
+const coachRoutes = require('./coach');
 const relationRoutes = require('./relation');
 const courseRoutes = require('./course');
 const timeTemplateRoutes = require('./timeTemplate');
@@ -38,6 +39,9 @@ router.use('/auth', authRoutes);
 
 // 用户相关路由
 router.use('/user', userRoutes);
+
+// 教练相关路由
+router.use('/coaches', coachRoutes);
 
 // 师生关系路由
 router.use('/relations', relationRoutes);
