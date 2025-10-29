@@ -64,7 +64,8 @@ class UserController {
       poster_image: user.poster_image,
       register_time: user.register_time,
       last_login_time: user.last_login_time,
-      status: user.status
+      status: user.status,
+      is_show: user.is_show
     }, '获取用户信息成功');
   });
 
@@ -74,7 +75,7 @@ class UserController {
    */
   static updateProfile = asyncHandler(async (req, res) => {
     const user = req.user;
-    const { nickname, phone, gender, intro, avatar_url, certification, motto, poster_image } = req.body;
+    const { nickname, phone, gender, intro, avatar_url, certification, motto, poster_image, is_show } = req.body;
 
     // 准备更新数据
     const updateData = {};
@@ -86,6 +87,7 @@ class UserController {
     if (certification !== undefined) updateData.certification = certification;
     if (motto !== undefined) updateData.motto = motto;
     if (poster_image !== undefined) updateData.poster_image = poster_image;
+    if (is_show !== undefined) updateData.is_show = is_show;
 
     // 检查手机号是否已被其他用户使用
     if (phone && phone !== user.phone) {
@@ -115,7 +117,8 @@ class UserController {
       poster_image: user.poster_image,
       register_time: user.register_time,
       last_login_time: user.last_login_time,
-      status: user.status
+      status: user.status,
+      is_show: user.is_show
     }, '用户信息更新成功');
   });
 

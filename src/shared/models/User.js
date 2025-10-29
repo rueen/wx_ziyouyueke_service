@@ -87,6 +87,12 @@ const User = sequelize.define('users', {
     defaultValue: 1,
     comment: '账户状态：0-禁用，1-正常'
   },
+  is_show: {
+    type: DataTypes.TINYINT(1),
+    allowNull: false,
+    defaultValue: 1,
+    comment: '是否在教练大厅展示：0-否，1-是'
+  },
   course_categories: {
     type: DataTypes.JSON,
     allowNull: false,
