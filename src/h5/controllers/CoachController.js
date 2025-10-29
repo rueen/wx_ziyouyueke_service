@@ -15,20 +15,23 @@ class CoachController {
    */
   static getCoaches = asyncHandler(async (req, res) => {
     try {
-      const { page = 1, limit = 10 } = req.query;
+      const { page = 1, limit = 10, keyword = '' } = req.query;
       const pageNum = Math.max(parseInt(page) || 1, 1);
       const pageSize = Math.max(parseInt(limit) || 10, 1);
 
+      // 构建基础查询条件
+      const whereConditions = {
+        is_show: 1,
+        phone: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
+        [Op.or]: [
+          { intro: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } },
+          { certification: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } }
+        ]
+      };
+
       // 查询符合条件的用户
       const users = await User.findAll({
-        where: {
-          is_show: 1,
-          phone: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
-          [Op.or]: [
-            { intro: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } },
-            { certification: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } }
-          ]
-        },
+        where: whereConditions,
         attributes: [
           'id', 'nickname', 'avatar_url', 'phone', 'gender', 'intro',
           'certification', 'motto', 'poster_image', 'course_categories',
@@ -38,10 +41,32 @@ class CoachController {
       });
 
       // 过滤出教练：有多个分类，或只有1个但name不为"默认"
-      const coaches = users.filter(user => {
+      let coaches = users.filter(user => {
         const categories = user.course_categories || [];
         return categories.length > 1 || (categories.length === 1 && categories[0].name !== '默认');
       });
+
+      // 如果有关键词，在所有字段中搜索（包括 course_categories.name）
+      if (keyword && keyword.trim()) {
+        const keywordLower = keyword.trim().toLowerCase();
+        const keywordTrim = keyword.trim();
+        coaches = coaches.filter(user => {
+          // 检查数据库字段：nickname, certification, intro, phone
+          const matchesDBFields = 
+            (user.nickname && user.nickname.toLowerCase().includes(keywordLower)) ||
+            (user.certification && user.certification.toLowerCase().includes(keywordLower)) ||
+            (user.intro && user.intro.toLowerCase().includes(keywordLower)) ||
+            (user.phone && user.phone.includes(keywordTrim));
+          
+          // 检查 course_categories.name（JSON 字段）
+          const categories = user.course_categories || [];
+          const matchesCategories = categories.some(cat => 
+            cat.name && cat.name.toLowerCase().includes(keywordLower)
+          );
+          
+          return matchesDBFields || matchesCategories;
+        });
+      }
 
       // 获取每个教练的统计信息
       const coachesWithStats = await Promise.all(coaches.map(async (coach) => {
