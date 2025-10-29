@@ -29,21 +29,42 @@ class CoachController {
         ]
       };
 
-      // 查询符合条件的用户
-      const users = await User.findAll({
-        where: whereConditions,
-        attributes: [
-          'id', 'nickname', 'avatar_url', 'phone', 'gender', 'intro',
-          'certification', 'motto', 'poster_image', 'course_categories',
-          'register_time', 'last_login_time', 'updatedAt'
-        ],
-        order: [['updatedAt', 'DESC']]
-      });
+      // 查询符合条件的用户和已绑定学员的教练ID列表（并行查询以提高性能）
+      const [users, coachesWithStudents] = await Promise.all([
+        User.findAll({
+          where: whereConditions,
+          attributes: [
+            'id', 'nickname', 'avatar_url', 'phone', 'gender', 'intro',
+            'certification', 'motto', 'poster_image', 'course_categories',
+            'register_time', 'last_login_time', 'updatedAt'
+          ],
+          order: [['updatedAt', 'DESC']]
+        }),
+        StudentCoachRelation.findAll({
+          where: { relation_status: 1 },
+          attributes: ['coach_id'],
+          group: ['coach_id'],
+          raw: true
+        })
+      ]);
 
-      // 过滤出教练：有多个分类，或只有1个但name不为"默认"
+      // 获取有学员关系的教练ID集合
+      const coachIdsWithStudents = new Set(coachesWithStudents.map(r => r.coach_id));
+
+      // 过滤出教练：满足以下任一条件即为教练
+      // 1. 有多个课程分类
+      // 2. 只有1个课程分类但name不为"默认"
+      // 3. 学员_教练关系表中存在已绑定的学员
       let coaches = users.filter(user => {
+        // 条件1和2：检查课程分类
         const categories = user.course_categories || [];
-        return categories.length > 1 || (categories.length === 1 && categories[0].name !== '默认');
+        const matchesCategories = categories.length > 1 || 
+          (categories.length === 1 && categories[0].name !== '默认');
+        
+        // 条件3：检查是否有绑定学员
+        const hasStudents = coachIdsWithStudents.has(user.id);
+        
+        return matchesCategories || hasStudents;
       });
 
       // 如果有关键词，在所有字段中搜索（包括 course_categories.name）
