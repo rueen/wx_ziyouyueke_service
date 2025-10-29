@@ -50,9 +50,7 @@ const updateProfileValidation = [
     .isLength({ min: 1, max: 100 })
     .withMessage('昵称长度必须在1-100个字符之间'),
   body('phone')
-    .optional()
-    .isMobilePhone('zh-CN')
-    .withMessage('手机号格式不正确'),
+    .optional(),
   body('gender')
     .optional()
     .isIn([0, 1, 2])
