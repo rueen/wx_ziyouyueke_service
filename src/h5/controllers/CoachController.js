@@ -21,7 +21,8 @@ class CoachController {
 
       // 构建基础查询条件
       const whereConditions = {
-        is_show: 1
+        is_show: 1,
+        nickname: { [Op.ne]: '微信用户' }
       };
 
       // 查询符合条件的用户和已绑定学员的教练ID列表（并行查询以提高性能）
