@@ -21,7 +21,7 @@ class UserController {
         where: { id: id },
         attributes: [
           'id', 'nickname', 'avatar_url', 'phone', 'gender', 'intro', 
-          'certification', 'motto', 'poster_image',
+          'certification', 'motto', 'poster_image', 'course_categories',
           'register_time', 'last_login_time'
           // 注意：移除了 openid 等敏感字段，保护用户隐私
         ]
