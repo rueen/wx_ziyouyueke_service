@@ -255,4 +255,56 @@ GroupCourse.prototype.getEndReason = function() {
   }
 };
 
+/**
+ * 类方法：自动取消人数不足的团课
+ * 检查所有报名中状态、开始时间在1小时内的团课，如果报名人数低于最小开课人数则自动取消
+ */
+GroupCourse.autoCancelInsufficientParticipants = async function() {
+  const { Op } = require('sequelize');
+  const now = new Date();
+  const checkTime = new Date(now.getTime() + 1 * 60 * 60 * 1000); // 1小时后
+  
+  try {
+    // 查询所有报名中的团课
+    const courses = await this.findAll({
+      where: {
+        status: 1 // 报名中
+      }
+    });
+
+    let cancelledCount = 0;
+
+    for (const course of courses) {
+      // 检查人数是否不足
+      if (course.current_participants < course.min_participants) {
+        // 构建团课开始时间
+        const courseStartTime = new Date(`${course.course_date}T${course.start_time}`);
+        
+        // 检查是否在1小时内开始（已开始的不处理，只处理未来1小时内的）
+        if (courseStartTime > now && courseStartTime <= checkTime) {
+          await course.cancelCourse('人数不足取消');
+          cancelledCount++;
+        }
+      }
+    }
+
+    if (cancelledCount > 0) {
+      console.log(`自动取消了 ${cancelledCount} 个人数不足的团课`);
+    }
+
+    return {
+      success: true,
+      cancelledCount: cancelledCount,
+      message: `成功自动取消 ${cancelledCount} 个人数不足的团课`
+    };
+
+  } catch (error) {
+    console.error('自动取消人数不足团课失败:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
 module.exports = GroupCourse;
