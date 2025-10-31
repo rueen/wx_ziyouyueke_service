@@ -11,7 +11,7 @@ class CoachController {
   /**
    * 获取所有教练列表
    * @route GET /api/h5/coaches
-   * @description 获取符合条件的教练列表，需要登录
+   * @description 获取符合条件的教练列表，无需登录
    */
   static getCoaches = asyncHandler(async (req, res) => {
     try {
