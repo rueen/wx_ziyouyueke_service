@@ -283,6 +283,12 @@ class CourseController {
             model: Address,
             as: 'address',
             attributes: ['id', 'name', 'address', 'latitude', 'longitude']
+          },
+          {
+            model: StudentCoachRelation,
+            as: 'relation',
+            attributes: ['id', 'student_name'],
+            required: false
           }
         ],
         order: [['course_date', 'DESC'], ['start_time', 'DESC']],
@@ -341,6 +347,12 @@ class CourseController {
             model: Address,
             as: 'address',
             attributes: ['id', 'name', 'address', 'latitude', 'longitude']
+          },
+          {
+            model: StudentCoachRelation,
+            as: 'relation',
+            attributes: ['id', 'student_name'],
+            required: false
           }
         ]
       });
