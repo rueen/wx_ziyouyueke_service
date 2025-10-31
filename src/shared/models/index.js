@@ -6,7 +6,6 @@ const User = require('./User');
 const StudentCoachRelation = require('./StudentCoachRelation');
 const TimeTemplate = require('./TimeTemplate');
 const CourseBooking = require('./CourseBooking');
-const Notification = require('./Notification');
 const OperationLog = require('./OperationLog');
 const Address = require('./Address');
 const Waiter = require('./Waiter');
@@ -93,18 +92,6 @@ TimeTemplate.hasMany(CourseBooking, {
 CourseBooking.belongsTo(TimeTemplate, { 
   foreignKey: 'template_id', 
   as: 'template' 
-});
-
-// User 与 Notification 的关联
-User.hasMany(Notification, { 
-  foreignKey: 'user_id', 
-  as: 'notifications',
-  onDelete: 'CASCADE'
-});
-
-Notification.belongsTo(User, { 
-  foreignKey: 'user_id', 
-  as: 'user' 
 });
 
 // User 与 OperationLog 的关联
@@ -216,7 +203,6 @@ module.exports = {
   StudentCoachRelation,
   TimeTemplate,
   CourseBooking,
-  Notification,
   OperationLog,
   Address,
   Waiter,
