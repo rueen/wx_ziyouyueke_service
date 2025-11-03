@@ -1,4 +1,4 @@
-const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address } = require('../../shared/models');
+const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address, sequelize } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
@@ -489,22 +489,64 @@ class CourseController {
     const { id } = req.params;
     const { userId } = req;
     const { feedback = '' } = req.body;
+    
+    const t = await sequelize.transaction();
 
     try {
-      const course = await CourseBooking.findByPk(id);
+      const course = await CourseBooking.findByPk(id, { transaction: t });
 
       if (!course) {
+        await t.rollback();
         return ResponseUtil.notFound(res, '课程不存在');
       }
 
       // 只有教练可以标记课程完成
       if (course.coach_id !== userId) {
+        await t.rollback();
         return ResponseUtil.forbidden(res, '只有教练可以标记课程完成');
       }
 
       // 只有已确认的课程可以完成
       if (course.booking_status !== 2) {
+        await t.rollback();
         return ResponseUtil.validationError(res, '课程状态不允许完成');
+      }
+
+      // 如果有师生关系，先检查并扣除课时
+      if (course.relation_id) {
+        const relation = await StudentCoachRelation.findByPk(course.relation_id, { transaction: t });
+        if (relation) {
+          // 确定要扣除课时的分类ID（兼容处理）
+          const targetCategoryId = course.category_id !== null && course.category_id !== undefined 
+            ? course.category_id 
+            : 0;
+
+          try {
+            // 从指定分类中扣除课时（会自动检查过期）
+            const categoryLessons = await relation.getCategoryLessons(targetCategoryId);
+            if (categoryLessons > 0) {
+              await relation.decreaseCategoryLessons(targetCategoryId, 1, t);
+              logger.info('课时消耗（按分类）:', { 
+                relationId: course.relation_id, 
+                courseId: id,
+                categoryId: targetCategoryId,
+                remainingLessons: categoryLessons - 1
+              });
+            } else {
+              await t.rollback();
+              return ResponseUtil.validationError(res, '该分类课时不足或已过期');
+            }
+          } catch (error) {
+            await t.rollback();
+            logger.error('扣除课时失败:', {
+              relationId: course.relation_id,
+              courseId: id,
+              categoryId: targetCategoryId,
+              error: error.message
+            });
+            return ResponseUtil.error(res, error.message || '扣除课时失败');
+          }
+        }
       }
 
       // 更新课程状态为完成
@@ -512,51 +554,9 @@ class CourseController {
         booking_status: 3, // 已完成
         complete_at: new Date(),
         coach_remark: feedback
-      });
+      }, { transaction: t });
 
-      // 如果有师生关系，消耗剩余课时
-      if (course.relation_id) {
-        const relation = await StudentCoachRelation.findByPk(course.relation_id);
-        if (relation) {
-          // 确定要扣除课时的分类ID（兼容处理）
-          const targetCategoryId = course.category_id !== null && course.category_id !== undefined 
-            ? course.category_id 
-            : 0; // 如果没有分类ID，使用默认分类
-
-          try {
-            // 从指定分类中扣除课时
-            const categoryLessons = relation.getCategoryLessons(targetCategoryId);
-            if (categoryLessons > 0) {
-              await relation.decreaseCategoryLessons(targetCategoryId, 1);
-              logger.info('课时消耗（按分类）:', { 
-                relationId: course.relation_id, 
-                courseId: id,
-                originalCategoryId: course.category_id,
-                targetCategoryId: targetCategoryId,
-                remainingCategoryLessons: categoryLessons - 1,
-                isCompatibilityMode: course.category_id === null || course.category_id === undefined
-              });
-            } else {
-              logger.warn('指定分类课时不足，无法扣除:', { 
-                relationId: course.relation_id, 
-                courseId: id,
-                originalCategoryId: course.category_id,
-                targetCategoryId: targetCategoryId,
-                remainingCategoryLessons: categoryLessons,
-                isCompatibilityMode: course.category_id === null || course.category_id === undefined
-              });
-            }
-          } catch (error) {
-            logger.error('扣除课时失败:', {
-              relationId: course.relation_id,
-              courseId: id,
-              originalCategoryId: course.category_id,
-              targetCategoryId: targetCategoryId,
-              error: error.message
-            });
-          }
-        }
-      }
+      await t.commit();
 
       logger.info('课程完成:', { courseId: id, coachId: userId });
 
@@ -566,6 +566,7 @@ class CourseController {
       }, '课程已标记为完成');
 
     } catch (error) {
+      await t.rollback();
       logger.error('完成课程失败:', error);
       return ResponseUtil.error(res, '完成课程失败');
     }

@@ -5,7 +5,7 @@
  * @LastEditTime: 2025-09-03 21:21:47
  * @Description: 
  */
-const { createApp, setupDatabase, startServer } = require('../shared/app-common');
+const { createApp, setupDatabase, startServer, setupCronJobs } = require('../shared/app-common');
 
 // 引入H5端路由
 const h5Routes = require('./routes/index');
@@ -37,6 +37,9 @@ const startH5Server = async () => {
 
     // 启动课程超时检查定时任务
     CourseTimeoutManager.startScheduledTask();
+    
+    // 启动课时过期检查定时任务
+    setupCronJobs();
 
     // 配置路由
     app.use('/api/h5', h5Routes);

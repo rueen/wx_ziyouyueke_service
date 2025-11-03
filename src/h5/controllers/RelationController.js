@@ -3,6 +3,7 @@ const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
 const { Op } = require('sequelize');
+const moment = require('moment-timezone');
 
 /**
  * 师生关系控制器
@@ -166,6 +167,22 @@ class RelationController {
           for (const lesson of category_lessons) {
             if (typeof lesson.category_id !== 'number' || typeof lesson.remaining_lessons !== 'number' || lesson.remaining_lessons < 0) {
               return ResponseUtil.validationError(res, '分类课时数据格式错误');
+            }
+            
+            // 验证 expire_date 格式
+            if (lesson.expire_date && !moment(lesson.expire_date, 'YYYY-MM-DD', true).isValid()) {
+              return ResponseUtil.validationError(res, '日期格式错误，应为 YYYY-MM-DD');
+            }
+            
+            // 初始化新字段
+            if (lesson.is_cleared === undefined) {
+              lesson.is_cleared = false;
+            }
+            if (lesson.original_lessons === undefined) {
+              lesson.original_lessons = null; // 只在清零时记录
+            }
+            if (lesson.expire_date === undefined) {
+              lesson.expire_date = null;
             }
           }
 
@@ -341,17 +358,30 @@ class RelationController {
           })
         ]);
 
-        // 获取学员与教练的课时信息
+        // 获取学员与教练的课时信息（触发过期检查）
         const lessons = relation.getAllCategoryLessons();
         
-        // 整合分类和课时信息
-        const categoryLessons = categories.map(category => {
+        // 整合分类和课时信息，并检查过期状态
+        const categoryLessons = await Promise.all(categories.map(async (category) => {
           const categoryLesson = lessons.find(lesson => lesson.category_id === category.id);
+          // 调用 getCategoryLessons 触发过期检查
+          const remaining = categoryLesson ? await relation.getCategoryLessons(category.id) : 0;
+          
+          // 计算 is_expired
+          let is_expired = false;
+          if (categoryLesson && categoryLesson.expire_date) {
+            const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
+            const now = moment.tz('Asia/Shanghai');
+            is_expired = now.isAfter(expireEndTime);
+          }
+          
           return {
             category: category,
-            remaining_lessons: categoryLesson ? categoryLesson.remaining_lessons : 0
+            remaining_lessons: remaining,
+            expire_date: categoryLesson ? categoryLesson.expire_date : null,
+            is_expired: is_expired
           };
-        });
+        }));
 
         // 计算总课时数（向后兼容）
         const totalRemainingLessons = lessons.reduce((total, lesson) => {
@@ -430,22 +460,35 @@ class RelationController {
       });
       const categories = coach.course_categories || [];
 
-      // 为每个学员关系添加分类课时信息
-      const studentsWithCategoryLessons = relations.map(relation => {
+      // 为每个学员关系添加分类课时信息（触发过期检查）
+      const studentsWithCategoryLessons = await Promise.all(relations.map(async (relation) => {
         const lessons = relation.getAllCategoryLessons();
         
-        // 整合分类和课时信息
-        const categoryLessons = categories.map(category => {
+        // 整合分类和课时信息，并检查过期状态
+        const categoryLessons = await Promise.all(categories.map(async (category) => {
           const categoryLesson = lessons.find(lesson => lesson.category_id === category.id);
+          // 调用 getCategoryLessons 触发过期检查
+          const remaining = categoryLesson ? await relation.getCategoryLessons(category.id) : 0;
+          
+          // 计算 is_expired
+          let is_expired = false;
+          if (categoryLesson && categoryLesson.expire_date) {
+            const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
+            const now = moment.tz('Asia/Shanghai');
+            is_expired = now.isAfter(expireEndTime);
+          }
+          
           return {
             category: category,
-            remaining_lessons: categoryLesson ? categoryLesson.remaining_lessons : 0
+            remaining_lessons: remaining,
+            expire_date: categoryLesson ? categoryLesson.expire_date : null,
+            is_expired: is_expired
           };
-        });
+        }));
 
         // 计算总课时数（向后兼容）
-        const totalRemainingLessons = lessons.reduce((total, lesson) => {
-          return total + (lesson.remaining_lessons || 0);
+        const totalRemainingLessons = categoryLessons.reduce((total, item) => {
+          return total + (item.remaining_lessons || 0);
         }, 0);
 
         return {
@@ -453,7 +496,7 @@ class RelationController {
           category_lessons: categoryLessons,
           remaining_lessons: totalRemainingLessons
         };
-      });
+      }));
 
       const totalPages = Math.ceil(count / limit);
 
@@ -544,21 +587,34 @@ class RelationController {
         })
       ]);
 
-      // 获取学员与教练的课时信息
+      // 获取学员与教练的课时信息（触发过期检查）
       const lessons = relation.getAllCategoryLessons();
       
-      // 整合分类和课时信息
-      const categoryLessons = categories.map(category => {
+      // 整合分类和课时信息，并检查过期状态
+      const categoryLessons = await Promise.all(categories.map(async (category) => {
         const categoryLesson = lessons.find(lesson => lesson.category_id === category.id);
+        // 调用 getCategoryLessons 触发过期检查
+        const remaining = categoryLesson ? await relation.getCategoryLessons(category.id) : 0;
+        
+        // 计算 is_expired
+        let is_expired = false;
+        if (categoryLesson && categoryLesson.expire_date) {
+          const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
+          const now = moment.tz('Asia/Shanghai');
+          is_expired = now.isAfter(expireEndTime);
+        }
+        
         return {
           category: category,
-          remaining_lessons: categoryLesson ? categoryLesson.remaining_lessons : 0
+          remaining_lessons: remaining,
+          expire_date: categoryLesson ? categoryLesson.expire_date : null,
+          is_expired: is_expired
         };
-      });
+      }));
 
       // 计算总课时数（向后兼容）
-      const totalRemainingLessons = lessons.reduce((total, lesson) => {
-        return total + (lesson.remaining_lessons || 0);
+      const totalRemainingLessons = categoryLessons.reduce((total, item) => {
+        return total + (item.remaining_lessons || 0);
       }, 0);
 
       const coachDetail = {
@@ -620,21 +676,34 @@ class RelationController {
       });
       const categories = coach.course_categories || [];
 
-      // 获取学员的课时信息
+      // 获取学员的课时信息（触发过期检查）
       const lessons = relation.getAllCategoryLessons();
       
-      // 整合分类和课时信息
-      const categoryLessons = categories.map(category => {
+      // 整合分类和课时信息，并检查过期状态
+      const categoryLessons = await Promise.all(categories.map(async (category) => {
         const categoryLesson = lessons.find(lesson => lesson.category_id === category.id);
+        // 调用 getCategoryLessons 触发过期检查
+        const remaining = categoryLesson ? await relation.getCategoryLessons(category.id) : 0;
+        
+        // 计算 is_expired
+        let is_expired = false;
+        if (categoryLesson && categoryLesson.expire_date) {
+          const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
+          const now = moment.tz('Asia/Shanghai');
+          is_expired = now.isAfter(expireEndTime);
+        }
+        
         return {
           category: category,
-          remaining_lessons: categoryLesson ? categoryLesson.remaining_lessons : 0
+          remaining_lessons: remaining,
+          expire_date: categoryLesson ? categoryLesson.expire_date : null,
+          is_expired: is_expired
         };
-      });
+      }));
 
       // 计算总课时数（向后兼容）
-      const totalRemainingLessons = lessons.reduce((total, lesson) => {
-        return total + (lesson.remaining_lessons || 0);
+      const totalRemainingLessons = categoryLessons.reduce((total, item) => {
+        return total + (item.remaining_lessons || 0);
       }, 0);
 
       const studentDetail = {

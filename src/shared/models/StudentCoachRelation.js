@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const moment = require('moment-timezone');
 
 /**
  * 学员教练关系模型
@@ -81,18 +82,82 @@ const StudentCoachRelation = sequelize.define('student_coach_relations', {
 
 
 /**
- * 实例方法：获取指定分类的课时数
+ * 实例方法：获取指定分类的剩余课时（含过期检查）
+ * @param {number} categoryId - 分类ID
+ * @returns {Promise<number>} 剩余课时数
  */
-StudentCoachRelation.prototype.getCategoryLessons = function(categoryId) {
+StudentCoachRelation.prototype.getCategoryLessons = async function(categoryId) {
   const lessons = this.lessons || [];
-  const categoryLesson = lessons.find(lesson => lesson.category_id === categoryId);
-  return categoryLesson ? categoryLesson.remaining_lessons : 0;
+  const category = lessons.find(l => l.category_id === categoryId);
+  
+  if (!category) return 0;
+  
+  // 已清零，直接返回
+  if (category.is_cleared) return 0;
+  
+  // 检查是否过期
+  if (category.expire_date) {
+    const expireEndTime = moment.tz(category.expire_date, 'Asia/Shanghai').endOf('day');
+    const now = moment.tz('Asia/Shanghai');
+    
+    if (now.isAfter(expireEndTime)) {
+      // 记录清零前的课时数
+      const clearedLessons = category.remaining_lessons;
+      
+      // 清零课时并标记（original_lessons 只在清零时设置一次）
+      category.original_lessons = clearedLessons;
+      category.remaining_lessons = 0;
+      category.is_cleared = true;
+      
+      this.changed('lessons', true);
+      await this.save();
+      
+      // 记录操作日志
+      const OperationLog = this.sequelize.models.operation_logs;
+      await OperationLog.create({
+        user_id: this.student_id,
+        operation_type: 'lesson_expire',
+        operation_desc: `课时过期自动清零: 分类${categoryId}清零${clearedLessons}节课`,
+        table_name: 'student_coach_relations',
+        record_id: this.id,
+        old_data: {
+          category_id: categoryId,
+          remaining_lessons: clearedLessons,
+          expire_date: category.expire_date
+        },
+        new_data: {
+          category_id: categoryId,
+          remaining_lessons: 0,
+          expire_date: category.expire_date,
+          is_cleared: true,
+          coach_id: this.coach_id
+        },
+        ip_address: null,
+        user_agent: 'System-Auto'
+      });
+      
+      return 0;
+    }
+  }
+  
+  return category.remaining_lessons || 0;
 };
 
 /**
- * 实例方法：减少指定分类的课时
+ * 实例方法：扣减指定分类的课时
+ * @param {number} categoryId - 分类ID
+ * @param {number} count - 扣减数量
+ * @param {Object} transaction - 数据库事务对象（可选）
+ * @returns {Promise<boolean>} 是否扣减成功
  */
-StudentCoachRelation.prototype.decreaseCategoryLessons = async function(categoryId, count = 1) {
+StudentCoachRelation.prototype.decreaseCategoryLessons = async function(categoryId, count = 1, transaction = null) {
+  // 先检查有效课时（含过期检查）
+  const availableLessons = await this.getCategoryLessons(categoryId);
+  
+  if (availableLessons < count) {
+    throw new Error('该分类剩余课时不足或已过期');
+  }
+  
   const lessons = [...(this.lessons || [])];
   const lessonIndex = lessons.findIndex(lesson => lesson.category_id === categoryId);
   
@@ -100,18 +165,16 @@ StudentCoachRelation.prototype.decreaseCategoryLessons = async function(category
     throw new Error(`分类ID ${categoryId} 不存在`);
   }
   
-  if (lessons[lessonIndex].remaining_lessons < count) {
-    throw new Error('该分类剩余课时不足');
-  }
-  
   lessons[lessonIndex].remaining_lessons -= count;
   
   // 更新数据库 - 强制标记JSON字段已更改
   this.lessons = lessons;
-  this.changed('lessons', true); // 关键：强制告诉Sequelize此字段已更改
+  this.changed('lessons', true);
   this.last_course_time = new Date();
   
-  return await this.save();
+  await this.save({ transaction });
+  
+  return true;
 };
 
 /**
@@ -204,8 +267,8 @@ StudentCoachRelation.prototype.getAllCategoryLessons = function() {
  * @returns {Promise<number>} 可用课时数
  */
 StudentCoachRelation.prototype.getAvailableLessons = async function(categoryId) {
-  // 1. 获取总剩余课时
-  const totalLessons = this.getCategoryLessons(categoryId);
+  // 1. 获取总剩余课时（含过期检查）
+  const totalLessons = await this.getCategoryLessons(categoryId);
   
   // 2. 并行查询常规课和团课占用的课时
   const [regularOccupied, groupOccupied] = await Promise.all([

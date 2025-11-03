@@ -190,8 +190,24 @@ const startServer = (app, port, serviceName) => {
   });
 };
 
+/**
+ * 设置定时任务
+ */
+const setupCronJobs = () => {
+  const cron = require('node-cron');
+  const lessonExpireService = require('./services/lessonExpireService');
+  
+  // 每天凌晨 2:00 执行课时过期检查
+  cron.schedule('0 2 * * *', async () => {
+    await lessonExpireService.processExpiredLessons();
+  });
+  
+  logger.info('定时任务已注册: 每天凌晨 2:00 检查过期课时');
+};
+
 module.exports = {
   createApp,
   setupDatabase,
-  startServer
+  startServer,
+  setupCronJobs
 };
