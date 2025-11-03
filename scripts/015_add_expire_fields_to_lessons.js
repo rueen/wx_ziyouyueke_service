@@ -18,7 +18,12 @@ async function migrate() {
   try {
     console.log('开始迁移：为课时数据添加过期字段...');
     
-    const relations = await StudentCoachRelation.findAll();
+    // 只查询已存在的字段，避免查询新添加的字段（如 booking_status 等）
+    const relations = await StudentCoachRelation.findAll({
+      attributes: ['id', 'student_id', 'coach_id', 'student_name', 'lessons', 
+                   'coach_remark', 'student_remark', 'relation_status', 
+                   'bind_time', 'last_course_time', 'createdAt', 'updatedAt']
+    });
     
     let updatedCount = 0;
     

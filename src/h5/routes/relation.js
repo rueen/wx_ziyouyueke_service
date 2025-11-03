@@ -36,6 +36,9 @@ router.get('/my-students', authenticateToken, RelationController.getMyStudents);
 router.get('/my-students/:id', authenticateToken, idParamValidation, validateRequest, RelationController.getMyStudentDetail);
 
 
+// 切换约课状态
+router.put('/:id/booking-status', authenticateToken, idParamValidation, validateRequest, RelationController.toggleBookingStatus);
+
 // 更新师生关系
 router.put('/:id', authenticateToken, idParamValidation, relationUpdateValidation, validateRequest, RelationController.updateRelation);
 

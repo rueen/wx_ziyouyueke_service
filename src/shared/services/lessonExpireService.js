@@ -17,9 +17,12 @@ class LessonExpireService {
     let clearedCount = 0;
     
     try {
-      // 查询所有有效的师生关系
+      // 查询所有有效且约课状态开启的师生关系
       const relations = await StudentCoachRelation.findAll({
-        where: { relation_status: 1 },
+        where: { 
+          relation_status: 1,
+          booking_status: 1  // 只处理约课状态开启的关系
+        },
         transaction: t
       });
       

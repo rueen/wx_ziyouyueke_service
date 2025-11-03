@@ -440,6 +440,7 @@ class RelationController {
         attributes: [
           'id', 'student_id', 'coach_id', 'student_name', 'lessons',
           'student_remark', 'coach_remark', 'relation_status', 
+          'booking_status', 'booking_closed_at', 'booking_reopened_at',
           'createdAt', 'updatedAt'
         ],
         include: [
@@ -655,6 +656,7 @@ class RelationController {
         attributes: [
           'id', 'student_id', 'coach_id', 'student_name', 'lessons',
           'student_remark', 'coach_remark', 'relation_status', 
+          'booking_status', 'booking_closed_at', 'booking_reopened_at',
           'createdAt', 'updatedAt'
         ],
         include: [
@@ -720,6 +722,83 @@ class RelationController {
     }
   });
 
+  /**
+   * 切换约课状态
+   * @route PUT /api/h5/relations/:id/booking-status
+   * @description 开启或关闭师生关系的约课状态
+   */
+  static toggleBookingStatus = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { booking_status } = req.body;
+
+    try {
+      // 参数验证
+      if (booking_status !== 0 && booking_status !== 1) {
+        return ResponseUtil.validationError(res, '约课状态参数错误，必须为 0 或 1');
+      }
+
+      // 查找师生关系（学员和教练都可以操作）
+      const relation = await StudentCoachRelation.findOne({
+        where: {
+          id,
+          [Op.or]: [
+            { student_id: userId },
+            { coach_id: userId }
+          ],
+          relation_status: 1
+        }
+      });
+
+      if (!relation) {
+        return ResponseUtil.notFound(res, '师生关系不存在或无权限操作');
+      }
+
+      // 如果状态相同，无需操作
+      if (relation.booking_status === booking_status) {
+        return ResponseUtil.success(res, relation, '约课状态未变更');
+      }
+
+      let message = '';
+
+      // 关闭约课
+      if (booking_status === 0) {
+        await relation.closeBooking();
+        message = '约课状态已关闭';
+        logger.info('约课状态关闭:', { 
+          relationId: id, 
+          userId, 
+          studentId: relation.student_id,
+          coachId: relation.coach_id
+        });
+      } 
+      // 开启约课
+      else {
+        await relation.reopenBooking();
+        message = '约课状态已开启';
+        logger.info('约课状态开启:', { 
+          relationId: id, 
+          userId,
+          studentId: relation.student_id,
+          coachId: relation.coach_id
+        });
+      }
+
+      // 重新加载关系数据
+      await relation.reload();
+
+      return ResponseUtil.success(res, {
+        id: relation.id,
+        booking_status: relation.booking_status,
+        booking_closed_at: relation.booking_closed_at,
+        booking_reopened_at: relation.booking_reopened_at
+      }, message);
+
+    } catch (error) {
+      logger.error('切换约课状态失败:', { relationId: id, userId, error: error.message });
+      return ResponseUtil.serverError(res, '切换约课状态失败');
+    }
+  });
 
 }
 

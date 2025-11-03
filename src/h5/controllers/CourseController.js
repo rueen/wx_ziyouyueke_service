@@ -88,6 +88,11 @@ class CourseController {
         }
       }
 
+      // 检查约课状态
+      if (relation.booking_status === 0) {
+        return ResponseUtil.validationError(res, '该师生关系已关闭约课，无法预约');
+      }
+
       // 检查指定分类的可用课时（考虑已预约但未完成的课程占用）
       const availableLessons = await relation.getAvailableLessons(category_id);
       if (availableLessons <= 0) {

@@ -49,6 +49,22 @@ const StudentCoachRelation = sequelize.define('student_coach_relations', {
     defaultValue: 1,
     comment: '关系状态：0-已解除，1-正常'
   },
+  booking_status: {
+    type: DataTypes.TINYINT(1),
+    allowNull: false,
+    defaultValue: 1,
+    comment: '约课状态：1-开启，0-关闭'
+  },
+  booking_closed_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: '约课关闭时间'
+  },
+  booking_reopened_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: '最近一次重新开启时间'
+  },
   bind_time: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -76,6 +92,10 @@ const StudentCoachRelation = sequelize.define('student_coach_relations', {
     {
       fields: ['relation_status'],
       name: 'idx_relation_status'
+    },
+    {
+      fields: ['booking_status'],
+      name: 'idx_booking_status'
     }
   ]
 });
@@ -328,6 +348,76 @@ StudentCoachRelation.prototype.getGroupCourseOccupied = async function(categoryI
   return registrations.reduce((total, reg) => {
     return total + (reg.groupCourse?.lesson_cost || 1);
   }, 0);
+};
+
+/**
+ * 实例方法：关闭约课状态
+ * @returns {Promise<StudentCoachRelation>} 更新后的关系对象
+ */
+StudentCoachRelation.prototype.closeBooking = async function() {
+  const now = moment.tz('Asia/Shanghai');
+  
+  this.booking_status = 0;
+  this.booking_closed_at = now.toDate();
+  
+  await this.save();
+  
+  return this;
+};
+
+/**
+ * 实例方法：重新开启约课状态
+ * @returns {Promise<StudentCoachRelation>} 更新后的关系对象
+ */
+StudentCoachRelation.prototype.reopenBooking = async function() {
+  const now = moment.tz('Asia/Shanghai');
+  
+  // 如果没有关闭时间，直接开启
+  if (!this.booking_closed_at) {
+    this.booking_status = 1;
+    this.booking_reopened_at = now.toDate();
+    await this.save();
+    return this;
+  }
+  
+  const closedAt = moment.tz(this.booking_closed_at, 'Asia/Shanghai');
+  
+  // 遍历所有分类课时，重新计算过期时间
+  const lessons = [...(this.lessons || [])];
+  let hasUpdates = false;
+  
+  for (const lesson of lessons) {
+    // 只处理有过期日期且未清零的课时
+    if (lesson.expire_date && !lesson.is_cleared) {
+      const oldExpireDate = moment.tz(lesson.expire_date, 'Asia/Shanghai').endOf('day');
+      
+      // 只有当旧过期时间在关闭时间之后时才重新计算
+      if (oldExpireDate.isAfter(closedAt)) {
+        // 计算剩余有效期（天数）
+        const remainingDays = oldExpireDate.diff(closedAt, 'days');
+        
+        if (remainingDays > 0) {
+          // 新过期时间 = 当前时间 + 剩余天数
+          const newExpireDate = now.clone().add(remainingDays, 'days').format('YYYY-MM-DD');
+          lesson.expire_date = newExpireDate;
+          hasUpdates = true;
+        }
+      }
+    }
+  }
+  
+  // 更新数据库
+  this.booking_status = 1;
+  this.booking_reopened_at = now.toDate();
+  
+  if (hasUpdates) {
+    this.lessons = lessons;
+    this.changed('lessons', true);
+  }
+  
+  await this.save();
+  
+  return this;
 };
 
 module.exports = StudentCoachRelation; 
