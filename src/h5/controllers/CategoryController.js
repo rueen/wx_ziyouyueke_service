@@ -198,7 +198,7 @@ class CategoryController {
       const relationIds = [];
       
       for (const relation of relations) {
-        const lessons = relation.getCategoryLessons(categoryId);
+        const lessons = await relation.getCategoryLessons(categoryId);
         if (lessons > 0) {
           hasLessons = true;
           relationIds.push(relation.id);
@@ -294,7 +294,7 @@ class CategoryController {
       };
 
       for (const relation of relations) {
-        const lessons = relation.getCategoryLessons(categoryId);
+        const lessons = await relation.getCategoryLessons(categoryId);
         categoryStats.totalLessons += lessons;
         categoryStats.studentLessons.push({
           relationId: relation.id, // 新增：师生关系ID
