@@ -146,7 +146,9 @@ class QRCodeController {
         page, 
         width,
         size: qrCodeBuffer.length,
-        userId: req.user?.id 
+        userId: req.user?.id || null,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
       });
 
       return ResponseUtil.success(res, {

@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const QRCodeController = require('../controllers/QRCodeController');
-const { authenticateToken } = require('../middlewares/auth');
+const { authenticateToken, optionalAuth } = require('../middlewares/auth');
 const { body, validationResult } = require('express-validator');
 
 /**
@@ -82,6 +83,24 @@ const qrcodeValidation = [
     .withMessage('is_hyaline参数必须是布尔值')
 ];
 
+/**
+ * 小程序码生成限流中间件（每IP每分钟最多3次）
+ */
+const qrcodeRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1分钟
+  max: 3, // 最多3次请求
+  message: {
+    success: false,
+    code: 429,
+    message: '请求过于频繁，请1分钟后再试'
+  },
+  standardHeaders: true, // 返回标准的RateLimit-*头
+  legacyHeaders: false, // 禁用X-RateLimit-*头
+  trustProxy: true, // 信任代理，正确处理X-Forwarded-For头
+  skipSuccessfulRequests: false, // 计算所有请求（包括成功的）
+  skipFailedRequests: false // 计算失败的请求
+});
+
 // ==================== 小程序码接口 ====================
 
 /**
@@ -98,9 +117,11 @@ router.post('/generate',
 /**
  * 生成小程序码（返回Base64）
  * POST /api/h5/qrcode/generate-base64
+ * 免登录接口，支持可选认证
  */
 router.post('/generate-base64',
-  authenticateToken,
+  qrcodeRateLimit, // IP限流：每IP每分钟最多3次
+  optionalAuth, // 可选认证（免登录）
   qrcodeValidation,
   validateRequest,
   QRCodeController.generateQRCodeBase64
