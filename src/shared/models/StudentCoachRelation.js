@@ -115,8 +115,8 @@ StudentCoachRelation.prototype.getCategoryLessons = async function(categoryId) {
   // 已清零，直接返回
   if (category.is_cleared) return 0;
   
-  // 检查是否过期
-  if (category.expire_date) {
+  // 检查是否过期（只有约课状态开启时才执行过期检查）
+  if (category.expire_date && this.booking_status === 1) {
     const expireEndTime = moment.tz(category.expire_date, 'Asia/Shanghai').endOf('day');
     const now = moment.tz('Asia/Shanghai');
     
