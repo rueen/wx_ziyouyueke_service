@@ -39,6 +39,7 @@ class GroupCourseController {
       lesson_cost = 1,
       price_amount = 0,
       enrollment_scope = 1,
+      is_show = 1,
     } = req.body;
 
     // 验证教练的课程分类
@@ -80,6 +81,7 @@ class GroupCourseController {
       lesson_cost,
       price_amount,
       enrollment_scope,
+      is_show,
       // 默认为草稿状态（status = 0）
       status: 0 // 草稿状态：0-待发布
     });
@@ -100,7 +102,8 @@ class GroupCourseController {
       category_id,
       status,
       course_date_start,
-      course_date_end
+      course_date_end,
+      is_show
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -158,6 +161,11 @@ class GroupCourseController {
     // 筛选条件
     if (coach_id) where.coach_id = coach_id;
     if (category_id !== undefined) where.category_id = category_id;
+    
+    // is_show 筛选
+    if (is_show !== undefined) {
+      where.is_show = parseInt(is_show);
+    }
     
     // 日期范围筛选
     if (course_date_start && course_date_end) {

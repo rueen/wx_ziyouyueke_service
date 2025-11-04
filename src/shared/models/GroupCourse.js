@@ -120,6 +120,14 @@ const GroupCourse = sequelize.define('group_courses', {
     comment: '报名范围：1-仅学员可报名，2-所有人可报名'
   },
   
+  // 展示设置
+  is_show: {
+    type: DataTypes.TINYINT(1),
+    allowNull: false,
+    defaultValue: 1,
+    comment: '是否在活动大厅展示：0-否，1-是'
+  },
+  
   // 状态管理
   status: {
     type: DataTypes.TINYINT(1),
