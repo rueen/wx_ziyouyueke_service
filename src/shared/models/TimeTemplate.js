@@ -58,6 +58,18 @@ const TimeTemplate = sequelize.define('time_templates', {
     allowNull: false,
     defaultValue: 1,
     comment: '是否启用：0-禁用，1-启用'
+  },
+  time_type: {
+    type: DataTypes.TINYINT(1),
+    allowNull: false,
+    defaultValue: 0,
+    comment: '时间类型：0-全日程统一模板(每天一样)，1-按周历循环模板(每周几一样)，2-自由日程模板(每个日期都可以不一样)'
+  },
+  week_slots: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    comment: '周历时间段配置，格式：[{"id":0,"text":"周日","checked":true,"time_slots":[{"startTime":"00:00","endTime":"01:00"}]}]'
   }
 }, {
   tableName: 'time_templates',

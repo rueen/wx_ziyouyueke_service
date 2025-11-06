@@ -35,7 +35,7 @@ class TimeTemplateController {
   static updateTemplate = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const coach_id = req.user.id;
-    const { min_advance_days, max_advance_days, max_advance_nums, time_slots, date_slots, is_active } = req.body;
+    const { min_advance_days, max_advance_days, max_advance_nums, time_slots, date_slots, is_active, time_type, week_slots } = req.body;
 
     const template = await TimeTemplate.findOne({
       where: { id, coach_id }
@@ -51,6 +51,18 @@ class TimeTemplateController {
     if (max_advance_days !== undefined) updateData.max_advance_days = max_advance_days;
     if (max_advance_nums !== undefined) updateData.max_advance_nums = max_advance_nums;
     if (is_active !== undefined) updateData.is_active = is_active;
+    
+    if (time_type !== undefined) {
+      updateData.time_type = parseInt(time_type);
+    }
+    
+    if (week_slots !== undefined) {
+      // 验证 week_slots 格式：只需要验证是否是数组
+      if (!Array.isArray(week_slots)) {
+        return ResponseUtil.validationError(res, 'week_slots 必须是数组格式');
+      }
+      updateData.week_slots = week_slots;
+    }
 
     if (time_slots) {
       // 验证时间段格式
