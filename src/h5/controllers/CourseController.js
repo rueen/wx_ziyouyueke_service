@@ -93,6 +93,19 @@ class CourseController {
         return ResponseUtil.validationError(res, '该师生关系已关闭约课，无法预约');
       }
 
+      // 检查课程日期是否在课时有效期内
+      const lessons = relation.lessons || [];
+      const categoryLesson = lessons.find(l => l.category_id === category_id);
+      if (categoryLesson && categoryLesson.expire_date) {
+        const moment = require('moment-timezone');
+        const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
+        const courseDateTime = moment.tz(course_date, 'Asia/Shanghai').startOf('day');
+        
+        if (courseDateTime.isAfter(expireEndTime)) {
+          return ResponseUtil.validationError(res, `该分类课时有效期至 ${categoryLesson.expire_date}，无法预约该日期的课程`);
+        }
+      }
+
       // 检查指定分类的可用课时（考虑已预约但未完成的课程占用）
       const availableLessons = await relation.getAvailableLessons(category_id);
       if (availableLessons <= 0) {

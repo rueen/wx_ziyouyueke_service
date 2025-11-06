@@ -489,8 +489,22 @@ class GroupCourseController {
 
       relationId = relation.id;
 
-      // 如果是扣课时的团课，检查课时是否足够
+      // 如果是扣课时的团课，检查课时和有效期
       if (course.price_type === 1) {
+        // 检查团课日期是否在课时有效期内
+        const lessons = relation.lessons || [];
+        const categoryLesson = lessons.find(l => l.category_id === course.category_id);
+        if (categoryLesson && categoryLesson.expire_date) {
+          const moment = require('moment-timezone');
+          const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
+          const courseDateTime = moment.tz(course.course_date, 'Asia/Shanghai').startOf('day');
+          
+          if (courseDateTime.isAfter(expireEndTime)) {
+            return ResponseUtil.validationError(res, `该分类课时有效期至 ${categoryLesson.expire_date}，无法报名该日期的团课`);
+          }
+        }
+        
+        // 检查课时是否足够
         const availableLessons = await relation.getAvailableLessons(course.category_id);
         if (availableLessons < course.lesson_cost) {
           return ResponseUtil.validationError(res, '课程分类可用课时不足，无法报名');
