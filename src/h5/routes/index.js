@@ -19,6 +19,7 @@ const addressRoutes = require('./address');
 const categoryRoutes = require('./category');
 const groupCourseRoutes = require('./groupCourse');
 const qrcodeRoutes = require('./qrcode');
+const wechatRoutes = require('./wechat');
 
 /**
  * H5端路由配置
@@ -64,5 +65,8 @@ router.use('/group-courses', groupCourseRoutes);
 
 // 小程序码相关路由
 router.use('/qrcode', qrcodeRoutes);
+
+// 微信相关路由
+router.use('/wechat', wechatRoutes);
 
 module.exports = router;

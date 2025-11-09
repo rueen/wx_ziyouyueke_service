@@ -12,6 +12,7 @@ const Waiter = require('./Waiter');
 const GroupCourse = require('./GroupCourse');
 const GroupCourseRegistration = require('./GroupCourseRegistration');
 const SubscribeMessageLog = require('./SubscribeMessageLog');
+const UserSubscribeQuota = require('./UserSubscribeQuota');
 
 /**
  * 设置模型关联关系
@@ -205,6 +206,17 @@ SubscribeMessageLog.belongsTo(User, {
   as: 'receiver' 
 });
 
+// User 与 UserSubscribeQuota 的关联
+User.hasMany(UserSubscribeQuota, { 
+  foreignKey: 'user_id', 
+  as: 'subscribeQuotas'
+});
+
+UserSubscribeQuota.belongsTo(User, { 
+  foreignKey: 'user_id', 
+  as: 'user' 
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -220,5 +232,6 @@ module.exports = {
   Waiter,
   GroupCourse,
   GroupCourseRegistration,
-  SubscribeMessageLog
+  SubscribeMessageLog,
+  UserSubscribeQuota
 }; 

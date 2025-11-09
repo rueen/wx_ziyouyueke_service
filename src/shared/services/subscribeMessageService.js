@@ -8,7 +8,7 @@
 const wechatUtil = require('../utils/wechat');
 const logger = require('../utils/logger');
 const moment = require('moment-timezone');
-const { SubscribeMessageLog } = require('../models');
+const { SubscribeMessageLog, UserSubscribeQuota } = require('../models');
 
 /**
  * 微信订阅消息服务
@@ -160,6 +160,10 @@ class SubscribeMessageService {
       // 更新发送状态
       if (sendResult.success) {
         await messageLog.updateSendStatus(1); // 成功
+        
+        // 发送成功，扣减用户配额
+        await UserSubscribeQuota.decreaseQuota(receiverUser.id, 'BOOKING_CONFIRM', 1);
+        
         logger.info('发送预约确认提醒成功', {
           bookingId: booking.id,
           receiverId: receiverUser.id,
@@ -172,6 +176,16 @@ class SubscribeMessageService {
           sendResult.errcode ?? 'SEND_FAILED',
           sendResult.errmsg ?? '消息发送失败'
         );
+        
+        // 如果是用户未授权或次数用尽（43101），重置本地配额为0
+        if (sendResult.errcode === '43101' || sendResult.errcode === 43101) {
+          await UserSubscribeQuota.resetQuota(receiverUser.id, 'BOOKING_CONFIRM');
+          logger.info('检测到用户订阅次数用尽，已重置本地配额', {
+            userId: receiverUser.id,
+            templateType: 'BOOKING_CONFIRM'
+          });
+        }
+        
         logger.warn('发送预约确认提醒失败', {
           bookingId: booking.id,
           receiverId: receiverUser.id,
@@ -306,6 +320,10 @@ class SubscribeMessageService {
       // 更新发送状态
       if (sendResult.success) {
         await messageLog.updateSendStatus(1); // 成功
+        
+        // 发送成功，扣减用户配额
+        await UserSubscribeQuota.decreaseQuota(receiverUser.id, 'BOOKING_SUCCESS', 1);
+        
         logger.info('发送预约成功通知成功', {
           bookingId: booking.id,
           receiverId: receiverUser.id,
@@ -318,6 +336,16 @@ class SubscribeMessageService {
           sendResult.errcode ?? 'SEND_FAILED',
           sendResult.errmsg ?? '消息发送失败'
         ); // 失败
+        
+        // 如果是用户未授权或次数用尽（43101），重置本地配额为0
+        if (sendResult.errcode === '43101' || sendResult.errcode === 43101) {
+          await UserSubscribeQuota.resetQuota(receiverUser.id, 'BOOKING_SUCCESS');
+          logger.info('检测到用户订阅次数用尽，已重置本地配额', {
+            userId: receiverUser.id,
+            templateType: 'BOOKING_SUCCESS'
+          });
+        }
+        
         logger.warn('发送预约成功通知失败', {
           bookingId: booking.id,
           receiverId: receiverUser.id,
