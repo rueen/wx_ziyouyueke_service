@@ -66,7 +66,7 @@ class SubscribeMessageService {
    * @returns {Promise<boolean>} 发送是否成功
    */
   static async sendBookingConfirmNotice(params) {
-    const messageLog = null;
+    let messageLog = null;
     
     try {
       const { booking, bookerUser, receiverUser, relation, address } = params;
@@ -149,7 +149,7 @@ class SubscribeMessageService {
       });
 
       // 发送消息
-      const result = await wechatUtil.sendTemplateMessage(
+      const sendResult = await wechatUtil.sendTemplateMessage(
         receiverUser.openid,
         this.TEMPLATES.BOOKING_CONFIRM,
         messageData,
@@ -157,7 +157,7 @@ class SubscribeMessageService {
       );
 
       // 更新发送状态
-      if (result) {
+      if (sendResult.success) {
         await messageLog.updateSendStatus(1); // 成功
         logger.info('发送预约确认提醒成功', {
           bookingId: booking.id,
@@ -166,14 +166,20 @@ class SubscribeMessageService {
           logId: messageLog.id
         });
       } else {
-        await messageLog.updateSendStatus(2, 'SEND_FAILED', '消息发送失败'); // 失败
+        await messageLog.updateSendStatus(
+          2,
+          sendResult.errcode ?? 'SEND_FAILED',
+          sendResult.errmsg ?? '消息发送失败'
+        );
         logger.warn('发送预约确认提醒失败', {
           bookingId: booking.id,
-          receiverId: receiverUser.id
+          receiverId: receiverUser.id,
+          errcode: sendResult.errcode,
+          errmsg: sendResult.errmsg
         });
       }
 
-      return result;
+      return sendResult.success;
     } catch (error) {
       logger.error('发送预约确认提醒异常:', error);
       
@@ -289,7 +295,7 @@ class SubscribeMessageService {
       });
 
       // 发送消息
-      const result = await wechatUtil.sendTemplateMessage(
+      const sendResult = await wechatUtil.sendTemplateMessage(
         receiverUser.openid,
         this.TEMPLATES.BOOKING_SUCCESS,
         messageData,
@@ -297,7 +303,7 @@ class SubscribeMessageService {
       );
 
       // 更新发送状态
-      if (result) {
+      if (sendResult.success) {
         await messageLog.updateSendStatus(1); // 成功
         logger.info('发送预约成功通知成功', {
           bookingId: booking.id,
@@ -306,14 +312,20 @@ class SubscribeMessageService {
           logId: messageLog.id
         });
       } else {
-        await messageLog.updateSendStatus(2, 'SEND_FAILED', '消息发送失败'); // 失败
+        await messageLog.updateSendStatus(
+          2,
+          sendResult.errcode ?? 'SEND_FAILED',
+          sendResult.errmsg ?? '消息发送失败'
+        ); // 失败
         logger.warn('发送预约成功通知失败', {
           bookingId: booking.id,
-          receiverId: receiverUser.id
+          receiverId: receiverUser.id,
+          errcode: sendResult.errcode,
+          errmsg: sendResult.errmsg
         });
       }
 
-      return result;
+      return sendResult.success;
     } catch (error) {
       logger.error('发送预约成功通知异常:', error);
       

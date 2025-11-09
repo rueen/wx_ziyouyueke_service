@@ -118,7 +118,7 @@ class WeChatUtil {
    * @param {string} templateId - 模板ID
    * @param {Object} data - 消息数据
    * @param {string} page - 跳转页面路径
-   * @returns {Promise<boolean>} 发送是否成功
+   * @returns {Promise<{success: boolean, errcode: number|string, errmsg: string, response: Object|null}>} 发送结果
    */
   async sendTemplateMessage(openid, templateId, data, page = null) {
     try {
@@ -139,15 +139,49 @@ class WeChatUtil {
       const result = response.data;
 
       if (result.errcode !== 0) {
-        logger.warn('发送模板消息失败:', result);
-        return false;
+        logger.warn('发送模板消息失败:', {
+          openid,
+          templateId,
+          errcode: result.errcode,
+          errmsg: result.errmsg,
+          response: result
+        });
+
+        return {
+          success: false,
+          errcode: result.errcode,
+          errmsg: result.errmsg,
+          response: result
+        };
       }
 
       logger.info('发送模板消息成功:', { openid, templateId });
-      return true;
+      return {
+        success: true,
+        errcode: 0,
+        errmsg: 'ok',
+        response: result
+      };
     } catch (error) {
-      logger.error('发送模板消息异常:', error);
-      return false;
+      const errorData = error.response?.data || null;
+      const errcode = errorData?.errcode ?? 'EXCEPTION';
+      const errmsg = errorData?.errmsg ?? error.message ?? '未知错误';
+
+      logger.error('发送模板消息异常:', {
+        openid,
+        templateId,
+        error: error.message,
+        errcode,
+        errmsg,
+        response: errorData
+      });
+
+      return {
+        success: false,
+        errcode,
+        errmsg,
+        response: errorData
+      };
     }
   }
 
