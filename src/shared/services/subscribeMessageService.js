@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-11-09 10:31:05
  * @LastEditors: diaochan
- * @LastEditTime: 2025-11-09 14:13:56
+ * @LastEditTime: 2025-11-09 14:39:28
  * @Description: 
  */
 const wechatUtil = require('../utils/wechat');
@@ -45,10 +45,10 @@ class SubscribeMessageService {
     try {
       const start = startTime.substring(0, 5); // HH:mm
       const end = endTime.substring(0, 5); // HH:mm
-      return `${courseDate} ${start} - ${end}`;
+      return `${courseDate} ${start}-${end}`;
     } catch (error) {
       logger.error('格式化时间段失败:', error);
-      return `${courseDate} ${startTime} - ${endTime}`;
+      return `${courseDate} ${startTime}-${endTime}`;
     }
   }
 
