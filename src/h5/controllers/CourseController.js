@@ -3,6 +3,7 @@ const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
 const { Op } = require('sequelize');
+const SubscribeMessageService = require('../../shared/services/subscribeMessageService');
 
 /**
  * 课程管理控制器
@@ -215,6 +216,25 @@ class CourseController {
         coachId: coach_id 
       });
 
+      // 异步发送预约确认提醒消息（不阻塞响应）
+      setImmediate(async () => {
+        try {
+          // 确定预约人和接收人
+          const bookerUser = userId === student_id ? student : coach;
+          const receiverUser = userId === student_id ? coach : student;
+
+          await SubscribeMessageService.sendBookingConfirmNotice({
+            booking,
+            bookerUser,
+            receiverUser,
+            relation,
+            address
+          });
+        } catch (error) {
+          logger.error('发送预约确认提醒失败:', error);
+        }
+      });
+
       return ResponseUtil.success(res, {
         booking_id: booking.id,
         booking_status: booking.booking_status
@@ -404,7 +424,25 @@ class CourseController {
       // 自动取消超时课程
       await CourseBooking.autoTimeoutCancel();
 
-      const course = await CourseBooking.findByPk(id);
+      const course = await CourseBooking.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: 'student',
+            attributes: ['id', 'nickname', 'openid']
+          },
+          {
+            model: User,
+            as: 'coach',
+            attributes: ['id', 'nickname', 'openid', 'course_categories']
+          },
+          {
+            model: Address,
+            as: 'address',
+            attributes: ['id', 'name']
+          }
+        ]
+      });
 
       if (!course) {
         return ResponseUtil.notFound(res, '课程不存在');
@@ -431,6 +469,33 @@ class CourseController {
       });
 
       logger.info('课程确认成功:', { courseId: id, userId });
+
+      // 异步发送预约成功通知消息（不阻塞响应）
+      setImmediate(async () => {
+        try {
+          // 获取课程分类名称
+          const coach = course.coach;
+          const categories = coach.course_categories || [];
+          const category = categories.find(cat => cat.id === course.category_id);
+          const categoryName = category ? category.name : '默认';
+
+          // 确定确认人和接收人（接收人是创建预约的人）
+          const confirmerUser = userId === course.coach_id ? course.coach : course.student;
+          const receiverUser = course.created_by === course.student_id ? course.student : course.coach;
+
+          await SubscribeMessageService.sendBookingSuccessNotice({
+            booking: course,
+            coach: course.coach,
+            student: course.student,
+            confirmerUser,
+            receiverUser,
+            address: course.address,
+            categoryName
+          });
+        } catch (error) {
+          logger.error('发送预约成功通知失败:', error);
+        }
+      });
 
       return ResponseUtil.success(res, {
         booking_id: course.id,

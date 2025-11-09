@@ -11,6 +11,7 @@ const Address = require('./Address');
 const Waiter = require('./Waiter');
 const GroupCourse = require('./GroupCourse');
 const GroupCourseRegistration = require('./GroupCourseRegistration');
+const SubscribeMessageLog = require('./SubscribeMessageLog');
 
 /**
  * 设置模型关联关系
@@ -193,6 +194,17 @@ GroupCourseRegistration.belongsTo(StudentCoachRelation, {
   as: 'relation' 
 });
 
+// User 与 SubscribeMessageLog 的关联
+User.hasMany(SubscribeMessageLog, { 
+  foreignKey: 'receiver_user_id', 
+  as: 'receivedMessages'
+});
+
+SubscribeMessageLog.belongsTo(User, { 
+  foreignKey: 'receiver_user_id', 
+  as: 'receiver' 
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -207,5 +219,6 @@ module.exports = {
   Address,
   Waiter,
   GroupCourse,
-  GroupCourseRegistration
+  GroupCourseRegistration,
+  SubscribeMessageLog
 }; 
