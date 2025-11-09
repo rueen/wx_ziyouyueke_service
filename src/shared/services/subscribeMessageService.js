@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-11-09 10:31:05
  * @LastEditors: diaochan
- * @LastEditTime: 2025-11-09 11:10:32
+ * @LastEditTime: 2025-11-09 14:13:56
  * @Description: 
  */
 const wechatUtil = require('../utils/wechat');
@@ -31,7 +31,7 @@ class SubscribeMessageService {
    */
   static PAGES = {
     // 课程详情页
-    COURSE_DETAIL: (courseId) => `pages/course/detail/index?id=${courseId}`
+    COURSE_DETAIL: (courseId) => `pages/courseDetail/courseDetail?id=${courseId}`
   };
 
   /**
