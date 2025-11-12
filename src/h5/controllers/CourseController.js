@@ -518,7 +518,25 @@ class CourseController {
     const { cancel_reason = '' } = req.body;
 
     try {
-      const course = await CourseBooking.findByPk(id);
+      const course = await CourseBooking.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: 'student',
+            attributes: ['id', 'nickname', 'openid']
+          },
+          {
+            model: User,
+            as: 'coach',
+            attributes: ['id', 'nickname', 'openid', 'course_categories']
+          },
+          {
+            model: Address,
+            as: 'address',
+            attributes: ['id', 'name']
+          }
+        ]
+      });
 
       if (!course) {
         return ResponseUtil.notFound(res, '课程不存在');
@@ -551,6 +569,22 @@ class CourseController {
         courseId: id, 
         cancelledBy: userId,
         reason: cancel_reason 
+      });
+
+      // 异步发送课程取消通知（不阻塞响应）
+      setImmediate(async () => {
+        try {
+          const receiverUser = userId === course.coach_id ? course.student : course.coach;
+
+          await SubscribeMessageService.sendBookingCancelNotice({
+            booking: course,
+            receiverUser,
+            address: course.address,
+            cancelReason: cancel_reason
+          });
+        } catch (error) {
+          logger.error('发送课程取消通知失败:', error);
+        }
       });
 
       return ResponseUtil.success(res, {

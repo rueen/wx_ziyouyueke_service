@@ -23,6 +23,10 @@ WeChatController.getSubscribeTemplates = asyncHandler(async (req, res) => {
       BOOKING_SUCCESS: {
         title: '预约成功通知',
         description: '你作为预约方，收到预约成功通知'
+      },
+      BOOKING_CANCEL: {
+        title: '课程取消通知',
+        description: '课程取消后，你会收到通知'
       }
     };
 
