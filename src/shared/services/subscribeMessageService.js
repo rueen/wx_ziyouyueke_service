@@ -580,6 +580,17 @@ class SubscribeMessageService {
       });
 
       if (messageLog) {
+        // 如果找到已有记录且已经发送成功，直接返回
+        if (messageLog.send_status === 1) {
+          logger.info('上课提醒已发送成功（并发检测），跳过重复发送', {
+            bookingId: booking.id,
+            receiverId: receiverUser.id,
+            logId: messageLog.id
+          });
+          return true;
+        }
+        
+        // 只更新失败或发送中的记录
         await messageLog.update({
           template_id: this.TEMPLATES.BOOKING_REMINDER,
           message_data: messageData,
