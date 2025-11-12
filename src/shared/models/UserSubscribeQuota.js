@@ -180,5 +180,23 @@ UserSubscribeQuota.getUserQuotas = async function(userId) {
   });
 };
 
+/**
+ * 类方法：检查用户是否有剩余配额
+ * @param {number} userId - 用户ID
+ * @param {string} templateType - 模板类型
+ * @returns {Promise<boolean>} 是否有剩余配额
+ */
+UserSubscribeQuota.hasQuota = async function(userId, templateType) {
+  const quota = await this.findOne({
+    where: {
+      user_id: userId,
+      template_type: templateType
+    }
+  });
+  
+  // 如果没有记录，返回 false；如果有记录，检查 remaining_quota > 0
+  return quota ? quota.remaining_quota > 0 : false;
+};
+
 module.exports = UserSubscribeQuota;
 

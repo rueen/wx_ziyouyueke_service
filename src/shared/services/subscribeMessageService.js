@@ -88,6 +88,16 @@ class SubscribeMessageService {
         return false;
       }
 
+      // 检查用户配额
+      const hasQuota = await UserSubscribeQuota.hasQuota(receiverUser.id, 'BOOKING_CONFIRM');
+      if (!hasQuota) {
+        logger.info('用户订阅配额不足，跳过发送预约确认提醒', {
+          userId: receiverUser.id,
+          bookingId: booking.id
+        });
+        return false;
+      }
+
       // 检查是否已发送（防重）
       const alreadySent = await SubscribeMessageLog.isMessageSent(
         'course_booking',
@@ -248,6 +258,16 @@ class SubscribeMessageService {
         return false;
       }
 
+      // 检查用户配额
+      const hasQuota = await UserSubscribeQuota.hasQuota(receiverUser.id, 'BOOKING_SUCCESS');
+      if (!hasQuota) {
+        logger.info('用户订阅配额不足，跳过发送预约成功通知', {
+          userId: receiverUser.id,
+          bookingId: booking.id
+        });
+        return false;
+      }
+
       // 检查是否已发送（防重）
       const alreadySent = await SubscribeMessageLog.isMessageSent(
         'course_booking',
@@ -404,6 +424,16 @@ class SubscribeMessageService {
         return false;
       }
 
+      // 检查用户配额
+      const hasQuota = await UserSubscribeQuota.hasQuota(receiverUser.id, 'BOOKING_CANCEL');
+      if (!hasQuota) {
+        logger.info('用户订阅配额不足，跳过发送课程取消通知', {
+          userId: receiverUser.id,
+          bookingId: booking.id
+        });
+        return false;
+      }
+
       // 检查是否已发送（防重）
       const alreadySent = await SubscribeMessageLog.isMessageSent(
         'course_booking',
@@ -535,6 +565,16 @@ class SubscribeMessageService {
 
       if (!receiverUser.openid) {
         logger.warn('发送上课提醒失败：接收人没有 openid', { userId: receiverUser.id });
+        return false;
+      }
+
+      // 检查用户配额
+      const hasQuota = await UserSubscribeQuota.hasQuota(receiverUser.id, 'BOOKING_REMINDER');
+      if (!hasQuota) {
+        logger.info('用户订阅配额不足，跳过发送上课提醒', {
+          userId: receiverUser.id,
+          bookingId: booking.id
+        });
         return false;
       }
 
