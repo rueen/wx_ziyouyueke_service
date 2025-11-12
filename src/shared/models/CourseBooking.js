@@ -234,15 +234,65 @@ CourseBooking.autoTimeoutCancel = async function() {
             ]
           }
         ]
-      }
+      },
+      include: [
+        {
+          model: sequelize.models.users,
+          as: 'student',
+          attributes: ['id', 'nickname', 'openid']
+        },
+        {
+          model: sequelize.models.users,
+          as: 'coach',
+          attributes: ['id', 'nickname', 'openid']
+        },
+        {
+          model: sequelize.models.addresses,
+          as: 'address',
+          attributes: ['id', 'name']
+        }
+      ]
     });
 
     let cancelledCount = 0;
     
     // 逐个取消超时课程
     for (const course of timeoutCourses) {
-      await course.timeoutCancel();
+      const updatedCourse = await course.timeoutCancel();
       cancelledCount++;
+
+      try {
+        const SubscribeMessageService = require('../services/subscribeMessageService');
+        const cancelReason = updatedCourse.cancel_reason || '超时，系统自动取消';
+
+        // 复用已加载的关联数据
+        updatedCourse.student = course.student;
+        updatedCourse.coach = course.coach;
+        updatedCourse.address = course.address;
+
+        if (course.student) {
+          await SubscribeMessageService.sendBookingCancelNotice({
+            booking: updatedCourse,
+            receiverUser: course.student,
+            address: course.address,
+            cancelReason
+          });
+        }
+
+        if (course.coach) {
+          await SubscribeMessageService.sendBookingCancelNotice({
+            booking: updatedCourse,
+            receiverUser: course.coach,
+            address: course.address,
+            cancelReason
+          });
+        }
+      } catch (error) {
+        console.error('自动取消课程后发送通知失败:', {
+          bookingId: course.id,
+          error: error.message
+        });
+      }
     }
 
     if (cancelledCount > 0) {
