@@ -196,13 +196,19 @@ const startServer = (app, port, serviceName) => {
 const setupCronJobs = () => {
   const cron = require('node-cron');
   const lessonExpireService = require('./services/lessonExpireService');
+  const bookingReminderService = require('./services/bookingReminderService');
   
   // 每天凌晨 2:00 执行课时过期检查
   cron.schedule('0 2 * * *', async () => {
     await lessonExpireService.processExpiredLessons();
   });
   
-  logger.info('定时任务已注册: 每天凌晨 2:00 检查过期课时');
+  // 每10分钟检查一次即将开始的课程并发送提醒
+  cron.schedule('*/10 * * * *', async () => {
+    await bookingReminderService.sendUpcomingReminders();
+  });
+  
+  logger.info('定时任务已注册: 每天凌晨 2:00 检查过期课时；每10分钟发送课程提醒');
 };
 
 module.exports = {

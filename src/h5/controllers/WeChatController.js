@@ -27,6 +27,10 @@ WeChatController.getSubscribeTemplates = asyncHandler(async (req, res) => {
       BOOKING_CANCEL: {
         title: '课程取消通知',
         description: '课程取消后，你会收到通知'
+      },
+      BOOKING_REMINDER: {
+        title: '上课提醒',
+        description: '上课前两小时提醒你留意课程安排'
       }
     };
 
