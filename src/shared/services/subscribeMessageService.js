@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-11-09 10:31:05
  * @LastEditors: diaochan
- * @LastEditTime: 2025-11-09 14:42:19
+ * @LastEditTime: 2025-11-12 18:36:42
  * @Description: 
  */
 const wechatUtil = require('../utils/wechat');
@@ -560,31 +560,48 @@ class SubscribeMessageService {
       );
 
       const messageData = {
-        time18: {
-          value: timeSlot
-        },
-        // 部分模板可能使用 time10 字段，兼容写入
         time10: {
           value: timeSlot
         },
-        thing14: {
+        thing4: {
           value: address.name.substring(0, 20)
         }
       };
 
       const page = this.PAGES.COURSE_DETAIL(booking.id);
 
-      messageLog = await SubscribeMessageLog.recordMessage({
-        templateId: this.TEMPLATES.BOOKING_REMINDER,
-        templateType: 'BOOKING_REMINDER',
-        businessType: 'course_booking',
-        businessId: booking.id,
-        receiverUserId: receiverUser.id,
-        receiverOpenid: receiverUser.openid,
-        messageData: messageData,
-        pagePath: page,
-        sendStatus: 0
+      messageLog = await SubscribeMessageLog.findOne({
+        where: {
+          template_type: 'BOOKING_REMINDER',
+          business_type: 'course_booking',
+          business_id: booking.id,
+          receiver_user_id: receiverUser.id
+        }
       });
+
+      if (messageLog) {
+        await messageLog.update({
+          template_id: this.TEMPLATES.BOOKING_REMINDER,
+          message_data: messageData,
+          page_path: page,
+          send_status: 0,
+          error_code: null,
+          error_message: null,
+          send_time: new Date()
+        });
+      } else {
+        messageLog = await SubscribeMessageLog.recordMessage({
+          templateId: this.TEMPLATES.BOOKING_REMINDER,
+          templateType: 'BOOKING_REMINDER',
+          businessType: 'course_booking',
+          businessId: booking.id,
+          receiverUserId: receiverUser.id,
+          receiverOpenid: receiverUser.openid,
+          messageData: messageData,
+          pagePath: page,
+          sendStatus: 0
+        });
+      }
 
       const sendResult = await wechatUtil.sendTemplateMessage(
         receiverUser.openid,
