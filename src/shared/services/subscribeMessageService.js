@@ -563,6 +563,10 @@ class SubscribeMessageService {
         time18: {
           value: timeSlot
         },
+        // 部分模板可能使用 time10 字段，兼容写入
+        time10: {
+          value: timeSlot
+        },
         thing14: {
           value: address.name.substring(0, 20)
         }
