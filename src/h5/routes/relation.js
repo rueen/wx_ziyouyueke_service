@@ -39,6 +39,9 @@ router.get('/my-students/:id', authenticateToken, idParamValidation, validateReq
 // 切换约课状态
 router.put('/:id/booking-status', authenticateToken, idParamValidation, validateRequest, RelationController.toggleBookingStatus);
 
+// 编辑师生关系权限
+router.patch('/:id/permissions', authenticateToken, idParamValidation, validateRequest, RelationController.updateRelationPermissions);
+
 // 更新师生关系
 router.put('/:id', authenticateToken, idParamValidation, relationUpdateValidation, validateRequest, RelationController.updateRelation);
 

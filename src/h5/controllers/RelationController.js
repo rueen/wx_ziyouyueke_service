@@ -622,6 +622,7 @@ class RelationController {
         ...relation.toJSON(),
         category_lessons: categoryLessons,
         remaining_lessons: totalRemainingLessons, // 兼容字段：总课时数
+        auto_confirm_by_coach: relation.auto_confirm_by_coach, // 明确返回自动确认设置
         lesson_stats: {
           total_lessons: totalLessons,
           completed_lessons: completedLessons,
@@ -711,7 +712,8 @@ class RelationController {
       const studentDetail = {
         ...relation.toJSON(),
         category_lessons: categoryLessons,
-        remaining_lessons: totalRemainingLessons
+        remaining_lessons: totalRemainingLessons,
+        auto_confirm_by_coach: relation.auto_confirm_by_coach // 明确返回自动确认设置
       };
 
       return ResponseUtil.success(res, studentDetail, '获取学员详情成功');
@@ -719,6 +721,69 @@ class RelationController {
     } catch (error) {
       logger.error('获取学员详情失败:', error);
       return ResponseUtil.error(res, '获取学员详情失败');
+    }
+  });
+
+  /**
+   * 编辑师生关系权限
+   * @route PATCH /api/h5/relations/:id/permissions
+   * @description 学员编辑师生关系权限设置（如自动确认等）
+   */
+  static updateRelationPermissions = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { auto_confirm_by_coach } = req.body;
+
+    try {
+      // 查找师生关系（只允许学员编辑）
+      const relation = await StudentCoachRelation.findOne({
+        where: {
+          id,
+          student_id: userId, // 只有学员可以编辑
+          relation_status: 1
+        }
+      });
+
+      if (!relation) {
+        return ResponseUtil.notFound(res, '师生关系不存在或无权限操作');
+      }
+
+      // 验证 auto_confirm_by_coach 字段
+      if (auto_confirm_by_coach !== undefined) {
+        // 接受 0、1、true、false，转换为 0 或 1
+        let finalValue;
+        if (auto_confirm_by_coach === true || auto_confirm_by_coach === 1 || auto_confirm_by_coach === '1') {
+          finalValue = 1;
+        } else if (auto_confirm_by_coach === false || auto_confirm_by_coach === 0 || auto_confirm_by_coach === '0') {
+          finalValue = 0;
+        } else {
+          return ResponseUtil.validationError(res, 'auto_confirm_by_coach 参数错误，必须为 0、1、true 或 false');
+        }
+
+        // 更新字段
+        await relation.update({
+          auto_confirm_by_coach: finalValue
+        });
+
+        logger.info('师生关系权限更新成功:', {
+          relationId: id,
+          studentId: userId,
+          coachId: relation.coach_id,
+          auto_confirm_by_coach: finalValue
+        });
+
+        return ResponseUtil.success(res, {
+          id: relation.id,
+          auto_confirm_by_coach: relation.auto_confirm_by_coach
+        }, '权限更新成功');
+      }
+
+      // 如果没有提供任何可更新的字段
+      return ResponseUtil.validationError(res, '没有可更新的权限字段');
+
+    } catch (error) {
+      logger.error('更新师生关系权限失败:', { relationId: id, userId, error: error.message });
+      return ResponseUtil.serverError(res, '更新权限失败');
     }
   });
 

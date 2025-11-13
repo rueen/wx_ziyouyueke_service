@@ -65,6 +65,12 @@ const StudentCoachRelation = sequelize.define('student_coach_relations', {
     allowNull: true,
     comment: '最近一次重新开启时间'
   },
+  auto_confirm_by_coach: {
+    type: DataTypes.TINYINT(1),
+    allowNull: false,
+    defaultValue: 0,
+    comment: '该教练发起的课程预约自动确认：0-需要确认，1-自动确认'
+  },
   bind_time: {
     type: DataTypes.DATE,
     allowNull: false,

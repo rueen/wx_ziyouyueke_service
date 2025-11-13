@@ -194,6 +194,10 @@ class CourseController {
         return ResponseUtil.validationError(res, '学员在该时间段已有其他预约');
       }
 
+      // 判断是否需要自动确认
+      // 条件：教练创建 && 学员开启了自动确认
+      const isAutoConfirm = userId === coach_id && relation.auto_confirm_by_coach === 1;
+      
       // 创建预约
       const booking = await CourseBooking.create({
         student_id: student_id,
@@ -206,39 +210,63 @@ class CourseController {
         category_id: category_id,
         student_remark: student_remark,
         coach_remark: coach_remark,
-        booking_status: 1, // 待确认
+        booking_status: isAutoConfirm ? 2 : 1, // 自动确认：2-已确认，否则：1-待确认
+        confirmed_at: isAutoConfirm ? new Date() : null, // 自动确认时设置确认时间
         created_by: userId
       });
 
       logger.info('课程预约成功:', { 
         bookingId: booking.id, 
         studentId: student_id, 
-        coachId: coach_id 
+        coachId: coach_id,
+        isAutoConfirm: isAutoConfirm,
+        bookingStatus: booking.booking_status
       });
 
-      // 异步发送预约确认提醒消息（不阻塞响应）
+      // 异步发送订阅消息（不阻塞响应）
       setImmediate(async () => {
         try {
-          // 确定预约人和接收人
-          const bookerUser = userId === student_id ? student : coach;
-          const receiverUser = userId === student_id ? coach : student;
+          if (isAutoConfirm) {
+            // 自动确认的课程：只向学员发送"预约成功通知"
+            const categoryName = categories.find(cat => cat.id === category_id)?.name || '默认分类';
+            
+            await SubscribeMessageService.sendBookingSuccessNotice({
+              booking,
+              coach,
+              student,
+              confirmerUser: coach, // 教练确认
+              receiverUser: student, // 学员接收
+              address,
+              categoryName
+            });
 
-          await SubscribeMessageService.sendBookingConfirmNotice({
-            booking,
-            bookerUser,
-            receiverUser,
-            relation,
-            address
-          });
+            logger.info('自动确认课程，已向学员发送预约成功通知', {
+              bookingId: booking.id,
+              studentId: student_id
+            });
+          } else {
+            // 需要确认的课程：发送"预约确认提醒"
+            const bookerUser = userId === student_id ? student : coach;
+            const receiverUser = userId === student_id ? coach : student;
+
+            await SubscribeMessageService.sendBookingConfirmNotice({
+              booking,
+              bookerUser,
+              receiverUser,
+              relation,
+              address
+            });
+          }
         } catch (error) {
-          logger.error('发送预约确认提醒失败:', error);
+          logger.error('发送订阅消息失败:', error);
         }
       });
 
       return ResponseUtil.success(res, {
         booking_id: booking.id,
-        booking_status: booking.booking_status
-      }, '预约成功');
+        booking_status: booking.booking_status,
+        is_auto_confirm: isAutoConfirm
+      }, isAutoConfirm ? '预约成功（已自动确认）' : '预约成功');
 
     } catch (error) {
       logger.error('课程预约失败:', error);
