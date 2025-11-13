@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-11-09 10:31:05
  * @LastEditors: diaochan
- * @LastEditTime: 2025-11-12 18:36:42
+ * @LastEditTime: 2025-11-13 17:35:00
  * @Description: 
  */
 const wechatUtil = require('../utils/wechat');
@@ -292,14 +292,7 @@ class SubscribeMessageService {
       );
 
       // 确定备注内容
-      let remark = '';
-      if (confirmerUser.id === coach.id) {
-        // 教练确认 → 通知学员，使用学员备注
-        remark = booking.student_remark || '无';
-      } else {
-        // 学员确认 → 通知教练，使用教练备注
-        remark = booking.coach_remark || '无';
-      }
+      let remark = booking.coach_remark || booking.student_remark || '无';
 
       // 构建消息数据
       const messageData = {
