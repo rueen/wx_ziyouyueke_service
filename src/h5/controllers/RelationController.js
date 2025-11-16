@@ -654,12 +654,6 @@ class RelationController {
           coach_id: coachId,
           relation_status: 1
         },
-        attributes: [
-          'id', 'student_id', 'coach_id', 'student_name', 'lessons',
-          'student_remark', 'coach_remark', 'relation_status', 
-          'booking_status', 'booking_closed_at', 'booking_reopened_at',
-          'createdAt', 'updatedAt'
-        ],
         include: [
           {
             model: User,
