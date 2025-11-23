@@ -101,6 +101,16 @@ class WeChatPayService {
       // 3. 解密数据
       let decryptedData;
       try {
+        // 记录resource的完整结构（用于调试）
+        logger.info('准备解密回调数据:', {
+          resource_keys: body.resource ? Object.keys(body.resource) : null,
+          has_tag: !!body.resource?.tag,
+          has_ciphertext: !!body.resource?.ciphertext,
+          has_nonce: !!body.resource?.nonce,
+          algorithm: body.resource?.algorithm,
+          original_type: body.resource?.original_type
+        });
+        
         decryptedData = wechatPayUtil.decryptNotifyResource(body.resource);
         logger.info('回调数据解密成功:', {
           out_trade_no: decryptedData?.out_trade_no,
@@ -111,7 +121,12 @@ class WeChatPayService {
         logger.error('回调数据解密失败:', {
           error: decryptError.message,
           stack: decryptError.stack,
-          resource: body.resource
+          resource_structure: body.resource ? {
+            keys: Object.keys(body.resource),
+            has_tag: !!body.resource.tag,
+            algorithm: body.resource.algorithm,
+            original_type: body.resource.original_type
+          } : null
         });
         return false;
       }
