@@ -220,33 +220,46 @@ class DonationController {
       const headers = req.headers;
       const body = req.body;
 
-      logger.info('收到支付回调:', {
+      // 记录完整的回调信息（用于调试）
+      logger.info('收到支付回调请求:', {
+        method: req.method,
+        url: req.url,
         headers: {
           'wechatpay-timestamp': headers['wechatpay-timestamp'],
           'wechatpay-nonce': headers['wechatpay-nonce'],
-          'wechatpay-serial': headers['wechatpay-serial']
+          'wechatpay-serial': headers['wechatpay-serial'],
+          'wechatpay-signature': headers['wechatpay-signature'] ? '已提供' : '缺失'
         },
-        event_type: body.event_type
+        body_keys: Object.keys(body || {}),
+        event_type: body?.event_type,
+        resource_type: body?.resource?.original_type
       });
 
       // 处理回调
       const success = await wechatPayService.handlePaymentNotify(headers, body);
 
       if (success) {
+        logger.info('支付回调处理成功');
         // 返回成功响应给微信
         return res.status(200).json({
           code: 'SUCCESS',
           message: '成功'
         });
       } else {
-        // 返回失败响应
+        logger.error('支付回调处理失败');
+        // 返回失败响应（微信会重试）
         return res.status(500).json({
           code: 'FAIL',
           message: '处理失败'
         });
       }
     } catch (err) {
-      logger.error('处理支付回调失败:', err);
+      logger.error('处理支付回调异常:', {
+        error: err.message,
+        stack: err.stack,
+        body: req.body
+      });
+      // 返回失败响应（微信会重试）
       return res.status(500).json({
         code: 'FAIL',
         message: '系统异常'

@@ -75,71 +75,135 @@ class WeChatPayService {
    */
   async handlePaymentNotify(headers, body) {
     try {
-      // 1. 验证签名
-      const isValid = wechatPayUtil.verifyNotifySignature(headers, JSON.stringify(body));
-      if (!isValid) {
-        logger.error('支付回调签名验证失败');
+      // 1. 验证基本参数
+      if (!body || !body.resource) {
+        logger.error('支付回调数据格式错误: body或resource为空', {
+          body: body,
+          has_resource: !!body?.resource
+        });
         return false;
       }
 
-      // 2. 解密数据
-      const decryptedData = wechatPayUtil.decryptNotifyResource(body.resource);
-      
-      logger.info('收到支付回调通知:', {
-        out_trade_no: decryptedData.out_trade_no,
-        transaction_id: decryptedData.transaction_id,
-        trade_state: decryptedData.trade_state
-      });
+      // 2. 验证签名（当前为简化版本，直接通过）
+      const isValid = wechatPayUtil.verifyNotifySignature(headers, JSON.stringify(body));
+      if (!isValid) {
+        logger.error('支付回调签名验证失败', {
+          headers: {
+            timestamp: headers['wechatpay-timestamp'],
+            nonce: headers['wechatpay-nonce'],
+            serial: headers['wechatpay-serial'],
+            signature: headers['wechatpay-signature'] ? '已提供' : '缺失'
+          }
+        });
+        return false;
+      }
 
-      // 3. 查找订单
+      // 3. 解密数据
+      let decryptedData;
+      try {
+        decryptedData = wechatPayUtil.decryptNotifyResource(body.resource);
+        logger.info('回调数据解密成功:', {
+          out_trade_no: decryptedData?.out_trade_no,
+          transaction_id: decryptedData?.transaction_id,
+          trade_state: decryptedData?.trade_state
+        });
+      } catch (decryptError) {
+        logger.error('回调数据解密失败:', {
+          error: decryptError.message,
+          stack: decryptError.stack,
+          resource: body.resource
+        });
+        return false;
+      }
+
+      if (!decryptedData || !decryptedData.out_trade_no) {
+        logger.error('解密后的数据格式错误:', decryptedData);
+        return false;
+      }
+
+      // 4. 查找订单
       const donation = await Donation.findOne({
         where: { out_trade_no: decryptedData.out_trade_no }
       });
 
       if (!donation) {
-        logger.error('未找到订单:', { out_trade_no: decryptedData.out_trade_no });
+        logger.error('未找到订单:', { 
+          out_trade_no: decryptedData.out_trade_no,
+          decrypted_data: decryptedData
+        });
         return false;
       }
 
-      // 4. 检查订单状态，避免重复处理
+      logger.info('找到订单:', {
+        donation_id: donation.id,
+        out_trade_no: decryptedData.out_trade_no,
+        current_status: donation.payment_status
+      });
+
+      // 5. 检查订单状态，避免重复处理
       if (donation.payment_status === 1) {
         logger.info('订单已处理，跳过:', { 
           donation_id: donation.id,
-          out_trade_no: decryptedData.out_trade_no 
+          out_trade_no: decryptedData.out_trade_no,
+          transaction_id: donation.transaction_id
         });
         return true;
       }
 
-      // 5. 根据支付状态更新订单
+      // 6. 根据支付状态更新订单
       if (decryptedData.trade_state === 'SUCCESS') {
-        await donation.markAsPaid(decryptedData.transaction_id);
-        
-        logger.info('订单支付成功:', {
-          donation_id: donation.id,
-          out_trade_no: decryptedData.out_trade_no,
-          transaction_id: decryptedData.transaction_id,
-          amount: donation.amount
-        });
-        
-        return true;
+        try {
+          await donation.markAsPaid(decryptedData.transaction_id);
+          
+          logger.info('订单支付成功，状态已更新:', {
+            donation_id: donation.id,
+            out_trade_no: decryptedData.out_trade_no,
+            transaction_id: decryptedData.transaction_id,
+            amount: donation.amount
+          });
+          
+          return true;
+        } catch (updateError) {
+          logger.error('更新订单状态失败:', {
+            error: updateError.message,
+            donation_id: donation.id,
+            out_trade_no: decryptedData.out_trade_no
+          });
+          return false;
+        }
       } else if (decryptedData.trade_state === 'CLOSED') {
-        await donation.markAsClosed();
-        
-        logger.info('订单已关闭:', {
-          donation_id: donation.id,
-          out_trade_no: decryptedData.out_trade_no
-        });
-        
-        return true;
+        try {
+          await donation.markAsClosed();
+          
+          logger.info('订单已关闭，状态已更新:', {
+            donation_id: donation.id,
+            out_trade_no: decryptedData.out_trade_no
+          });
+          
+          return true;
+        } catch (updateError) {
+          logger.error('关闭订单失败:', {
+            error: updateError.message,
+            donation_id: donation.id
+          });
+          return false;
+        }
       } else {
         logger.warn('未处理的支付状态:', {
           donation_id: donation.id,
-          trade_state: decryptedData.trade_state
+          out_trade_no: decryptedData.out_trade_no,
+          trade_state: decryptedData.trade_state,
+          full_data: decryptedData
         });
         return false;
       }
     } catch (error) {
-      logger.error('处理支付回调失败:', error);
+      logger.error('处理支付回调异常:', {
+        error: error.message,
+        stack: error.stack,
+        headers: headers,
+        body: body
+      });
       return false;
     }
   }

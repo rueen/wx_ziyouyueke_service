@@ -275,24 +275,64 @@ class WeChatPayUtil {
    */
   decryptNotifyResource(resource) {
     try {
+      if (!resource) {
+        throw new Error('resource参数为空');
+      }
+
       const { ciphertext, associated_data, nonce } = resource;
+      
+      if (!ciphertext || !nonce) {
+        throw new Error('缺少必要的解密参数: ciphertext或nonce为空');
+      }
+
+      if (!this.apiV3Key) {
+        throw new Error('APIv3密钥未配置');
+      }
+
+      // 将APIv3密钥转换为Buffer（如果已经是字符串）
+      const key = Buffer.from(this.apiV3Key, 'utf8');
+      
+      // 将nonce从base64解码
+      const nonceBuffer = Buffer.from(nonce, 'base64');
       
       // 使用AEAD_AES_256_GCM解密
       const decipher = crypto.createDecipheriv(
         'aes-256-gcm',
-        this.apiV3Key,
-        nonce
+        key,
+        nonceBuffer
       );
       
-      decipher.setAuthTag(Buffer.from(resource.tag || '', 'base64'));
-      decipher.setAAD(Buffer.from(associated_data));
+      // 设置认证标签（如果有）
+      if (resource.tag) {
+        decipher.setAuthTag(Buffer.from(resource.tag, 'base64'));
+      }
       
-      let decrypted = decipher.update(ciphertext, 'base64', 'utf8');
+      // 设置关联数据
+      if (associated_data) {
+        decipher.setAAD(Buffer.from(associated_data, 'utf8'));
+      }
+      
+      // 解密数据
+      const ciphertextBuffer = Buffer.from(ciphertext, 'base64');
+      let decrypted = decipher.update(ciphertextBuffer, null, 'utf8');
       decrypted += decipher.final('utf8');
       
-      return JSON.parse(decrypted);
+      // 解析JSON
+      const result = JSON.parse(decrypted);
+      
+      logger.debug('回调数据解密成功:', {
+        has_out_trade_no: !!result.out_trade_no,
+        trade_state: result.trade_state
+      });
+      
+      return result;
     } catch (error) {
-      logger.error('解密回调数据失败:', error);
+      logger.error('解密回调数据失败:', {
+        error: error.message,
+        stack: error.stack,
+        resource_keys: resource ? Object.keys(resource) : null,
+        has_api_v3_key: !!this.apiV3Key
+      });
       throw error;
     }
   }
