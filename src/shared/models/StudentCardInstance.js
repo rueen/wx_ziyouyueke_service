@@ -256,56 +256,57 @@ StudentCardInstance.prototype.deductLesson = async function(transaction = null) 
 };
 
 /**
+ * 实例方法：获取可用课时（总课时 - 未完成预约占用的课时）
+ * @returns {Promise<number>} 可用课时数
+ */
+StudentCardInstance.prototype.getAvailableLessons = async function() {
+  // 1. 先检查卡片是否可用
+  const checkResult = this.checkAvailable();
+  if (!checkResult.available) {
+    return 0;
+  }
+  
+  // 2. 无限次数卡片返回一个大数
+  if (this.total_lessons === null) {
+    return 9999;
+  }
+  
+  const totalLessons = this.remaining_lessons || 0;
+  
+  // 3. 查询占用的课时数（待确认、已确认的课程）
+  const CourseBooking = this.sequelize.models.course_bookings;
+  const occupiedCount = await CourseBooking.count({
+    where: {
+      card_instance_id: this.id,
+      booking_type: 2, // 卡片课程
+      booking_status: {
+        [this.sequelize.Sequelize.Op.in]: [1, 2] // 待确认、已确认
+      }
+    }
+  });
+  
+  // 4. 可用课时 = 总课时 - 已占用课时
+  return Math.max(totalLessons - occupiedCount, 0);
+};
+
+/**
  * 实例方法：检查是否可以删除
  * @returns {Promise<Object>} { canDelete: boolean, reason: string }
  */
 StudentCardInstance.prototype.canDelete = async function() {
-  // 如果有到期日期，检查是否已过期
-  if (this.expire_date) {
-    const now = moment.tz('Asia/Shanghai').startOf('day');
-    const expireDate = moment.tz(this.expire_date, 'Asia/Shanghai').endOf('day');
-    
-    // 已过期的卡片可以删除
-    if (now.isAfter(expireDate)) {
-      return { canDelete: true, reason: '' };
+  // 检查是否有使用记录（包括任何状态的课程预约）
+  const CourseBooking = this.sequelize.models.course_bookings;
+  const usageCount = await CourseBooking.count({
+    where: {
+      card_instance_id: this.id
     }
-    
-    // 有效期内，检查是否有剩余课时
-    const hasRemainingLessons = this.total_lessons === null || this.remaining_lessons > 0;
-    
-    if (!hasRemainingLessons) {
-      return { canDelete: true, reason: '' };
-    }
+  });
 
-    // 有效期内且有剩余课时，检查是否有使用记录
-    const CourseBooking = this.sequelize.models.course_bookings;
-    const usageCount = await CourseBooking.count({
-      where: {
-        card_instance_id: this.id
-      }
-    });
-
-    if (usageCount > 0) {
-      return { 
-        canDelete: false, 
-        reason: '有效期内且有剩余课时且存在使用记录，不允许删除' 
-      };
-    }
-  } else {
-    // 未开卡的卡片（没有到期日期），检查是否有使用记录
-    const CourseBooking = this.sequelize.models.course_bookings;
-    const usageCount = await CourseBooking.count({
-      where: {
-        card_instance_id: this.id
-      }
-    });
-
-    if (usageCount > 0) {
-      return { 
-        canDelete: false, 
-        reason: '存在使用记录，不允许删除' 
-      };
-    }
+  if (usageCount > 0) {
+    return { 
+      canDelete: false, 
+      reason: '存在使用记录，不允许删除' 
+    };
   }
 
   return { canDelete: true, reason: '' };

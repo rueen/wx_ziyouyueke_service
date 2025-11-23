@@ -128,6 +128,12 @@ class CourseController {
           return ResponseUtil.validationError(res, checkResult.reason);
         }
 
+        // 检查可用课时（考虑已预约但未完成的课程占用）
+        const availableLessons = await cardInstance.getAvailableLessons();
+        if (availableLessons <= 0) {
+          return ResponseUtil.validationError(res, '卡片可用课时不足，无法预约课程');
+        }
+
         // 检查课程日期是否在卡片有效期内（如果卡片已开卡）
         if (cardInstance.expire_date) {
           const moment = require('moment-timezone');

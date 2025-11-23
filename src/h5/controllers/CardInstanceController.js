@@ -258,7 +258,26 @@ class CardInstanceController {
       ]
     });
 
-    const instanceList = await Promise.all(instances.map(instance => instance.getSummary()));
+    // 获取每个卡片实例的详细信息
+    const instanceList = await Promise.all(instances.map(async (instance) => {
+      const summary = await instance.getSummary();
+      
+      // 获取已使用次数（所有使用记录的条数）
+      const usageCount = await CourseBooking.count({
+        where: {
+          card_instance_id: instance.id
+        }
+      });
+      
+      // 获取实际可预约的课时数量
+      const availableLessons = await instance.getAvailableLessons();
+      
+      return {
+        ...summary,
+        usage_count: usageCount, // 已使用次数
+        available_lessons: availableLessons // 实际可预约的课时数量
+      };
+    }));
 
     return ResponseUtil.success(res, {
       list: instanceList,
@@ -307,7 +326,26 @@ class CardInstanceController {
       ]
     });
 
-    const instanceList = await Promise.all(instances.map(instance => instance.getSummary()));
+    // 获取每个卡片实例的详细信息
+    const instanceList = await Promise.all(instances.map(async (instance) => {
+      const summary = await instance.getSummary();
+      
+      // 获取已使用次数（所有使用记录的条数）
+      const usageCount = await CourseBooking.count({
+        where: {
+          card_instance_id: instance.id
+        }
+      });
+      
+      // 获取实际可预约的课时数量
+      const availableLessons = await instance.getAvailableLessons();
+      
+      return {
+        ...summary,
+        usage_count: usageCount, // 已使用次数
+        available_lessons: availableLessons // 实际可预约的课时数量
+      };
+    }));
 
     return ResponseUtil.success(res, {
       list: instanceList,
@@ -359,12 +397,24 @@ class CardInstanceController {
       attributes: ['id', 'course_date', 'start_time', 'end_time', 'booking_status', 'complete_at']
     });
 
+    // 获取已使用次数（所有使用记录的条数）
+    const usageCount = await CourseBooking.count({
+      where: {
+        card_instance_id: id
+      }
+    });
+
+    // 获取实际可预约的课时数量
+    const availableLessons = await instance.getAvailableLessons();
+
     const instanceSummary = await instance.getSummary();
     const instanceDetail = {
       ...instanceSummary,
       student: instance.student,
       coach: instance.coach,
-      usage_records: usageRecords
+      usage_records: usageRecords,
+      usage_count: usageCount, // 已使用次数
+      available_lessons: availableLessons // 实际可预约的课时数量
     };
 
     return ResponseUtil.success(res, instanceDetail, '获取卡片详情成功');
@@ -430,7 +480,12 @@ class CardInstanceController {
       ]
     });
 
-    const instanceList = await Promise.all(instances.map(instance => instance.getSummary()));
+    // 为每个卡片添加可用课时信息
+    const instanceList = await Promise.all(instances.map(async instance => {
+      const summary = await instance.getSummary();
+      summary.available_lessons = await instance.getAvailableLessons(); // 添加可用课时
+      return summary;
+    }));
 
     return ResponseUtil.success(res, {
       list: instanceList,
