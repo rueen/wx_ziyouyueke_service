@@ -3,6 +3,13 @@
  * 执行命令: node scripts/add-card-tables.js
  */
 
+// 加载环境变量
+try {
+  require('dotenv').config();
+} catch (error) {
+  console.log('dotenv 模块未安装或 .env 文件不存在，使用默认配置');
+}
+
 const { sequelize } = require('../src/shared/models');
 const logger = require('../src/shared/utils/logger');
 
