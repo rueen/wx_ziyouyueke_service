@@ -20,6 +20,8 @@ const categoryRoutes = require('./category');
 const groupCourseRoutes = require('./groupCourse');
 const qrcodeRoutes = require('./qrcode');
 const wechatRoutes = require('./wechat');
+const coachCardRoutes = require('./coachCard');
+const cardInstanceRoutes = require('./cardInstance');
 
 /**
  * H5端路由配置
@@ -68,5 +70,11 @@ router.use('/qrcode', qrcodeRoutes);
 
 // 微信相关路由
 router.use('/wechat', wechatRoutes);
+
+// 卡片模板相关路由
+router.use('/coach-cards', coachCardRoutes);
+
+// 卡片实例相关路由
+router.use('/card-instances', cardInstanceRoutes);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address, sequelize } = require('../../shared/models');
+const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address, StudentCardInstance, sequelize } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
@@ -24,6 +24,8 @@ class CourseController {
       end_time, 
       address_id,
       category_id = 0,
+      booking_type = 1,  // 新增：1-普通课程，2-卡片课程
+      card_instance_id = null,  // 新增：如果是卡片课程，需要提供卡片实例ID
       student_remark = '',
       coach_remark = ''
     } = req.body;
@@ -32,6 +34,16 @@ class CourseController {
       // 参数验证
       if (!coach_id || !student_id || !course_date || !start_time || !end_time || !address_id) {
         return ResponseUtil.validationError(res, '缺少必要参数');
+      }
+
+      // 验证预约类型
+      if (booking_type !== 1 && booking_type !== 2) {
+        return ResponseUtil.validationError(res, '预约类型参数错误');
+      }
+
+      // 如果是卡片课程，必须提供卡片实例ID
+      if (booking_type === 2 && !card_instance_id) {
+        return ResponseUtil.validationError(res, '卡片课程必须提供卡片实例ID');
       }
 
       // 验证教练是否存在
@@ -94,23 +106,66 @@ class CourseController {
         return ResponseUtil.validationError(res, '该师生关系已关闭约课，无法预约');
       }
 
-      // 检查课程日期是否在课时有效期内
-      const lessons = relation.lessons || [];
-      const categoryLesson = lessons.find(l => l.category_id === category_id);
-      if (categoryLesson && categoryLesson.expire_date) {
-        const moment = require('moment-timezone');
-        const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
-        const courseDateTime = moment.tz(course_date, 'Asia/Shanghai').startOf('day');
-        
-        if (courseDateTime.isAfter(expireEndTime)) {
-          return ResponseUtil.validationError(res, `该分类课时有效期至 ${categoryLesson.expire_date}，无法预约该日期的课程`);
-        }
-      }
+      // 根据预约类型进行不同的验证
+      if (booking_type === 2) {
+        // 卡片课程验证
+        const cardInstance = await StudentCardInstance.findOne({
+          where: {
+            id: card_instance_id,
+            student_id: student_id,
+            coach_id: coach_id,
+            relation_id: relation.id
+          }
+        });
 
-      // 检查指定分类的可用课时（考虑已预约但未完成的课程占用）
-      const availableLessons = await relation.getAvailableLessons(category_id);
-      if (availableLessons <= 0) {
-        return ResponseUtil.validationError(res, '该分类可用课时不足，无法预约课程');
+        if (!cardInstance) {
+          return ResponseUtil.notFound(res, '卡片不存在');
+        }
+
+        // 检查卡片是否可用
+        const checkResult = cardInstance.checkAvailable();
+        if (!checkResult.available) {
+          return ResponseUtil.validationError(res, checkResult.reason);
+        }
+
+        // 检查课程日期是否在卡片有效期内（如果卡片已开卡）
+        if (cardInstance.expire_date) {
+          const moment = require('moment-timezone');
+          const courseDateTime = moment.tz(course_date, 'Asia/Shanghai').startOf('day');
+          const expireDate = moment.tz(cardInstance.expire_date, 'Asia/Shanghai').endOf('day');
+          
+          if (courseDateTime.isAfter(expireDate)) {
+            return ResponseUtil.validationError(res, `卡片有效期至 ${cardInstance.expire_date}，无法预约该日期的课程`);
+          }
+        }
+
+      } else {
+        // 普通课程验证 - 使用原有的课时检查逻辑
+        // 验证课程分类是否存在
+        const categories = coach.course_categories || [];
+        const categoryExists = categories.some(cat => cat.id === category_id);
+        if (!categoryExists) {
+          return ResponseUtil.validationError(res, '课程分类不存在');
+        }
+
+        // 检查课程日期是否在课时有效期内
+        const lessons = relation.lessons || [];
+        const categoryLesson = lessons.find(l => l.category_id === category_id);
+        if (categoryLesson && categoryLesson.expire_date) {
+          const moment = require('moment-timezone');
+          const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
+          const courseDateTime = moment.tz(course_date, 'Asia/Shanghai').startOf('day');
+          
+          if (courseDateTime.isAfter(expireEndTime)) {
+            return ResponseUtil.validationError(res, `该分类课时有效期至 ${categoryLesson.expire_date}，无法预约该日期的课程`);
+          }
+        }
+
+        // 检查指定分类的可用课时（考虑已预约但未完成的课程占用）
+        const availableLessons = await relation.getAvailableLessons(category_id);
+        if (availableLessons <= 0) {
+          return ResponseUtil.validationError(res, '该分类可用课时不足，无法预约课程');
+        }
       }
 
       // 检查教练时间段人数限制
@@ -202,12 +257,14 @@ class CourseController {
       const booking = await CourseBooking.create({
         student_id: student_id,
         coach_id: coach_id,
-        relation_id: relation_id,
+        relation_id: relation.id,
         course_date: course_date,
         start_time: start_time,
         end_time: end_time,
         address_id: address_id,
         category_id: category_id,
+        booking_type: booking_type,
+        card_instance_id: booking_type === 2 ? card_instance_id : null,
         student_remark: student_remark,
         coach_remark: coach_remark,
         booking_status: isAutoConfirm ? 2 : 1, // 自动确认：2-已确认，否则：1-待确认
@@ -219,6 +276,8 @@ class CourseController {
         bookingId: booking.id, 
         studentId: student_id, 
         coachId: coach_id,
+        bookingType: booking_type,
+        cardInstanceId: card_instance_id,
         isAutoConfirm: isAutoConfirm,
         bookingStatus: booking.booking_status
       });
@@ -355,6 +414,20 @@ class CourseController {
             as: 'relation',
             attributes: ['id', 'student_name'],
             required: false
+          },
+          {
+            model: StudentCardInstance,
+            as: 'cardInstance',
+            attributes: ['id', 'coach_card_id', 'total_lessons', 'remaining_lessons', 'expire_date', 'card_status', 'valid_days'],
+            required: false,
+            include: [
+              {
+                model: require('../../shared/models').CoachCard,
+                as: 'coachCard',
+                attributes: ['id', 'card_name', 'card_color'],
+                paranoid: false // 包括软删除的卡片模板
+              }
+            ]
           }
         ],
         order: [['course_date', 'DESC'], ['start_time', 'DESC']],
@@ -364,8 +437,21 @@ class CourseController {
 
       const totalPages = Math.ceil(count / limit);
 
+      // 格式化课程列表，处理卡片信息
+      const formattedCourses = courses.map(course => {
+        const courseData = course.toJSON();
+        
+        // 如果是卡片课程且有卡片信息，添加卡片名称和颜色
+        if (courseData.booking_type === 2 && courseData.cardInstance) {
+          courseData.card_name = courseData.cardInstance.coachCard?.card_name || '未知卡片';
+          courseData.card_color = courseData.cardInstance.coachCard?.card_color || '#999999';
+        }
+        
+        return courseData;
+      });
+
       return ResponseUtil.success(res, {
-        list: courses,
+        list: formattedCourses,
         total: count,
         totalPages: totalPages,
         page: parseInt(page),
@@ -419,6 +505,20 @@ class CourseController {
             as: 'relation',
             attributes: ['id', 'student_name'],
             required: false
+          },
+          {
+            model: StudentCardInstance,
+            as: 'cardInstance',
+            attributes: ['id', 'coach_card_id', 'total_lessons', 'remaining_lessons', 'expire_date', 'card_status', 'valid_days'],
+            required: false,
+            include: [
+              {
+                model: require('../../shared/models').CoachCard,
+                as: 'coachCard',
+                attributes: ['id', 'card_name', 'card_color'],
+                paranoid: false
+              }
+            ]
           }
         ]
       });
@@ -432,7 +532,14 @@ class CourseController {
         return ResponseUtil.forbidden(res, '无权查看此课程');
       }
 
-      return ResponseUtil.success(res, course, '获取课程详情成功');
+      // 格式化课程数据，处理卡片信息
+      const courseData = course.toJSON();
+      if (courseData.booking_type === 2 && courseData.cardInstance) {
+        courseData.card_name = courseData.cardInstance.coachCard?.card_name || '未知卡片';
+        courseData.card_color = courseData.cardInstance.coachCard?.card_color || '#999999';
+      }
+
+      return ResponseUtil.success(res, courseData, '获取课程详情成功');
 
     } catch (error) {
       logger.error('获取课程详情失败:', error);
@@ -657,8 +764,35 @@ class CourseController {
         return ResponseUtil.validationError(res, '课程状态不允许完成');
       }
 
-      // 如果有师生关系，先检查并扣除课时
-      if (course.relation_id) {
+      // 根据预约类型扣除课时
+      if (course.booking_type === 2 && course.card_instance_id) {
+        // 卡片课程 - 从卡片中扣除
+        const cardInstance = await StudentCardInstance.findByPk(course.card_instance_id, { transaction: t });
+        
+        if (!cardInstance) {
+          await t.rollback();
+          return ResponseUtil.notFound(res, '卡片不存在');
+        }
+
+        try {
+          await cardInstance.deductLesson(t);
+          logger.info('卡片课时扣除:', {
+            cardInstanceId: cardInstance.id,
+            courseId: id,
+            remainingLessons: cardInstance.remaining_lessons,
+            usedCount: cardInstance.used_count
+          });
+        } catch (error) {
+          await t.rollback();
+          logger.error('扣除卡片课时失败:', {
+            cardInstanceId: cardInstance.id,
+            courseId: id,
+            error: error.message
+          });
+          return ResponseUtil.error(res, error.message || '扣除卡片课时失败');
+        }
+      } else if (course.booking_type === 1 && course.relation_id) {
+        // 普通课程 - 从分类课时中扣除（原有逻辑）
         const relation = await StudentCoachRelation.findByPk(course.relation_id, { transaction: t });
         if (relation) {
           // 确定要扣除课时的分类ID（兼容处理）

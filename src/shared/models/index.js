@@ -13,6 +13,8 @@ const GroupCourse = require('./GroupCourse');
 const GroupCourseRegistration = require('./GroupCourseRegistration');
 const SubscribeMessageLog = require('./SubscribeMessageLog');
 const UserSubscribeQuota = require('./UserSubscribeQuota');
+const CoachCard = require('./CoachCard');
+const StudentCardInstance = require('./StudentCardInstance');
 
 /**
  * 设置模型关联关系
@@ -217,6 +219,71 @@ UserSubscribeQuota.belongsTo(User, {
   as: 'user' 
 });
 
+// CoachCard 与 User 的关联
+User.hasMany(CoachCard, { 
+  foreignKey: 'coach_id', 
+  as: 'coachCards'
+});
+
+CoachCard.belongsTo(User, { 
+  foreignKey: 'coach_id', 
+  as: 'coach' 
+});
+
+// StudentCardInstance 与 CoachCard 的关联
+CoachCard.hasMany(StudentCardInstance, { 
+  foreignKey: 'coach_card_id', 
+  as: 'instances'
+});
+
+StudentCardInstance.belongsTo(CoachCard, { 
+  foreignKey: 'coach_card_id', 
+  as: 'coachCard' 
+});
+
+// StudentCardInstance 与 User 的关联
+User.hasMany(StudentCardInstance, { 
+  foreignKey: 'student_id', 
+  as: 'studentCardInstances'
+});
+
+User.hasMany(StudentCardInstance, { 
+  foreignKey: 'coach_id', 
+  as: 'coachCardInstances'
+});
+
+StudentCardInstance.belongsTo(User, { 
+  foreignKey: 'student_id', 
+  as: 'student' 
+});
+
+StudentCardInstance.belongsTo(User, { 
+  foreignKey: 'coach_id', 
+  as: 'coach' 
+});
+
+// StudentCardInstance 与 StudentCoachRelation 的关联
+StudentCoachRelation.hasMany(StudentCardInstance, { 
+  foreignKey: 'relation_id', 
+  as: 'cardInstances'
+});
+
+StudentCardInstance.belongsTo(StudentCoachRelation, { 
+  foreignKey: 'relation_id', 
+  as: 'relation' 
+});
+
+// CourseBooking 与 StudentCardInstance 的关联
+StudentCardInstance.hasMany(CourseBooking, { 
+  foreignKey: 'card_instance_id', 
+  as: 'bookings'
+});
+
+CourseBooking.belongsTo(StudentCardInstance, { 
+  foreignKey: 'card_instance_id', 
+  as: 'cardInstance' 
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -233,5 +300,7 @@ module.exports = {
   GroupCourse,
   GroupCourseRegistration,
   SubscribeMessageLog,
-  UserSubscribeQuota
+  UserSubscribeQuota,
+  CoachCard,
+  StudentCardInstance
 }; 

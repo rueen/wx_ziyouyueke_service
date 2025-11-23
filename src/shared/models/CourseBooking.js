@@ -59,6 +59,17 @@ const CourseBooking = sequelize.define('course_bookings', {
     defaultValue: 0,
     comment: '课程分类ID'
   },
+  card_instance_id: {
+    type: DataTypes.BIGINT.UNSIGNED,
+    allowNull: true,
+    comment: '使用的卡片实例ID（如果约课时选择了卡片类型）'
+  },
+  booking_type: {
+    type: DataTypes.TINYINT(1),
+    allowNull: false,
+    defaultValue: 1,
+    comment: '预约类型：1-普通课程（使用分类课时），2-卡片课程（使用卡片课时）'
+  },
   student_remark: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -130,6 +141,14 @@ const CourseBooking = sequelize.define('course_bookings', {
     {
       fields: ['category_id'],
       name: 'idx_category_id'
+    },
+    {
+      fields: ['card_instance_id'],
+      name: 'idx_card_instance_id'
+    },
+    {
+      fields: ['booking_type'],
+      name: 'idx_booking_type'
     }
   ]
 });
