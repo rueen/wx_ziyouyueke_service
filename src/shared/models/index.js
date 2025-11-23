@@ -15,6 +15,7 @@ const SubscribeMessageLog = require('./SubscribeMessageLog');
 const UserSubscribeQuota = require('./UserSubscribeQuota');
 const CoachCard = require('./CoachCard');
 const StudentCardInstance = require('./StudentCardInstance');
+const Donation = require('./Donation');
 
 /**
  * 设置模型关联关系
@@ -284,6 +285,17 @@ CourseBooking.belongsTo(StudentCardInstance, {
   as: 'cardInstance' 
 });
 
+// User 与 Donation 的关联
+User.hasMany(Donation, { 
+  foreignKey: 'user_id', 
+  as: 'donations'
+});
+
+Donation.belongsTo(User, { 
+  foreignKey: 'user_id', 
+  as: 'user' 
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -302,5 +314,6 @@ module.exports = {
   SubscribeMessageLog,
   UserSubscribeQuota,
   CoachCard,
-  StudentCardInstance
+  StudentCardInstance,
+  Donation
 }; 

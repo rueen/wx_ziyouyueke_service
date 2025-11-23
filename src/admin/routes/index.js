@@ -5,6 +5,7 @@ const router = express.Router();
 const authRoutes = require('./auth');
 const userRoutes = require('./user');
 const courseRoutes = require('./course');
+const donationRoutes = require('./donation');
 
 /**
  * 管理端路由配置
@@ -28,5 +29,8 @@ router.use('/users', userRoutes);
 
 // 课程管理路由
 router.use('/courses', courseRoutes);
+
+// 赞助管理路由
+router.use('/donations', donationRoutes);
 
 module.exports = router; 

@@ -22,6 +22,7 @@ const qrcodeRoutes = require('./qrcode');
 const wechatRoutes = require('./wechat');
 const coachCardRoutes = require('./coachCard');
 const cardInstanceRoutes = require('./cardInstance');
+const donationRoutes = require('./donation');
 
 /**
  * H5端路由配置
@@ -76,5 +77,8 @@ router.use('/coach-cards', coachCardRoutes);
 
 // 卡片实例相关路由
 router.use('/card-instances', cardInstanceRoutes);
+
+// 赞助相关路由
+router.use('/donations', donationRoutes);
 
 module.exports = router;
