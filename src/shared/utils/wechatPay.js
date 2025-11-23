@@ -297,17 +297,15 @@ class WeChatPayUtil {
       // 将APIv3密钥转换为Buffer
       const key = Buffer.from(this.apiV3Key, 'utf8');
       
-      // 将nonce从base64解码
-      const nonceBuffer = Buffer.from(nonce, 'base64');
+      // 【重要】nonce 不需要解码，直接使用原始字符串（微信支付APIv3规范）
+      const nonceStr = nonce;
       
       // 将ciphertext从base64解码
       const ciphertextBuffer = Buffer.from(ciphertext, 'base64');
       
-      // 在GCM模式中，认证标签（tag）通常是16字节
-      // 微信支付APIv3的回调中，tag可能：
-      // 1. 作为resource.tag单独提供（base64编码）
-      // 2. 包含在ciphertext的末尾（16字节）
-      // 3. 或者需要从其他地方获取
+      // 在GCM模式中，认证标签（tag）固定为16字节
+      // 微信支付APIv3的回调中，如果没有单独的tag字段，
+      // tag包含在ciphertext的末尾（最后16字节）
       
       let tagBuffer = null;
       let actualCiphertext = ciphertextBuffer;
@@ -317,23 +315,28 @@ class WeChatPayUtil {
         tagBuffer = Buffer.from(resource.tag, 'base64');
         logger.debug('使用resource.tag进行解密');
       } else {
-        // 如果没有tag字段，尝试从ciphertext末尾提取16字节作为tag
-        // GCM模式的tag固定为16字节
-        if (ciphertextBuffer.length >= 16) {
-          // 分离ciphertext和tag
-          tagBuffer = ciphertextBuffer.slice(-16); // 最后16字节是tag
-          actualCiphertext = ciphertextBuffer.slice(0, -16); // 前面的部分是加密数据
-          logger.debug('从ciphertext末尾提取tag（16字节）');
-        } else {
+        // 如果没有tag字段，从ciphertext末尾提取16字节作为tag
+        // 这是微信支付APIv3的标准格式
+        if (ciphertextBuffer.length <= 16) {
           throw new Error('ciphertext长度不足，无法提取tag');
         }
+        
+        // 分离ciphertext和tag
+        tagBuffer = ciphertextBuffer.slice(-16); // 最后16字节是tag
+        actualCiphertext = ciphertextBuffer.slice(0, -16); // 前面的部分是加密数据
+        
+        logger.debug('从ciphertext末尾提取tag', {
+          total_length: ciphertextBuffer.length,
+          ciphertext_length: actualCiphertext.length,
+          tag_length: tagBuffer.length
+        });
       }
       
       // 使用AEAD_AES_256_GCM解密
       const decipher = crypto.createDecipheriv(
         'aes-256-gcm',
         key,
-        nonceBuffer
+        nonceStr  // 【重要】直接使用nonce字符串，不要Buffer化
       );
       
       // 先设置关联数据（必须在update之前设置）
@@ -341,24 +344,23 @@ class WeChatPayUtil {
         decipher.setAAD(Buffer.from(associated_data, 'utf8'));
       }
       
+      // 设置认证标签（必须在update之后、final之前设置）
+      decipher.setAuthTag(tagBuffer);
+      
       // 解密数据（使用分离后的ciphertext，不包含tag）
-      let decrypted = decipher.update(actualCiphertext, null, 'utf8');
+      let decrypted = decipher.update(actualCiphertext);
+      decrypted = Buffer.concat([decrypted, decipher.final()]);
       
-      // 设置认证标签（必须在final之前设置）
-      if (tagBuffer) {
-        decipher.setAuthTag(tagBuffer);
-      } else {
-        throw new Error('无法获取认证标签（tag）');
-      }
-      
-      decrypted += decipher.final('utf8');
+      // 转换为字符串
+      const decryptedString = decrypted.toString('utf8');
       
       // 解析JSON
-      const result = JSON.parse(decrypted);
+      const result = JSON.parse(decryptedString);
       
-      logger.debug('回调数据解密成功:', {
+      logger.info('回调数据解密成功:', {
         has_out_trade_no: !!result.out_trade_no,
-        trade_state: result.trade_state
+        trade_state: result.trade_state,
+        out_trade_no: result.out_trade_no
       });
       
       return result;
