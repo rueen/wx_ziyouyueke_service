@@ -1,7 +1,7 @@
 const { Donation, User } = require('../../shared/models');
 const wechatPayService = require('../../shared/services/wechatPayService');
 const logger = require('../../shared/utils/logger');
-const { success, error } = require('../../shared/utils/response');
+const ResponseUtil = require('../../shared/utils/response');
 const { Op } = require('sequelize');
 
 /**
@@ -21,15 +21,15 @@ class DonationController {
 
       // 参数验证
       if (!amount || amount < 100) {
-        return error(res, '赞助金额最低为1元', 400);
+        return ResponseUtil.validationError(res, '赞助金额最低为1元');
       }
 
       if (amount > 50000) {
-        return error(res, '赞助金额最高为500元', 400);
+        return ResponseUtil.validationError(res, '赞助金额最高为500元');
       }
 
       if (message && message.length > 200) {
-        return error(res, '留言最多200个字符', 400);
+        return ResponseUtil.validationError(res, '留言最多200个字符');
       }
 
       // 创建订单并发起支付
@@ -47,7 +47,7 @@ class DonationController {
         amount: amount
       });
 
-      return success(res, '订单创建成功', {
+      return ResponseUtil.success(res, {
         donation_id: result.donation_id,
         out_trade_no: result.out_trade_no,
         prepay_id: result.prepay_id,
@@ -56,10 +56,10 @@ class DonationController {
         package: result.package,
         signType: result.signType,
         paySign: result.paySign
-      });
+      }, '订单创建成功');
     } catch (err) {
       logger.error('创建赞助订单失败:', err);
-      return error(res, '创建订单失败，请稍后重试', 500);
+      return ResponseUtil.serverError(res, '创建订单失败，请稍后重试');
     }
   }
 
@@ -81,10 +81,10 @@ class DonationController {
       });
 
       if (!donation) {
-        return error(res, '订单不存在', 404);
+        return ResponseUtil.notFound(res, '订单不存在');
       }
 
-      return success(res, '查询成功', {
+      return ResponseUtil.success(res, {
         id: donation.id,
         amount: donation.amount,
         message: donation.message,
@@ -94,10 +94,10 @@ class DonationController {
         transaction_id: donation.transaction_id,
         created_at: donation.createdAt,
         paid_at: donation.paid_at
-      });
+      }, '查询成功');
     } catch (err) {
       logger.error('查询赞助订单失败:', err);
-      return error(res, '查询失败', 500);
+      return ResponseUtil.serverError(res, '查询失败');
     }
   }
 
@@ -130,15 +130,24 @@ class DonationController {
         paid_at: donation.paid_at
       }));
 
-      return success(res, '查询成功', {
+      const totalPages = Math.ceil(count / pageSize);
+
+      return ResponseUtil.success(res, {
         list: list,
         total: count,
-        page: page,
-        page_size: pageSize
-      });
+        totalPages: totalPages,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: totalPages,
+          total_count: count,
+          limit: parseInt(pageSize)
+        }
+      }, '查询成功');
     } catch (err) {
       logger.error('获取我的赞助记录失败:', err);
-      return error(res, '查询失败', 500);
+      return ResponseUtil.serverError(res, '查询失败');
     }
   }
 
@@ -180,15 +189,24 @@ class DonationController {
         };
       });
 
-      return success(res, '查询成功', {
+      const totalPages = Math.ceil(count / pageSize);
+
+      return ResponseUtil.success(res, {
         list: list,
         total: count,
-        page: page,
-        page_size: pageSize
-      });
+        totalPages: totalPages,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: totalPages,
+          total_count: count,
+          limit: parseInt(pageSize)
+        }
+      }, '查询成功');
     } catch (err) {
       logger.error('获取赞助列表失败:', err);
-      return error(res, '查询失败', 500);
+      return ResponseUtil.serverError(res, '查询失败');
     }
   }
 
@@ -254,15 +272,15 @@ class DonationController {
       });
 
       if (!donation) {
-        return error(res, '订单不存在', 404);
+        return ResponseUtil.notFound(res, '订单不存在');
       }
 
       // 如果订单已支付，直接返回
       if (donation.payment_status === 1) {
-        return success(res, '订单已支付', {
+        return ResponseUtil.success(res, {
           payment_status: 1,
           paid_at: donation.paid_at
-        });
+        }, '订单已支付');
       }
 
       // 查询微信支付订单状态
@@ -274,21 +292,21 @@ class DonationController {
           await donation.markAsPaid(orderStatus.transaction_id);
         }
 
-        return success(res, '查询成功', {
+        return ResponseUtil.success(res, {
           payment_status: orderStatus.trade_state === 'SUCCESS' ? 1 : donation.payment_status,
           trade_state: orderStatus.trade_state,
           trade_state_desc: orderStatus.trade_state_desc
-        });
+        }, '查询成功');
       } catch (queryError) {
         // 如果查询失败，返回本地状态
         logger.warn('查询微信订单状态失败，返回本地状态:', queryError);
-        return success(res, '查询成功', {
+        return ResponseUtil.success(res, {
           payment_status: donation.payment_status
-        });
+        }, '查询成功');
       }
     } catch (err) {
       logger.error('查询订单支付状态失败:', err);
-      return error(res, '查询失败', 500);
+      return ResponseUtil.serverError(res, '查询失败');
     }
   }
 }

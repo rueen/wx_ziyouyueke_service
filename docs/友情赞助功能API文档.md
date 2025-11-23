@@ -46,6 +46,7 @@
 **响应示例**:
 ```json
 {
+  "success": true,
   "code": 200,
   "message": "订单创建成功",
   "data": {
@@ -57,7 +58,8 @@
     "package": "prepay_id=wx...",
     "signType": "RSA",
     "paySign": "..."
-  }
+  },
+  "timestamp": 1700000000000
 }
 ```
 
@@ -102,6 +104,7 @@ wx.requestPayment({
 **响应示例**:
 ```json
 {
+  "success": true,
   "code": 200,
   "message": "查询成功",
   "data": {
@@ -114,7 +117,8 @@ wx.requestPayment({
     "transaction_id": "4200...",
     "created_at": "2025-11-23 10:00:00",
     "paid_at": "2025-11-23 10:01:00"
-  }
+  },
+  "timestamp": 1700000000000
 }
 ```
 
@@ -128,11 +132,12 @@ wx.requestPayment({
 
 **查询参数**:
 - `page`: 页码，默认1
-- `page_size`: 每页数量，默认10
+- `page_size`: 每页数量，默认10（注意：实际返回字段为 `pageSize`）
 
 **响应示例**:
 ```json
 {
+  "success": true,
   "code": 200,
   "message": "查询成功",
   "data": {
@@ -148,9 +153,17 @@ wx.requestPayment({
       }
     ],
     "total": 10,
+    "totalPages": 1,
     "page": 1,
-    "page_size": 10
-  }
+    "pageSize": 10,
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 1,
+      "total_count": 10,
+      "limit": 10
+    }
+  },
+  "timestamp": 1700000000000
 }
 ```
 
@@ -164,11 +177,12 @@ wx.requestPayment({
 
 **查询参数**:
 - `page`: 页码，默认1
-- `page_size`: 每页数量，默认20
+- `page_size`: 每页数量，默认20（注意：实际返回字段为 `pageSize`）
 
 **响应示例**:
 ```json
 {
+  "success": true,
   "code": 200,
   "message": "查询成功",
   "data": {
@@ -183,9 +197,17 @@ wx.requestPayment({
       }
     ],
     "total": 100,
+    "totalPages": 5,
     "page": 1,
-    "page_size": 20
-  }
+    "pageSize": 20,
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 5,
+      "total_count": 100,
+      "limit": 20
+    }
+  },
+  "timestamp": 1700000000000
 }
 ```
 
@@ -205,13 +227,15 @@ wx.requestPayment({
 **响应示例**:
 ```json
 {
+  "success": true,
   "code": 200,
   "message": "查询成功",
   "data": {
     "payment_status": 1,
     "trade_state": "SUCCESS",
     "trade_state_desc": "支付成功"
-  }
+  },
+  "timestamp": 1700000000000
 }
 ```
 
@@ -243,7 +267,7 @@ wx.requestPayment({
 
 **查询参数**:
 - `page`: 页码，默认1
-- `page_size`: 每页数量，默认20
+- `page_size`: 每页数量，默认20（注意：实际返回字段为 `pageSize`）
 - `payment_status`: 支付状态筛选（可选）
 - `start_date`: 开始日期（可选，格式：2025-11-23）
 - `end_date`: 结束日期（可选，格式：2025-11-23）
@@ -251,6 +275,7 @@ wx.requestPayment({
 **响应示例**:
 ```json
 {
+  "success": true,
   "code": 200,
   "message": "查询成功",
   "data": {
@@ -273,9 +298,17 @@ wx.requestPayment({
       }
     ],
     "total": 100,
+    "totalPages": 5,
     "page": 1,
-    "page_size": 20
-  }
+    "pageSize": 20,
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 5,
+      "total_count": 100,
+      "limit": 20
+    }
+  },
+  "timestamp": 1700000000000
 }
 ```
 
@@ -290,6 +323,7 @@ wx.requestPayment({
 **响应示例**:
 ```json
 {
+  "success": true,
   "code": 200,
   "message": "查询成功",
   "data": {
@@ -299,7 +333,8 @@ wx.requestPayment({
     "today_count": 5,         // 今日赞助笔数
     "month_amount": 10000,    // 本月赞助金额(分)
     "month_count": 30         // 本月赞助笔数
-  }
+  },
+  "timestamp": 1700000000000
 }
 ```
 
@@ -314,6 +349,7 @@ wx.requestPayment({
 **响应示例**:
 ```json
 {
+  "success": true,
   "code": 200,
   "message": "查询成功",
   "data": {
@@ -337,7 +373,8 @@ wx.requestPayment({
     "paid_at": "2025-11-23 10:01:00",
     "closed_at": null,
     "remark": null
-  }
+  },
+  "timestamp": 1700000000000
 }
 ```
 
@@ -359,8 +396,11 @@ wx.requestPayment({
 **响应示例**:
 ```json
 {
+  "success": true,
   "code": 200,
-  "message": "更新成功"
+  "message": "更新成功",
+  "data": null,
+  "timestamp": 1700000000000
 }
 ```
 

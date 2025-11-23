@@ -1,6 +1,6 @@
 const { Donation, User } = require('../../shared/models');
 const logger = require('../../shared/utils/logger');
-const { success, error } = require('../../shared/utils/response');
+const ResponseUtil = require('../../shared/utils/response');
 const { Op } = require('sequelize');
 
 /**
@@ -71,15 +71,24 @@ class DonationController {
         remark: donation.remark
       }));
 
-      return success(res, '查询成功', {
+      const totalPages = Math.ceil(count / pageSize);
+
+      return ResponseUtil.success(res, {
         list: list,
         total: count,
-        page: page,
-        page_size: pageSize
-      });
+        totalPages: totalPages,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: totalPages,
+          total_count: count,
+          limit: parseInt(pageSize)
+        }
+      }, '查询成功');
     } catch (err) {
       logger.error('获取赞助列表失败:', err);
-      return error(res, '查询失败', 500);
+      return ResponseUtil.serverError(res, '查询失败');
     }
   }
 
@@ -135,17 +144,17 @@ class DonationController {
         raw: true
       });
 
-      return success(res, '查询成功', {
+      return ResponseUtil.success(res, {
         total_amount: parseInt(totalResult.total_amount) || 0,
         total_count: parseInt(totalResult.total_count) || 0,
         today_amount: parseInt(todayResult.today_amount) || 0,
         today_count: parseInt(todayResult.today_count) || 0,
         month_amount: parseInt(monthResult.month_amount) || 0,
         month_count: parseInt(monthResult.month_count) || 0
-      });
+      }, '查询成功');
     } catch (err) {
       logger.error('获取赞助统计失败:', err);
-      return error(res, '查询失败', 500);
+      return ResponseUtil.serverError(res, '查询失败');
     }
   }
 
@@ -168,10 +177,10 @@ class DonationController {
       });
 
       if (!donation) {
-        return error(res, '赞助记录不存在', 404);
+        return ResponseUtil.notFound(res, '赞助记录不存在');
       }
 
-      return success(res, '查询成功', {
+      return ResponseUtil.success(res, {
         id: donation.id,
         user_id: donation.user_id,
         user: {
@@ -192,10 +201,10 @@ class DonationController {
         paid_at: donation.paid_at,
         closed_at: donation.closed_at,
         remark: donation.remark
-      });
+      }, '查询成功');
     } catch (err) {
       logger.error('获取赞助详情失败:', err);
-      return error(res, '查询失败', 500);
+      return ResponseUtil.serverError(res, '查询失败');
     }
   }
 
@@ -212,7 +221,7 @@ class DonationController {
       const donation = await Donation.findByPk(donationId);
 
       if (!donation) {
-        return error(res, '赞助记录不存在', 404);
+        return ResponseUtil.notFound(res, '赞助记录不存在');
       }
 
       await donation.update({ remark: remark });
@@ -222,10 +231,10 @@ class DonationController {
         admin_id: req.user.id
       });
 
-      return success(res, '更新成功');
+      return ResponseUtil.success(res, null, '更新成功');
     } catch (err) {
       logger.error('更新赞助备注失败:', err);
-      return error(res, '更新失败', 500);
+      return ResponseUtil.serverError(res, '更新失败');
     }
   }
 }
