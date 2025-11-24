@@ -75,18 +75,33 @@ const CoachCard = sequelize.define('coach_cards', {
 
 /**
  * 实例方法：检查是否可以删除
- * @returns {Promise<Object>} { canDelete: boolean, reason: string }
+ * @returns {Promise<Object>} { canDelete: boolean, reason: string, forceDelete: boolean }
  */
 CoachCard.prototype.canDelete = async function() {
   // 必须是已禁用的卡片才能删除
   if (this.is_active === 1) {
     return { 
       canDelete: false, 
-      reason: '只能删除已禁用的卡片模板' 
+      reason: '只能删除已禁用的卡片模板',
+      forceDelete: false
     };
   }
 
-  return { canDelete: true, reason: '' };
+  // 检查是否有卡片实例
+  const StudentCardInstance = this.sequelize.models.student_card_instances;
+  const instanceCount = await StudentCardInstance.count({
+    where: {
+      coach_card_id: this.id
+    }
+  });
+
+  // 如果有实例，只能软删除（保持数据完整性）
+  // 如果没有实例，可以物理删除（彻底清除）
+  return { 
+    canDelete: true, 
+    reason: '',
+    forceDelete: instanceCount === 0 // 没有实例时使用物理删除
+  };
 };
 
 /**

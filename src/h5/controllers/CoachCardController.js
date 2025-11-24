@@ -192,19 +192,28 @@ class CoachCardController {
     }
 
     // 检查是否可以删除
-    const { canDelete, reason } = await card.canDelete();
+    const { canDelete, reason, forceDelete } = await card.canDelete();
     
     if (!canDelete) {
       return ResponseUtil.validationError(res, reason);
     }
 
-    // 软删除
-    await card.destroy();
-    
-    logger.info('卡片模板删除成功:', {
-      cardId: card.id,
-      coachId
-    });
+    // 根据是否有关联数据决定删除方式
+    if (forceDelete) {
+      // 没有任何实例，物理删除（彻底清除）
+      await card.destroy({ force: true });
+      logger.info('卡片模板物理删除成功（无关联数据）:', {
+        cardId: card.id,
+        coachId
+      });
+    } else {
+      // 有实例，软删除（保持数据完整性）
+      await card.destroy();
+      logger.info('卡片模板软删除成功（有关联数据）:', {
+        cardId: card.id,
+        coachId
+      });
+    }
 
     return ResponseUtil.success(res, null, '卡片模板删除成功');
   });
