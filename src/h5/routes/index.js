@@ -14,6 +14,7 @@ const userRoutes = require('./user');
 const coachRoutes = require('./coach');
 const relationRoutes = require('./relation');
 const courseRoutes = require('./course');
+const courseContentRoutes = require('./courseContent');
 const timeTemplateRoutes = require('./timeTemplate');
 const addressRoutes = require('./address');
 const categoryRoutes = require('./category');
@@ -53,6 +54,8 @@ router.use('/relations', relationRoutes);
 // 课程相关路由
 router.use('/courses', courseRoutes); // 支持复数形式
 
+// 课程内容相关路由
+router.use('/course-content', courseContentRoutes);
 
 // 时间模板路由
 router.use('/time-templates', timeTemplateRoutes);

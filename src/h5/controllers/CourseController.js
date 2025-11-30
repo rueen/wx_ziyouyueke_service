@@ -4,6 +4,7 @@ const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
 const { Op } = require('sequelize');
 const SubscribeMessageService = require('../../shared/services/subscribeMessageService');
+const CourseContent = require('../../shared/models/CourseContent');
 
 /**
  * 课程管理控制器
@@ -543,6 +544,18 @@ class CourseController {
       if (courseData.booking_type === 2 && courseData.cardInstance) {
         courseData.card_name = courseData.cardInstance.coachCard?.card_name || '未知卡片';
         courseData.card_color = courseData.cardInstance.coachCard?.card_color || '#999999';
+      }
+
+      // 获取课程内容
+      const courseContent = await CourseContent.findOne({
+        where: {
+          course_type: 1,
+          booking_id: id
+        }
+      });
+
+      if (courseContent) {
+        courseData.course_content = courseContent;
       }
 
       return ResponseUtil.success(res, courseData, '获取课程详情成功');

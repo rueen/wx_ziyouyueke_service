@@ -9,6 +9,8 @@ const { createOSSClient, getOSSFileUrl } = require('../config/oss');
 class UploadUtil {
   constructor() {
     this.maxFileSize = parseInt(process.env.MAX_FILE_SIZE) || 2 * 1024 * 1024; // 默认2MB
+    this.maxAudioFileSize = parseInt(process.env.MAX_AUDIO_FILE_SIZE) || 20 * 1024 * 1024; // 默认20MB
+    this.maxVideoFileSize = parseInt(process.env.MAX_VIDEO_FILE_SIZE) || 100 * 1024 * 1024; // 默认100MB
   }
 
   /**
@@ -66,6 +68,89 @@ class UploadUtil {
   }
 
   /**
+   * 验证音频文件
+   * @param {Object} file - multer文件对象
+   * @returns {Object} 验证结果
+   */
+  validateAudioFile(file) {
+    const allowedMimeTypes = [
+      'audio/mpeg',
+      'audio/mp3',
+      'audio/mp4',
+      'audio/m4a',
+      'audio/aac',
+      'audio/amr',
+      'audio/x-m4a'
+    ];
+
+    const allowedExtensions = ['.mp3', '.m4a', '.aac', '.amr'];
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      return {
+        valid: false,
+        error: '音频格式不支持，请上传mp3、m4a、aac、amr格式的音频文件'
+      };
+    }
+
+    if (!allowedExtensions.includes(ext)) {
+      return {
+        valid: false,
+        error: '音频文件扩展名不支持，请上传mp3、m4a、aac、amr格式的音频'
+      };
+    }
+
+    if (file.size > this.maxAudioFileSize) {
+      return {
+        valid: false,
+        error: `音频文件大小超过限制，最大支持${Math.round(this.maxAudioFileSize / 1024 / 1024)}MB`
+      };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * 验证视频文件
+   * @param {Object} file - multer文件对象
+   * @returns {Object} 验证结果
+   */
+  validateVideoFile(file) {
+    const allowedMimeTypes = [
+      'video/mp4',
+      'video/quicktime',
+      'video/x-msvideo',
+      'video/avi'
+    ];
+
+    const allowedExtensions = ['.mp4', '.mov', '.avi'];
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      return {
+        valid: false,
+        error: '视频格式不支持，请上传mp4、mov、avi格式的视频文件'
+      };
+    }
+
+    if (!allowedExtensions.includes(ext)) {
+      return {
+        valid: false,
+        error: '视频文件扩展名不支持，请上传mp4、mov、avi格式的视频'
+      };
+    }
+
+    if (file.size > this.maxVideoFileSize) {
+      return {
+        valid: false,
+        error: `视频文件大小超过限制，最大支持${Math.round(this.maxVideoFileSize / 1024 / 1024)}MB`
+      };
+    }
+
+    return { valid: true };
+  }
+
+  /**
    * 获取图片上传中间件（OSS版本）
    * @returns {Function} multer中间件
    */
@@ -87,6 +172,58 @@ class UploadUtil {
       fileFilter: fileFilter,
       limits: {
         fileSize: this.maxFileSize,
+        files: 1 // 一次只能上传一个文件
+      }
+    }).single('file');
+  }
+
+  /**
+   * 获取音频上传中间件（OSS版本）
+   * @returns {Function} multer中间件
+   */
+  getAudioUploadMiddleware() {
+    const storage = multer.memoryStorage();
+
+    const fileFilter = (req, file, cb) => {
+      const validation = this.validateAudioFile(file);
+      if (validation.valid) {
+        cb(null, true);
+      } else {
+        cb(new Error(validation.error), false);
+      }
+    };
+
+    return multer({
+      storage: storage,
+      fileFilter: fileFilter,
+      limits: {
+        fileSize: this.maxAudioFileSize,
+        files: 1 // 一次只能上传一个文件
+      }
+    }).single('file');
+  }
+
+  /**
+   * 获取视频上传中间件（OSS版本）
+   * @returns {Function} multer中间件
+   */
+  getVideoUploadMiddleware() {
+    const storage = multer.memoryStorage();
+
+    const fileFilter = (req, file, cb) => {
+      const validation = this.validateVideoFile(file);
+      if (validation.valid) {
+        cb(null, true);
+      } else {
+        cb(new Error(validation.error), false);
+      }
+    };
+
+    return multer({
+      storage: storage,
+      fileFilter: fileFilter,
+      limits: {
+        fileSize: this.maxVideoFileSize,
         files: 1 // 一次只能上传一个文件
       }
     }).single('file');

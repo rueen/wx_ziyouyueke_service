@@ -49,12 +49,6 @@ class UploadController {
       // 获取上传目录参数，默认为images
       const directory = req.body.directory || 'images';
       
-      // 验证目录参数安全性
-      const allowedDirectories = ['images', 'avatar', 'groupCourse', 'poster'];
-      if (!allowedDirectories.includes(directory)) {
-        return ResponseUtil.validationError(res, '不支持的上传目录');
-      }
-      
       try {
         // 上传文件到OSS
         const uploadResult = await uploadUtil.uploadToOSS(req.file, user.id, directory);
@@ -146,6 +140,166 @@ class UploadController {
       
       return ResponseUtil.serverError(res, '图片删除失败');
     }
+  });
+
+  /**
+   * 上传音频到OSS
+   * @route POST /api/upload/audio
+   */
+  static uploadAudio = asyncHandler(async (req, res) => {
+    const user = req.user;
+    
+    // 使用multer中间件处理文件上传
+    const uploadMiddleware = uploadUtil.getAudioUploadMiddleware();
+    
+    uploadMiddleware(req, res, async (err) => {
+      if (err) {
+        logger.error('音频上传失败:', { 
+          userId: user.id,
+          error: err.message,
+          timestamp: new Date().toISOString()
+        });
+        
+        // 处理不同类型的错误
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return ResponseUtil.businessError(res, 4000, '文件大小超过限制，最大支持20MB');
+        }
+        
+        if (err.code === 'LIMIT_FILE_COUNT') {
+          return ResponseUtil.businessError(res, 4000, '一次只能上传一个文件');
+        }
+        
+        if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+          return ResponseUtil.businessError(res, 4000, '请使用file字段上传文件');
+        }
+        
+        return ResponseUtil.businessError(res, 4000, err.message);
+      }
+      
+      // 检查是否有文件上传
+      if (!req.file) {
+        return ResponseUtil.validationError(res, '请选择要上传的音频文件');
+      }
+      
+      // 获取上传目录参数，默认为audio
+      const directory = req.body.directory || 'audio';
+      
+      try {
+        // 上传文件到OSS
+        const uploadResult = await uploadUtil.uploadToOSS(req.file, user.id, directory);
+        
+        logger.info('音频上传到OSS成功:', {
+          userId: user.id,
+          directory: directory,
+          objectName: uploadResult.objectName,
+          filename: uploadResult.filename,
+          originalName: req.file.originalname,
+          size: uploadResult.size,
+          mimetype: uploadResult.mimetype,
+          url: uploadResult.url,
+          timestamp: new Date().toISOString()
+        });
+        
+        return ResponseUtil.success(res, {
+          url: uploadResult.url,
+          filename: uploadResult.filename,
+          objectName: uploadResult.objectName,
+          directory: directory,
+          size: uploadResult.size,
+          mimetype: uploadResult.mimetype
+        }, '音频上传成功');
+        
+      } catch (error) {
+        logger.error('音频上传处理失败:', {
+          userId: user.id,
+          directory: directory,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+        
+        return ResponseUtil.serverError(res, '音频上传处理失败');
+      }
+    });
+  });
+
+  /**
+   * 上传视频到OSS
+   * @route POST /api/upload/video
+   */
+  static uploadVideo = asyncHandler(async (req, res) => {
+    const user = req.user;
+    
+    // 使用multer中间件处理文件上传
+    const uploadMiddleware = uploadUtil.getVideoUploadMiddleware();
+    
+    uploadMiddleware(req, res, async (err) => {
+      if (err) {
+        logger.error('视频上传失败:', { 
+          userId: user.id,
+          error: err.message,
+          timestamp: new Date().toISOString()
+        });
+        
+        // 处理不同类型的错误
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return ResponseUtil.businessError(res, 4000, '文件大小超过限制，最大支持100MB');
+        }
+        
+        if (err.code === 'LIMIT_FILE_COUNT') {
+          return ResponseUtil.businessError(res, 4000, '一次只能上传一个文件');
+        }
+        
+        if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+          return ResponseUtil.businessError(res, 4000, '请使用file字段上传文件');
+        }
+        
+        return ResponseUtil.businessError(res, 4000, err.message);
+      }
+      
+      // 检查是否有文件上传
+      if (!req.file) {
+        return ResponseUtil.validationError(res, '请选择要上传的视频文件');
+      }
+      
+      // 获取上传目录参数，默认为video
+      const directory = req.body.directory || 'video';
+      
+      try {
+        // 上传文件到OSS
+        const uploadResult = await uploadUtil.uploadToOSS(req.file, user.id, directory);
+        
+        logger.info('视频上传到OSS成功:', {
+          userId: user.id,
+          directory: directory,
+          objectName: uploadResult.objectName,
+          filename: uploadResult.filename,
+          originalName: req.file.originalname,
+          size: uploadResult.size,
+          mimetype: uploadResult.mimetype,
+          url: uploadResult.url,
+          timestamp: new Date().toISOString()
+        });
+        
+        return ResponseUtil.success(res, {
+          url: uploadResult.url,
+          filename: uploadResult.filename,
+          objectName: uploadResult.objectName,
+          directory: directory,
+          size: uploadResult.size,
+          mimetype: uploadResult.mimetype
+        }, '视频上传成功');
+        
+      } catch (error) {
+        logger.error('视频上传处理失败:', {
+          userId: user.id,
+          directory: directory,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+        
+        return ResponseUtil.serverError(res, '视频上传处理失败');
+      }
+    });
   });
 
 

@@ -5,7 +5,7 @@
  * @LastEditTime: 2025-10-19 16:06:36
  * @Description: 
  */
-const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation } = require('../../shared/models');
+const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation, CourseContent } = require('../../shared/models');
 const { Op } = require('sequelize');
 const ResponseUtil = require('../../shared/utils/response');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
@@ -280,6 +280,18 @@ class GroupCourseController {
       courseData.category_name = category ? category.name : '未知分类';
     } else {
       courseData.category_name = '未知分类';
+    }
+
+    // 获取团课内容
+    const courseContent = await CourseContent.findOne({
+      where: {
+        course_type: 2,
+        group_course_id: id
+      }
+    });
+
+    if (courseContent) {
+      courseData.course_content = courseContent;
     }
 
     return ResponseUtil.success(res, courseData);

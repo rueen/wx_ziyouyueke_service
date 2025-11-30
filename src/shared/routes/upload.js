@@ -11,6 +11,12 @@ const { idParamValidation, validateRequest } = require('../middlewares/validatio
 // 上传图片
 router.post('/image', authenticateToken, UploadController.uploadImage);
 
+// 上传音频
+router.post('/audio', authenticateToken, UploadController.uploadAudio);
+
+// 上传视频
+router.post('/video', authenticateToken, UploadController.uploadVideo);
+
 // 删除图片
 router.delete('/image/:filename', authenticateToken, UploadController.deleteImage);
 
