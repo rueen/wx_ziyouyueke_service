@@ -35,7 +35,7 @@ class TimeTemplateController {
   static updateTemplate = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const coach_id = req.user.id;
-    const { min_advance_days, max_advance_days, max_advance_nums, time_slots, date_slots, is_active, time_type, week_slots } = req.body;
+    const { min_advance_days, max_advance_days, max_advance_nums, time_slots, date_slots, is_active, time_type, week_slots, free_time_range } = req.body;
 
     const template = await TimeTemplate.findOne({
       where: { id, coach_id }
@@ -62,6 +62,34 @@ class TimeTemplateController {
         return ResponseUtil.validationError(res, 'week_slots 必须是数组格式');
       }
       updateData.week_slots = week_slots;
+    }
+
+    // 验证 free_time_range 格式（用于 time_type 为 2）
+    if (free_time_range !== undefined) {
+      if (free_time_range === null) {
+        // 允许设置为 null
+        updateData.free_time_range = null;
+      } else {
+        // 验证格式
+        if (typeof free_time_range !== 'object' || Array.isArray(free_time_range)) {
+          return ResponseUtil.validationError(res, 'free_time_range 必须是对象格式');
+        }
+        
+        if (!free_time_range.startTime || !free_time_range.endTime) {
+          return ResponseUtil.validationError(res, 'free_time_range 必须包含 startTime 和 endTime');
+        }
+        
+        const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+        if (!timeRegex.test(free_time_range.startTime) || !timeRegex.test(free_time_range.endTime)) {
+          return ResponseUtil.validationError(res, 'free_time_range 时间格式不正确，应为HH:mm');
+        }
+        
+        if (free_time_range.startTime >= free_time_range.endTime) {
+          return ResponseUtil.validationError(res, 'free_time_range 结束时间必须大于开始时间');
+        }
+        
+        updateData.free_time_range = free_time_range;
+      }
     }
 
     if (time_slots) {
