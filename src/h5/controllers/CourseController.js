@@ -558,6 +558,37 @@ class CourseController {
         courseData.course_content = courseContent;
       }
 
+      // 查询上一次已完成的课程
+      const previousCourse = await CourseBooking.findOne({
+        where: {
+          student_id: course.student_id,
+          coach_id: course.coach_id,
+          booking_status: 3, // 已完成
+          [Op.or]: [
+            {
+              course_date: {
+                [Op.lt]: course.course_date
+              }
+            },
+            {
+              course_date: course.course_date,
+              start_time: {
+                [Op.lt]: course.start_time
+              }
+            }
+          ]
+        },
+        order: [['course_date', 'DESC'], ['start_time', 'DESC']],
+        attributes: ['id']
+      });
+
+      // 添加上一次课程ID到返回数据
+      if (previousCourse) {
+        courseData.previous_course_id = previousCourse.id;
+      } else {
+        courseData.previous_course_id = null;
+      }
+
       return ResponseUtil.success(res, courseData, '获取课程详情成功');
 
     } catch (error) {
