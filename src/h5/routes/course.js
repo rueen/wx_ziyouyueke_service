@@ -25,6 +25,9 @@ router.put('/:id/cancel', authenticateToken, CourseController.cancelCourse);
 // 完成课程
 router.put('/:id/complete', authenticateToken, CourseController.completeCourse);
 
+// 修改课程
+router.put('/:id', authenticateToken, CourseController.updateCourse);
+
 // 删除课程
 router.delete('/:id', authenticateToken, CourseController.deleteCourse);
 

@@ -900,6 +900,346 @@ class CourseController {
   });
 
   /**
+   * 修改课程
+   * @route PUT /api/h5/courses/:id
+   */
+  static updateCourse = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { userId } = req;
+    const {
+      booking_type,
+      category_id,
+      card_instance_id,
+      course_date,
+      start_time,
+      end_time,
+      address_id,
+      student_remark,
+      coach_remark
+    } = req.body;
+
+    const t = await sequelize.transaction();
+
+    try {
+      // 查找课程
+      const course = await CourseBooking.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: 'coach',
+            attributes: ['id', 'nickname', 'course_categories']
+          },
+          {
+            model: User,
+            as: 'student',
+            attributes: ['id', 'nickname']
+          },
+          {
+            model: StudentCoachRelation,
+            as: 'relation',
+            attributes: ['id', 'booking_status', 'auto_confirm_by_coach', 'lessons']
+          }
+        ],
+        transaction: t
+      });
+
+      if (!course) {
+        await t.rollback();
+        return ResponseUtil.notFound(res, '课程不存在');
+      }
+
+      // 权限检查：只有课程相关的学员或教练可以修改
+      if (course.student_id !== userId && course.coach_id !== userId) {
+        await t.rollback();
+        return ResponseUtil.forbidden(res, '无权修改此课程');
+      }
+
+      // 检查是否只修改备注
+      const isOnlyRemarkUpdate = 
+        booking_type === undefined &&
+        category_id === undefined &&
+        card_instance_id === undefined &&
+        course_date === undefined &&
+        start_time === undefined &&
+        end_time === undefined &&
+        address_id === undefined &&
+        (student_remark !== undefined || coach_remark !== undefined);
+
+      // 状态检查：
+      // - 待确认(1)和已确认(2)的课程可以修改所有字段
+      // - 已完成(3)的课程只能修改备注
+      // - 已取消(4,5)的课程不允许修改
+      if (course.booking_status !== 1 && course.booking_status !== 2) {
+        if (course.booking_status === 3) {
+          // 已完成状态只允许修改备注
+          if (!isOnlyRemarkUpdate) {
+            await t.rollback();
+            return ResponseUtil.validationError(res, '已完成的课程只能修改备注信息');
+          }
+        } else {
+          // 已取消状态不允许修改
+          await t.rollback();
+          return ResponseUtil.validationError(res, '已取消的课程不允许修改');
+        }
+      }
+
+      // 准备更新数据
+      const updateData = {};
+
+      // 处理预约类型变更
+      if (booking_type !== undefined && booking_type !== course.booking_type) {
+        // 验证预约类型
+        if (booking_type !== 1 && booking_type !== 2) {
+          await t.rollback();
+          return ResponseUtil.validationError(res, '预约类型参数错误');
+        }
+
+        // 如果改为卡片课程，必须提供卡片实例ID
+        if (booking_type === 2 && !card_instance_id && !course.card_instance_id) {
+          await t.rollback();
+          return ResponseUtil.validationError(res, '卡片课程必须提供卡片实例ID');
+        }
+
+        updateData.booking_type = booking_type;
+      }
+
+      // 处理卡片实例ID变更
+      if (card_instance_id !== undefined) {
+        const finalBookingType = updateData.booking_type || course.booking_type;
+        
+        if (finalBookingType === 2) {
+          // 验证卡片是否存在且属于该学员
+          const cardInstance = await StudentCardInstance.findOne({
+            where: {
+              id: card_instance_id,
+              student_id: course.student_id,
+              coach_id: course.coach_id,
+              relation_id: course.relation_id
+            },
+            transaction: t
+          });
+
+          if (!cardInstance) {
+            await t.rollback();
+            return ResponseUtil.notFound(res, '卡片不存在或不属于该学员');
+          }
+
+          // 检查卡片是否可用
+          const checkResult = cardInstance.checkAvailable();
+          if (!checkResult.available) {
+            await t.rollback();
+            return ResponseUtil.validationError(res, checkResult.reason);
+          }
+
+          // 检查可用课时
+          const availableLessons = await cardInstance.getAvailableLessons();
+          if (availableLessons <= 0) {
+            await t.rollback();
+            return ResponseUtil.validationError(res, '卡片可用课时不足');
+          }
+
+          // 如果修改了课程日期，检查是否在卡片有效期内
+          const targetDate = course_date || course.course_date;
+          if (cardInstance.expire_date) {
+            const moment = require('moment-timezone');
+            const courseDateTime = moment.tz(targetDate, 'Asia/Shanghai').startOf('day');
+            const expireDate = moment.tz(cardInstance.expire_date, 'Asia/Shanghai').endOf('day');
+            
+            if (courseDateTime.isAfter(expireDate)) {
+              await t.rollback();
+              return ResponseUtil.validationError(res, `卡片有效期至 ${cardInstance.expire_date}，无法预约该日期的课程`);
+            }
+          }
+
+          updateData.card_instance_id = card_instance_id;
+        } else if (finalBookingType === 1) {
+          // 普通课程不需要卡片ID
+          updateData.card_instance_id = null;
+        }
+      }
+
+      // 处理课程分类变更
+      if (category_id !== undefined && category_id !== course.category_id) {
+        const finalBookingType = updateData.booking_type !== undefined ? updateData.booking_type : course.booking_type;
+        
+        if (finalBookingType === 1) {
+          // 普通课程需要验证分类
+          const categories = course.coach.course_categories || [];
+          const categoryExists = categories.some(cat => cat.id === category_id);
+          if (!categoryExists) {
+            await t.rollback();
+            return ResponseUtil.validationError(res, '课程分类不存在');
+          }
+
+          // 检查该分类的可用课时
+          const availableLessons = await course.relation.getAvailableLessons(category_id);
+          if (availableLessons <= 0) {
+            await t.rollback();
+            return ResponseUtil.validationError(res, '该分类可用课时不足');
+          }
+
+          // 检查课程日期是否在课时有效期内
+          const targetDate = course_date || course.course_date;
+          const lessons = course.relation.lessons || [];
+          const categoryLesson = lessons.find(l => l.category_id === category_id);
+          if (categoryLesson && categoryLesson.expire_date) {
+            const moment = require('moment-timezone');
+            const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
+            const courseDateTime = moment.tz(targetDate, 'Asia/Shanghai').startOf('day');
+            
+            if (courseDateTime.isAfter(expireEndTime)) {
+              await t.rollback();
+              return ResponseUtil.validationError(res, `该分类课时有效期至 ${categoryLesson.expire_date}，无法预约该日期的课程`);
+            }
+          }
+        }
+
+        updateData.category_id = category_id;
+      }
+
+      // 处理时间和地址变更
+      const finalCourseDate = course_date || course.course_date;
+      const finalStartTime = start_time || course.start_time;
+      const finalEndTime = end_time || course.end_time;
+
+      // 检查时间是否发生变化
+      const timeChanged = course_date !== undefined || start_time !== undefined || end_time !== undefined;
+
+      if (timeChanged) {
+        // 检查教练时间段人数限制（排除当前课程）
+        const activeTemplate = await TimeTemplate.getActiveByCoachId(course.coach_id);
+        const maxNums = activeTemplate ? activeTemplate.max_advance_nums : 1;
+
+        const existingBookings = await CourseBooking.count({
+          where: {
+            id: { [Op.ne]: id }, // 排除当前课程
+            coach_id: course.coach_id,
+            course_date: finalCourseDate,
+            [Op.or]: [
+              {
+                start_time: { [Op.lt]: finalEndTime },
+                end_time: { [Op.gt]: finalStartTime }
+              }
+            ],
+            booking_status: { [Op.in]: [1, 2] }
+          },
+          transaction: t
+        });
+
+        if (existingBookings >= maxNums) {
+          await t.rollback();
+          return ResponseUtil.validationError(res, '该时间段预约人数已满');
+        }
+
+        // 检查学员时间冲突（排除当前课程）
+        const studentConflict = await CourseBooking.findOne({
+          where: {
+            id: { [Op.ne]: id }, // 排除当前课程
+            student_id: course.student_id,
+            course_date: finalCourseDate,
+            [Op.or]: [
+              {
+                start_time: { [Op.lt]: finalEndTime },
+                end_time: { [Op.gt]: finalStartTime }
+              }
+            ],
+            booking_status: { [Op.in]: [1, 2] }
+          },
+          transaction: t
+        });
+
+        if (studentConflict) {
+          await t.rollback();
+          return ResponseUtil.validationError(res, '学员在该时间段已有其他预约');
+        }
+
+        if (course_date !== undefined) updateData.course_date = course_date;
+        if (start_time !== undefined) updateData.start_time = start_time;
+        if (end_time !== undefined) updateData.end_time = end_time;
+      }
+
+      // 处理地址变更
+      if (address_id !== undefined && address_id !== course.address_id) {
+        const address = await Address.findByPk(address_id, { transaction: t });
+        if (!address) {
+          await t.rollback();
+          return ResponseUtil.notFound(res, '地址不存在');
+        }
+        updateData.address_id = address_id;
+      }
+
+      // 处理备注
+      if (student_remark !== undefined) updateData.student_remark = student_remark;
+      if (coach_remark !== undefined) updateData.coach_remark = coach_remark;
+
+      // 如果没有任何字段需要更新
+      if (Object.keys(updateData).length === 0) {
+        await t.rollback();
+        return ResponseUtil.validationError(res, '没有需要更新的字段');
+      }
+
+      // 执行更新
+      await course.update(updateData, { transaction: t });
+
+      await t.commit();
+
+      logger.info('课程修改成功:', {
+        courseId: id,
+        userId,
+        updateData
+      });
+
+      // 重新查询课程详情返回
+      const updatedCourse = await CourseBooking.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: 'student',
+            attributes: ['id', 'nickname', 'avatar_url', 'phone']
+          },
+          {
+            model: User,
+            as: 'coach',
+            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'course_categories']
+          },
+          {
+            model: Address,
+            as: 'address',
+            attributes: ['id', 'name', 'address', 'latitude', 'longitude']
+          },
+          {
+            model: StudentCoachRelation,
+            as: 'relation',
+            attributes: ['id', 'student_name'],
+            required: false
+          },
+          {
+            model: StudentCardInstance,
+            as: 'cardInstance',
+            attributes: ['id', 'coach_card_id', 'total_lessons', 'remaining_lessons', 'expire_date', 'card_status', 'valid_days'],
+            required: false,
+            include: [
+              {
+                model: require('../../shared/models').CoachCard,
+                as: 'coachCard',
+                attributes: ['id', 'card_name', 'card_color'],
+                paranoid: false
+              }
+            ]
+          }
+        ]
+      });
+
+      return ResponseUtil.success(res, updatedCourse, '课程修改成功');
+
+    } catch (error) {
+      await t.rollback();
+      logger.error('修改课程失败:', error);
+      return ResponseUtil.error(res, '修改课程失败');
+    }
+  });
+
+  /**
    * 删除课程
    * @route DELETE /api/h5/courses/:id
    */
