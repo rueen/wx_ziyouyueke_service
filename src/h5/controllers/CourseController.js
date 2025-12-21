@@ -790,7 +790,6 @@ class CourseController {
   static completeCourse = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { userId } = req;
-    const { feedback = '' } = req.body;
     
     const t = await sequelize.transaction();
 
@@ -881,8 +880,7 @@ class CourseController {
       // 更新课程状态为完成
       await course.update({
         booking_status: 3, // 已完成
-        complete_at: new Date(),
-        coach_remark: feedback
+        complete_at: new Date()
       }, { transaction: t });
 
       await t.commit();
