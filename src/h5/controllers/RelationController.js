@@ -428,28 +428,56 @@ class RelationController {
    */
   static getMyStudents = asyncHandler(async (req, res) => {
     const coachId = req.user.id;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, keyword = '' } = req.query;
     const offset = (page - 1) * limit;
 
     try {
+      // 构建查询条件
+      const whereConditions = {
+        coach_id: coachId,
+        relation_status: 1
+      };
+
+      // 构建关联表查询条件
+      const includeConditions = {
+        model: User,
+        as: 'student',
+        attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image']
+      };
+
+      // 如果有关键词，添加筛选条件
+      if (keyword && keyword.trim()) {
+        const trimmedKeyword = keyword.trim();
+        
+        // 在主表中筛选 student_name，在关联表中筛选 nickname 和 phone
+        whereConditions[Op.or] = [
+          {
+            student_name: {
+              [Op.like]: `%${trimmedKeyword}%`
+            }
+          },
+          {
+            '$student.nickname$': {
+              [Op.like]: `%${trimmedKeyword}%`
+            }
+          },
+          {
+            '$student.phone$': {
+              [Op.like]: `%${trimmedKeyword}%`
+            }
+          }
+        ];
+      }
+
       const { count, rows: relations } = await StudentCoachRelation.findAndCountAll({
-        where: {
-          coach_id: coachId,
-          relation_status: 1
-        },
+        where: whereConditions,
         attributes: [
           'id', 'student_id', 'coach_id', 'student_name', 'lessons',
           'student_remark', 'coach_remark', 'relation_status', 
           'booking_status', 'booking_closed_at', 'booking_reopened_at',
           'createdAt', 'updatedAt'
         ],
-        include: [
-          {
-            model: User,
-            as: 'student',
-            attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image']
-          }
-        ],
+        include: [includeConditions],
         order: [['createdAt', 'DESC']],
         limit: parseInt(limit),
         offset
@@ -507,6 +535,7 @@ class RelationController {
         totalPages: totalPages,
         page: parseInt(page),
         pageSize: parseInt(limit),
+        keyword: keyword,
         pagination: {
           current_page: parseInt(page),
           total_pages: totalPages,
@@ -515,7 +544,7 @@ class RelationController {
         }
       }, '获取我的学员列表成功');
     } catch (error) {
-      logger.error('获取我的学员列表失败:', { coachId, error: error.message });
+      logger.error('获取我的学员列表失败:', { coachId, keyword, error: error.message });
       return ResponseUtil.serverError(res, '获取我的学员列表失败');
     }
   });
