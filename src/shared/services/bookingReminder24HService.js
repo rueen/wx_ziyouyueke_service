@@ -6,7 +6,8 @@ const logger = require('../utils/logger');
 
 /**
  * 课程24小时提前提醒服务
- * 每次执行会扫描未来24小时内即将上课的课程，发送提醒给学员和教练
+ * 扫描"不足24小时且大于2小时"的课程，发送提醒给学员和教练
+ * 避免与2小时提醒重复
  */
 class BookingReminder24HService {
   /**
@@ -15,9 +16,9 @@ class BookingReminder24HService {
    */
   static async sendUpcomingReminders() {
     const now = moment.tz('Asia/Shanghai');
-    // 扫描23-25小时之间的课程（给1小时的缓冲时间）
-    const windowStart = now.clone().add(23, 'hours');
-    const windowEnd = now.clone().add(25, 'hours');
+    // 扫描2-24小时之间的课程（不足24小时且大于2小时）
+    const windowStart = now.clone().add(2, 'hours');
+    const windowEnd = now.clone().add(24, 'hours');
 
     const startDate = windowStart.format('YYYY-MM-DD');
     const endDate = windowEnd.format('YYYY-MM-DD');
@@ -59,10 +60,11 @@ class BookingReminder24HService {
         return;
       }
 
-      logger.info(`找到 ${bookings.length} 个需要发送24小时提醒的课程`);
+      logger.info(`找到 ${bookings.length} 个可能需要发送24小时提醒的课程`);
 
       let successCount = 0;
       let failedCount = 0;
+      let skippedCount = 0;
 
       for (const booking of bookings) {
         try {
@@ -75,12 +77,14 @@ class BookingReminder24HService {
           // 计算距离课程开始的时间（小时）
           const diffHours = startDateTime.diff(now, 'hours', true);
           
-          // 只处理23-25小时之间的课程
-          if (diffHours < 23 || diffHours > 25) {
+          // 只处理2-24小时之间的课程（不足24小时且大于2小时）
+          if (diffHours <= 2 || diffHours >= 24) {
             logger.debug('课程不在24小时提醒窗口内，跳过', {
               bookingId: booking.id,
-              diffHours: diffHours.toFixed(2)
+              diffHours: diffHours.toFixed(2),
+              reason: diffHours <= 2 ? '已进入2小时提醒范围' : '超过24小时'
             });
+            skippedCount++;
             continue;
           }
 
@@ -137,7 +141,8 @@ class BookingReminder24HService {
       logger.info('24小时课程提醒任务执行完成', {
         total: bookings.length,
         success: successCount,
-        failed: failedCount
+        failed: failedCount,
+        skipped: skippedCount
       });
     } catch (error) {
       logger.error('执行24小时课程提醒任务失败:', error);

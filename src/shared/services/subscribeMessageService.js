@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-11-09 10:31:05
  * @LastEditors: diaochan
- * @LastEditTime: 2025-12-24 10:59:11
+ * @LastEditTime: 2025-12-24 11:34:54
  * @Description: 
  */
 const wechatUtil = require('../utils/wechat');
@@ -772,7 +772,7 @@ class SubscribeMessageService {
           value: address.name.substring(0, 20)
         },
         thing7: {
-          value: '明日课程'
+          value: '不足24小时'
         }
       };
 
