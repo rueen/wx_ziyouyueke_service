@@ -31,6 +31,10 @@ WeChatController.getSubscribeTemplates = asyncHandler(async (req, res) => {
       BOOKING_REMINDER: {
         title: '上课提醒',
         description: '上课前2小时提醒你留意课程安排'
+      },
+      BOOKING_REMINDER_24H: {
+        title: '上课提醒',
+        description: '课程开始前24小时提醒你留意课程安排'
       }
     };
 

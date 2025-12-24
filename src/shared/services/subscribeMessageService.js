@@ -2,7 +2,7 @@
  * @Author: diaochan
  * @Date: 2025-11-09 10:31:05
  * @LastEditors: diaochan
- * @LastEditTime: 2025-11-13 17:35:00
+ * @LastEditTime: 2025-12-24 10:59:11
  * @Description: 
  */
 const wechatUtil = require('../utils/wechat');
@@ -26,8 +26,10 @@ class SubscribeMessageService {
     BOOKING_SUCCESS: 'TFL2352DnixMHPBHiOg955ByXWBZWXTvk7g05ywsAnw',
     // 课程取消通知
     BOOKING_CANCEL: '7ziRVg9Gnp4huLb3q4v48ylR2z-kCOkEoM5-8Ad-Hkg',
-    // 上课提醒
-    BOOKING_REMINDER: '92wWk3WlAV8raKdjYB9Ffb_x7G4LDfHrrcE0xoLvvO4'
+    // 上课提醒（2小时前）
+    BOOKING_REMINDER: '92wWk3WlAV8raKdjYB9Ffb_x7G4LDfHrrcE0xoLvvO4',
+    // 课程预约提醒（24小时前）
+    BOOKING_REMINDER_24H: '92wWk3WlAV8raKdjYB9FfbM0ggobNYM4PqQdiKLiR5o' // TODO: 替换为实际的模板ID
   };
 
   /**
@@ -703,6 +705,181 @@ class SubscribeMessageService {
   }
 
   /**
+   * 场景五：课程预约提醒（24小时前）
+   * 业务场景：课程开始前24小时发送提醒通知
+   *
+   * @param {Object} params - 参数对象
+   * @param {Object} params.booking - 课程预约对象
+   * @param {Object} params.receiverUser - 接收人用户对象
+   * @param {Object} params.address - 地址对象
+   * @returns {Promise<boolean>} 发送是否成功
+   */
+  static async sendBookingReminder24HNotice(params) {
+    let messageLog = null;
+
+    try {
+      const { booking, receiverUser, address } = params;
+
+      if (!booking || !receiverUser || !address) {
+        logger.warn('发送24小时课程提醒失败：缺少必要参数');
+        return false;
+      }
+
+      if (!receiverUser.openid) {
+        logger.warn('发送24小时课程提醒失败：接收人没有 openid', { userId: receiverUser.id });
+        return false;
+      }
+
+      // 检查用户配额
+      const hasQuota = await UserSubscribeQuota.hasQuota(receiverUser.id, 'BOOKING_REMINDER_24H');
+      if (!hasQuota) {
+        logger.info('用户订阅配额不足，跳过发送24小时课程提醒', {
+          userId: receiverUser.id,
+          bookingId: booking.id
+        });
+        return false;
+      }
+
+      // 检查是否已发送（防重）
+      const alreadySent = await SubscribeMessageLog.isMessageSent(
+        'course_booking',
+        booking.id,
+        'BOOKING_REMINDER_24H',
+        receiverUser.id
+      );
+
+      if (alreadySent) {
+        logger.info('24小时课程提醒已发送过，跳过重复发送', {
+          bookingId: booking.id,
+          receiverId: receiverUser.id
+        });
+        return true;
+      }
+
+      // 格式化时间段
+      const timeSlot = this.formatTimeSlot(
+        booking.course_date,
+        booking.start_time,
+        booking.end_time
+      );
+
+      // 构建消息数据
+      const messageData = {
+        time10: {
+          value: timeSlot
+        },
+        thing4: {
+          value: address.name.substring(0, 20)
+        },
+        thing7: {
+          value: '明日课程'
+        }
+      };
+
+      const page = this.PAGES.COURSE_DETAIL(booking.id);
+
+      // 查找或创建发送记录
+      messageLog = await SubscribeMessageLog.findOne({
+        where: {
+          template_type: 'BOOKING_REMINDER_24H',
+          business_type: 'course_booking',
+          business_id: booking.id,
+          receiver_user_id: receiverUser.id
+        }
+      });
+
+      if (messageLog) {
+        // 如果找到已有记录且已经发送成功，直接返回
+        if (messageLog.send_status === 1) {
+          logger.info('24小时课程提醒已发送成功（并发检测），跳过重复发送', {
+            bookingId: booking.id,
+            receiverId: receiverUser.id,
+            logId: messageLog.id
+          });
+          return true;
+        }
+        
+        // 只更新失败或发送中的记录
+        await messageLog.update({
+          template_id: this.TEMPLATES.BOOKING_REMINDER_24H,
+          message_data: messageData,
+          page_path: page,
+          send_status: 0,
+          error_code: null,
+          error_message: null,
+          send_time: new Date()
+        });
+      } else {
+        messageLog = await SubscribeMessageLog.recordMessage({
+          templateId: this.TEMPLATES.BOOKING_REMINDER_24H,
+          templateType: 'BOOKING_REMINDER_24H',
+          businessType: 'course_booking',
+          businessId: booking.id,
+          receiverUserId: receiverUser.id,
+          receiverOpenid: receiverUser.openid,
+          messageData: messageData,
+          pagePath: page,
+          sendStatus: 0
+        });
+      }
+
+      // 发送消息
+      const sendResult = await wechatUtil.sendTemplateMessage(
+        receiverUser.openid,
+        this.TEMPLATES.BOOKING_REMINDER_24H,
+        messageData,
+        page
+      );
+
+      if (sendResult.success) {
+        await messageLog.updateSendStatus(1);
+        await UserSubscribeQuota.decreaseQuota(receiverUser.id, 'BOOKING_REMINDER_24H', 1);
+
+        logger.info('发送24小时课程提醒成功', {
+          bookingId: booking.id,
+          receiverId: receiverUser.id,
+          logId: messageLog.id
+        });
+      } else {
+        await messageLog.updateSendStatus(
+          2,
+          sendResult.errcode ?? 'SEND_FAILED',
+          sendResult.errmsg ?? '消息发送失败'
+        );
+
+        if (sendResult.errcode === '43101' || sendResult.errcode === 43101) {
+          await UserSubscribeQuota.resetQuota(receiverUser.id, 'BOOKING_REMINDER_24H');
+          logger.info('检测到用户订阅次数用尽，已重置本地配额', {
+            userId: receiverUser.id,
+            templateType: 'BOOKING_REMINDER_24H'
+          });
+        }
+
+        logger.warn('发送24小时课程提醒失败', {
+          bookingId: booking.id,
+          receiverId: receiverUser.id,
+          errcode: sendResult.errcode,
+          errmsg: sendResult.errmsg
+        });
+      }
+
+      return sendResult.success;
+    } catch (error) {
+      logger.error('发送24小时课程提醒异常:', error);
+
+      if (messageLog) {
+        try {
+          await messageLog.updateSendStatus(2, 'EXCEPTION', error.message);
+        } catch (updateError) {
+          logger.error('更新消息发送状态失败:', updateError);
+        }
+      }
+
+      return false;
+    }
+  }
+
+  /**
    * 批量发送订阅消息
    * @param {string} templateType - 模板类型
    * @param {Array<Object>} paramsList - 参数列表
@@ -730,6 +907,9 @@ class SubscribeMessageService {
           break;
         case 'BOOKING_REMINDER':
           result = await this.sendBookingReminderNotice(params);
+          break;
+        case 'BOOKING_REMINDER_24H':
+          result = await this.sendBookingReminder24HNotice(params);
           break;
         default:
           logger.warn('未知的模板类型:', templateType);
