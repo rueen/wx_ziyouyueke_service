@@ -499,6 +499,9 @@ class RelationController {
           // 调用 getCategoryLessons 触发过期检查
           const remaining = categoryLesson ? await relation.getCategoryLessons(category.id) : 0;
           
+          // 计算可用课时（扣除已预约但未核销的课时）
+          const availableLessons = await relation.getAvailableLessons(category.id);
+          
           // 计算 is_expired
           let is_expired = false;
           if (categoryLesson && categoryLesson.expire_date) {
@@ -510,6 +513,7 @@ class RelationController {
           return {
             category: category,
             remaining_lessons: remaining,
+            available_lessons: availableLessons, // 新增：剩余可用课时
             expire_date: categoryLesson ? categoryLesson.expire_date : null,
             is_expired: is_expired
           };
@@ -519,11 +523,17 @@ class RelationController {
         const totalRemainingLessons = categoryLessons.reduce((total, item) => {
           return total + (item.remaining_lessons || 0);
         }, 0);
+        
+        // 计算总可用课时数
+        const totalAvailableLessons = categoryLessons.reduce((total, item) => {
+          return total + (item.available_lessons || 0);
+        }, 0);
 
         return {
           ...relation.toJSON(),
           category_lessons: categoryLessons,
-          remaining_lessons: totalRemainingLessons
+          remaining_lessons: totalRemainingLessons,
+          available_lessons: totalAvailableLessons // 新增：总剩余可用课时
         };
       }));
 
@@ -711,6 +721,9 @@ class RelationController {
         // 调用 getCategoryLessons 触发过期检查
         const remaining = categoryLesson ? await relation.getCategoryLessons(category.id) : 0;
         
+        // 计算可用课时（扣除已预约但未核销的课时）
+        const availableLessons = await relation.getAvailableLessons(category.id);
+        
         // 计算 is_expired
         let is_expired = false;
         if (categoryLesson && categoryLesson.expire_date) {
@@ -722,6 +735,7 @@ class RelationController {
         return {
           category: category,
           remaining_lessons: remaining,
+          available_lessons: availableLessons, // 新增：剩余可用课时
           expire_date: categoryLesson ? categoryLesson.expire_date : null,
           is_expired: is_expired
         };
@@ -731,11 +745,17 @@ class RelationController {
       const totalRemainingLessons = categoryLessons.reduce((total, item) => {
         return total + (item.remaining_lessons || 0);
       }, 0);
+      
+      // 计算总可用课时数
+      const totalAvailableLessons = categoryLessons.reduce((total, item) => {
+        return total + (item.available_lessons || 0);
+      }, 0);
 
       const studentDetail = {
         ...relation.toJSON(),
         category_lessons: categoryLessons,
         remaining_lessons: totalRemainingLessons,
+        available_lessons: totalAvailableLessons, // 新增：总剩余可用课时
         auto_confirm_by_coach: relation.auto_confirm_by_coach // 明确返回自动确认设置
       };
 
