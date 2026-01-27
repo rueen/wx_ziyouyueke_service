@@ -1,4 +1,4 @@
-const { StudentCoachRelation, User } = require('../../shared/models');
+const { StudentCoachRelation, User, Plan } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
@@ -596,7 +596,7 @@ class RelationController {
 
       // 获取与该教练的课程统计
       const { CourseBooking } = require('../../shared/models');
-      const [totalLessons, completedLessons, upcomingLessons] = await Promise.all([
+      const [totalLessons, completedLessons, upcomingLessons, plansLen] = await Promise.all([
         // 总课程数
         CourseBooking.count({
           where: {
@@ -623,6 +623,14 @@ class RelationController {
             course_date: {
               [Op.gte]: new Date().toISOString().split('T')[0]
             }
+          }
+        }),
+        // 该教练为该学员创建的可见训练计划数量
+        Plan.count({
+          where: {
+            student_id: studentId,
+            coach_id: coachId,
+            is_visible: 1
           }
         })
       ]);
@@ -662,6 +670,7 @@ class RelationController {
         category_lessons: categoryLessons,
         remaining_lessons: totalRemainingLessons, // 兼容字段：总课时数
         auto_confirm_by_coach: relation.auto_confirm_by_coach, // 明确返回自动确认设置
+        plans_len: plansLen, // 该教练为该学员创建的可见训练计划数量
         lesson_stats: {
           total_lessons: totalLessons,
           completed_lessons: completedLessons,

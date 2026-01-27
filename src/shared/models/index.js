@@ -17,6 +17,7 @@ const CoachCard = require('./CoachCard');
 const StudentCardInstance = require('./StudentCardInstance');
 const Donation = require('./Donation');
 const CourseContent = require('./CourseContent');
+const Plan = require('./Plan');
 
 /**
  * 设置模型关联关系
@@ -330,6 +331,27 @@ CourseContent.belongsTo(User, {
   as: 'coach' 
 });
 
+// User 与 Plan 的关联
+User.hasMany(Plan, { 
+  foreignKey: 'student_id', 
+  as: 'studentPlans'
+});
+
+User.hasMany(Plan, { 
+  foreignKey: 'coach_id', 
+  as: 'coachPlans'
+});
+
+Plan.belongsTo(User, { 
+  foreignKey: 'student_id', 
+  as: 'student' 
+});
+
+Plan.belongsTo(User, { 
+  foreignKey: 'coach_id', 
+  as: 'coach' 
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -350,5 +372,6 @@ module.exports = {
   CoachCard,
   StudentCardInstance,
   Donation,
-  CourseContent
+  CourseContent,
+  Plan
 }; 
