@@ -391,13 +391,13 @@ class CourseController {
       // 构建查询条件
       const whereConditions = {};
 
-      // 强制按当前登录用户限权，不允许跨用户查询
-      if (student_id && parseInt(student_id) !== userId) {
-        return ResponseUtil.forbidden(res, '无权查看其他学员的课程');
-      }
-      if (coach_id && parseInt(coach_id) !== userId) {
-        return ResponseUtil.forbidden(res, '无权查看其他教练的课程');
-      }
+      // // 强制按当前登录用户限权，不允许跨用户查询
+      // if (student_id && parseInt(student_id) !== userId) {
+      //   return ResponseUtil.forbidden(res, '无权查看其他学员的课程');
+      // }
+      // if (coach_id && parseInt(coach_id) !== userId) {
+      //   return ResponseUtil.forbidden(res, '无权查看其他教练的课程');
+      // }
 
       // 学员ID筛选
       if (student_id) {
