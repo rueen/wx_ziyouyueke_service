@@ -218,6 +218,91 @@ class CardInstanceController {
   });
 
   /**
+   * 修改卡片实例信息（教练操作，目前支持修改过期时间）
+   * 修改 expire_date 后自动联动 card_status / remaining_valid_days
+   * @route PUT /api/h5/card-instances/:id
+   */
+  static updateInstance = asyncHandler(async (req, res) => {
+    const coachId = req.user.id;
+    const { id } = req.params;
+    const { expire_date } = req.body;
+
+    // 目前至少需要提供 expire_date
+    if (!expire_date) {
+      return ResponseUtil.validationError(res, '缺少修改内容，目前支持修改：expire_date');
+    }
+
+    const moment = require('moment-timezone');
+
+    // 校验日期格式
+    if (!moment(expire_date, 'YYYY-MM-DD', true).isValid()) {
+      return ResponseUtil.validationError(res, '过期时间格式错误，请使用 YYYY-MM-DD 格式');
+    }
+
+    const instance = await StudentCardInstance.findOne({
+      where: { id, coach_id: coachId }
+    });
+
+    if (!instance) {
+      return ResponseUtil.notFound(res, '卡片不存在或无权限操作');
+    }
+
+    // 未开卡(0)的卡片 expire_date 在开卡时自动计算，不允许手动提前修改
+    if (instance.card_status === 0) {
+      return ResponseUtil.validationError(res, '未开启的卡片无法修改过期时间，请先开卡');
+    }
+
+    const today = moment.tz('Asia/Shanghai').startOf('day');
+    const newExpireEnd = moment.tz(expire_date, 'Asia/Shanghai').endOf('day');
+    const isExpired = today.isAfter(newExpireEnd);
+
+    const oldExpireDate = instance.expire_date;
+    const oldStatus = instance.card_status;
+
+    /** @type {Object} 需要更新的字段 */
+    const updates = { expire_date };
+
+    if (instance.card_status === 1) {
+      // 已开启：新到期日已过 → 标记过期
+      if (isExpired) {
+        updates.card_status = 3;
+      }
+    } else if (instance.card_status === 3) {
+      // 已过期：新到期日未过 → 恢复已开启
+      if (!isExpired) {
+        updates.card_status = 1;
+      }
+    } else if (instance.card_status === 2) {
+      if (isExpired) {
+        // 已停用：新到期日已过 → 标记过期
+        updates.card_status = 3;
+      } else {
+        // 已停用：重新计算剩余有效天数
+        updates.remaining_valid_days = Math.max(
+          newExpireEnd.diff(today, 'days'),
+          0
+        );
+      }
+    }
+
+    await instance.update(updates);
+
+    logger.info('卡片过期时间修改成功:', {
+      instanceId: instance.id,
+      coachId,
+      studentId: instance.student_id,
+      oldExpireDate,
+      newExpireDate: expire_date,
+      statusChange: updates.card_status !== undefined
+        ? `${oldStatus} → ${updates.card_status}`
+        : '无变化'
+    });
+
+    const instanceSummary = await instance.getSummary();
+    return ResponseUtil.success(res, instanceSummary, '卡片信息修改成功');
+  });
+
+  /**
    * 获取指定学员的卡片实例列表（教练视角）
    * @route GET /api/h5/card-instances/student/:studentId
    */

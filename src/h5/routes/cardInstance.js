@@ -25,6 +25,9 @@ router.post('/', CardInstanceController.createInstance);
 // 获取卡片实例详情
 router.get('/:id', CardInstanceController.getInstanceDetail);
 
+// 修改卡片实例信息（教练操作，目前支持修改过期时间）
+router.put('/:id', CardInstanceController.updateInstance);
+
 // 开卡（教练操作）
 router.put('/:id/activate', CardInstanceController.activateInstance);
 
