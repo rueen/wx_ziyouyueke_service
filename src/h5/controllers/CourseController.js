@@ -108,9 +108,11 @@ class CourseController {
       }
 
       // 根据预约类型进行不同的验证
+      // cardInstance 提升到外层作用域，供后续自动开卡使用
+      let cardInstance = null;
       if (booking_type === 2) {
         // 卡片课程验证
-        const cardInstance = await StudentCardInstance.findOne({
+        cardInstance = await StudentCardInstance.findOne({
           where: {
             id: card_instance_id,
             student_id: student_id,
@@ -123,20 +125,25 @@ class CourseController {
           return ResponseUtil.notFound(res, '卡片不存在');
         }
 
-        // 检查卡片是否可用
-        const checkResult = cardInstance.checkAvailable();
-        if (!checkResult.available) {
-          return ResponseUtil.validationError(res, checkResult.reason);
+        // 允许未开启(0)和已开启(1)的卡片预约；停用(2)和过期(3)拒绝
+        if (cardInstance.card_status === 2) {
+          return ResponseUtil.validationError(res, '卡片已停用，无法预约课程');
+        }
+        if (cardInstance.card_status === 3) {
+          return ResponseUtil.validationError(res, '卡片已过期，无法预约课程');
+        }
+        if (![0, 1].includes(cardInstance.card_status)) {
+          return ResponseUtil.validationError(res, '卡片状态异常');
         }
 
-        // 检查可用课时（考虑已预约但未完成的课程占用）
+        // 检查可用课时（getAvailableLessons 已支持 card_status=0）
         const availableLessons = await cardInstance.getAvailableLessons();
         if (availableLessons <= 0) {
           return ResponseUtil.validationError(res, '卡片可用课时不足，无法预约课程');
         }
 
-        // 检查课程日期是否在卡片有效期内（如果卡片已开卡）
-        if (cardInstance.expire_date) {
+        // 已开启的卡才检查课程日期是否在有效期内（未开卡的到期日期在开卡时才计算）
+        if (cardInstance.card_status === 1 && cardInstance.expire_date) {
           const moment = require('moment-timezone');
           const courseDateTime = moment.tz(course_date, 'Asia/Shanghai').startOf('day');
           const expireDate = moment.tz(cardInstance.expire_date, 'Asia/Shanghai').endOf('day');
@@ -260,24 +267,43 @@ class CourseController {
       // 条件：教练创建 && 学员开启了自动确认
       const isAutoConfirm = userId === coach_id && relation.auto_confirm_by_coach === 1;
       
-      // 创建预约
-      const booking = await CourseBooking.create({
-        student_id: student_id,
-        coach_id: coach_id,
-        relation_id: relation.id,
-        course_date: course_date,
-        start_time: start_time,
-        end_time: end_time,
-        address_id: address_id,
-        category_id: category_id,
-        booking_type: booking_type,
-        card_instance_id: booking_type === 2 ? card_instance_id : null,
-        student_remark: student_remark,
-        coach_remark: coach_remark,
-        booking_status: isAutoConfirm ? 2 : 1, // 自动确认：2-已确认，否则：1-待确认
-        confirmed_at: isAutoConfirm ? new Date() : null, // 自动确认时设置确认时间
-        created_by: userId
-      });
+      // 使用事务：创建预约 + 未开卡时自动开卡（保证原子性）
+      const t = await sequelize.transaction();
+      let booking;
+      try {
+        booking = await CourseBooking.create({
+          student_id: student_id,
+          coach_id: coach_id,
+          relation_id: relation.id,
+          course_date: course_date,
+          start_time: start_time,
+          end_time: end_time,
+          address_id: address_id,
+          category_id: category_id,
+          booking_type: booking_type,
+          card_instance_id: booking_type === 2 ? card_instance_id : null,
+          student_remark: student_remark,
+          coach_remark: coach_remark,
+          booking_status: isAutoConfirm ? 2 : 1, // 自动确认：2-已确认，否则：1-待确认
+          confirmed_at: isAutoConfirm ? new Date() : null, // 自动确认时设置确认时间
+          created_by: userId
+        }, { transaction: t });
+
+        // 卡片未开启时，预约成功后自动开卡
+        if (booking_type === 2 && cardInstance && cardInstance.card_status === 0) {
+          await cardInstance.activate(t);
+          logger.info('卡片预约时自动开卡:', {
+            cardInstanceId: cardInstance.id,
+            bookingId: booking.id,
+            expireDate: cardInstance.expire_date
+          });
+        }
+
+        await t.commit();
+      } catch (err) {
+        await t.rollback();
+        throw err;
+      }
 
       logger.info('课程预约成功:', { 
         bookingId: booking.id, 

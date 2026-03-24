@@ -441,28 +441,32 @@ class CardInstanceController {
     const moment = require('moment-timezone');
     const now = moment.tz('Asia/Shanghai').startOf('day').format('YYYY-MM-DD');
 
-    // 查询可用的卡片（已开启且未过期且有课时）
+    // 查询可用的卡片：已开启(1) + 未开卡(0)，均要求有剩余课时
+    // 未开卡的卡片 expire_date 为 null，不做到期检查；已开启的检查有效期
     const instances = await StudentCardInstance.findAll({
       where: {
         student_id: studentId,
         coach_id: coachId,
-        card_status: 1, // 已开启
+        card_status: { [Op.in]: [0, 1] }, // 未开启(0) + 已开启(1)
         [Op.and]: [
           {
             [Op.or]: [
-              { expire_date: null }, // 未开卡（理论上不会出现，因为状态是已开启）
-              { expire_date: { [Op.gte]: now } } // 未过期
+              { card_status: 0 },                    // 未开卡，不受到期日期限制
+              { expire_date: null },                  // 无到期限制
+              { expire_date: { [Op.gte]: now } }      // 已开卡且未过期
             ]
           },
           {
             [Op.or]: [
-              { total_lessons: null }, // 无限次数
-              { remaining_lessons: { [Op.gt]: 0 } } // 有剩余课时
+              { total_lessons: null },               // 无限次数
+              { remaining_lessons: { [Op.gt]: 0 } }  // 有剩余课时
             ]
           }
         ]
       },
       order: [
+        // 已开启(1) 排在未开卡(0) 前面
+        [sequelize.literal('CASE WHEN card_status = 1 THEN 1 WHEN card_status = 0 THEN 2 ELSE 3 END'), 'ASC'],
         [sequelize.literal('CASE WHEN expire_date IS NULL THEN 1 ELSE 0 END'), 'ASC'], // 有到期日期的排前面
         ['expire_date', 'ASC'] // 先到期的排在前面
       ]

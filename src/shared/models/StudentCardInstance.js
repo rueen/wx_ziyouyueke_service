@@ -148,8 +148,9 @@ StudentCardInstance.prototype.checkAvailable = function() {
 
 /**
  * 实例方法：开卡
+ * @param {import('sequelize').Transaction|null} transaction - 事务对象（可选）
  */
-StudentCardInstance.prototype.activate = async function() {
+StudentCardInstance.prototype.activate = async function(transaction = null) {
   if (this.card_status === 1) {
     throw new Error('卡片已开启，无需重复操作');
   }
@@ -172,7 +173,7 @@ StudentCardInstance.prototype.activate = async function() {
     card_status: 1,
     activated_at: new Date(),
     expire_date: expireDate
-  });
+  }, { transaction });
 };
 
 /**
@@ -257,23 +258,32 @@ StudentCardInstance.prototype.deductLesson = async function(transaction = null) 
 
 /**
  * 实例方法：获取可用课时（总课时 - 未完成预约占用的课时）
+ * 支持未开卡(0)和已开卡(1)状态，停用(2)和过期(3)返回 0
  * @returns {Promise<number>} 可用课时数
  */
 StudentCardInstance.prototype.getAvailableLessons = async function() {
-  // 1. 先检查卡片是否可用
-  const checkResult = this.checkAvailable();
-  if (!checkResult.available) {
+  // 1. 未开启(0)和已开启(1)可计算课时，其余状态返回 0
+  if (this.card_status !== 0 && this.card_status !== 1) {
     return 0;
   }
+
+  // 2. 已开启的卡额外检查有效期是否过期
+  if (this.card_status === 1 && this.expire_date) {
+    const now = moment.tz('Asia/Shanghai').startOf('day');
+    const expireDate = moment.tz(this.expire_date, 'Asia/Shanghai').endOf('day');
+    if (now.isAfter(expireDate)) {
+      return 0;
+    }
+  }
   
-  // 2. 无限次数卡片返回一个大数
+  // 3. 无限次数卡片返回一个大数
   if (this.total_lessons === null) {
     return 9999;
   }
   
   const totalLessons = this.remaining_lessons || 0;
   
-  // 3. 查询占用的课时数（待确认、已确认的课程）
+  // 4. 查询占用的课时数（待确认、已确认的课程）
   const CourseBooking = this.sequelize.models.course_bookings;
   const occupiedCount = await CourseBooking.count({
     where: {
@@ -285,7 +295,7 @@ StudentCardInstance.prototype.getAvailableLessons = async function() {
     }
   });
   
-  // 4. 可用课时 = 总课时 - 已占用课时
+  // 5. 可用课时 = 剩余课时 - 已占用课时
   return Math.max(totalLessons - occupiedCount, 0);
 };
 
