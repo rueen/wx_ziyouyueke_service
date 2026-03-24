@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const CourseBooking = require('../../shared/models/CourseBooking');
 const User = require('../../shared/models/User');
 const Address = require('../../shared/models/Address');
+const OperationLog = require('../../shared/models/OperationLog');
 const { sendSuccess, sendError } = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
 
@@ -270,8 +271,50 @@ class CourseController {
         return sendError(res, '课程不存在', 404);
       }
 
+      // 已完成课程禁止删除
+      if (course.booking_status === 3) {
+        return sendError(res, '已完成的课程不能删除', 400);
+      }
+
+      const ipAddress = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim() || null;
+      const userAgent = req.get('user-agent') || null;
+      const logPayload = {
+        course_id: course.id,
+        coach_id: course.coach_id,
+        student_id: course.student_id
+      };
+
+      // 删除前操作日志
+      await OperationLog.log({
+        userId: admin.id,
+        operationType: 'admin_course_delete_before',
+        operationDesc: `Admin删除课程-删除前(${admin.username})`,
+        tableName: 'course_bookings',
+        recordId: course.id,
+        oldData: logPayload,
+        newData: null,
+        ipAddress,
+        userAgent
+      });
+
       // 删除课程
       await course.destroy();
+
+      // 删除后操作日志
+      await OperationLog.log({
+        userId: admin.id,
+        operationType: 'admin_course_delete_after',
+        operationDesc: `Admin删除课程-删除后(${admin.username})`,
+        tableName: 'course_bookings',
+        recordId: course.id,
+        oldData: null,
+        newData: {
+          ...logPayload,
+          deleted: true
+        },
+        ipAddress,
+        userAgent
+      });
 
       logger.info(`管理员 ${admin.username} 删除课程: ID ${course.id}, 学员: ${course.student?.nickname || course.student?.phone}, 教练: ${course.coach?.nickname || course.coach?.phone}`);
       

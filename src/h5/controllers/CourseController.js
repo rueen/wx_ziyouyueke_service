@@ -1,4 +1,4 @@
-const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address, StudentCardInstance, sequelize } = require('../../shared/models');
+const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address, StudentCardInstance, OperationLog, sequelize } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
@@ -365,6 +365,14 @@ class CourseController {
       // 构建查询条件
       const whereConditions = {};
 
+      // 强制按当前登录用户限权，不允许跨用户查询
+      if (student_id && parseInt(student_id) !== userId) {
+        return ResponseUtil.forbidden(res, '无权查看其他学员的课程');
+      }
+      if (coach_id && parseInt(coach_id) !== userId) {
+        return ResponseUtil.forbidden(res, '无权查看其他教练的课程');
+      }
+
       // 学员ID筛选
       if (student_id) {
         whereConditions.student_id = student_id;
@@ -373,6 +381,14 @@ class CourseController {
       // 教练ID筛选
       if (coach_id) {
         whereConditions.coach_id = coach_id;
+      }
+
+      // 未指定学员/教练时，仅查询当前用户相关课程
+      if (!student_id && !coach_id) {
+        whereConditions[Op.or] = [
+          { student_id: userId },
+          { coach_id: userId }
+        ];
       }
 
       // 状态筛选
@@ -1283,8 +1299,45 @@ class CourseController {
         return ResponseUtil.validationError(res, '已完成的课程不能删除');
       }
 
+      const ipAddress = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim() || null;
+      const userAgent = req.get('user-agent') || null;
+      const logPayload = {
+        course_id: course.id,
+        coach_id: course.coach_id,
+        student_id: course.student_id
+      };
+
+      // 删除前操作日志
+      await OperationLog.log({
+        userId,
+        operationType: 'course_delete_before',
+        operationDesc: 'H5删除课程-删除前',
+        tableName: 'course_bookings',
+        recordId: course.id,
+        oldData: logPayload,
+        newData: null,
+        ipAddress,
+        userAgent
+      });
+
       // 删除课程
       await course.destroy();
+
+      // 删除后操作日志
+      await OperationLog.log({
+        userId,
+        operationType: 'course_delete_after',
+        operationDesc: 'H5删除课程-删除后',
+        tableName: 'course_bookings',
+        recordId: course.id,
+        oldData: null,
+        newData: {
+          ...logPayload,
+          deleted: true
+        },
+        ipAddress,
+        userAgent
+      });
 
       logger.info(`用户 ${userId} 删除课程: ID ${course.id}, 学员: ${course.student?.nickname || course.student?.phone}, 教练: ${course.coach?.nickname || course.coach?.phone}`);
       
