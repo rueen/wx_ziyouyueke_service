@@ -36,7 +36,7 @@ const createGroupCourseValidation = [
   body('end_time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('结束时间格式不正确'),
   body('max_participants').isInt({ min: 1 }).withMessage('最大参与人数必须是正整数'),
   body('min_participants').isInt({ min: 1 }).withMessage('最小开课人数必须是正整数'),
-  body('price_type').isIn([1, 2, 3]).withMessage('收费方式必须是1-3之间的数字'),
+  body('price_type').isIn([1, 2, 3, 4]).withMessage('收费方式必须是1-4之间的数字'),
   body('enrollment_scope').isIn([1, 2]).withMessage('报名范围必须是1或2')
 ];
 
@@ -50,7 +50,7 @@ const updateGroupCourseValidation = [
   body('end_time').optional().matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('结束时间格式不正确'),
   body('max_participants').optional().isInt({ min: 1 }).withMessage('最大参与人数必须是正整数'),
   body('min_participants').optional().isInt({ min: 1 }).withMessage('最小开课人数必须是正整数'),
-  body('price_type').optional().isIn([1, 2, 3]).withMessage('收费方式必须是1-3之间的数字'),
+  body('price_type').optional().isIn([1, 2, 3, 4]).withMessage('收费方式必须是1-4之间的数字'),
   body('enrollment_scope').optional().isIn([1, 2]).withMessage('报名范围必须是1或2')
 ];
 

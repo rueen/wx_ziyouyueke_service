@@ -191,7 +191,7 @@ class RelationController {
           const categories = coach.course_categories || [];
           
           for (const lesson of category_lessons) {
-            const categoryExists = categories.some(cat => cat.id === lesson.category_id);
+            const categoryExists = categories.some(cat => Number(cat.id) === Number(lesson.category_id));
             if (!categoryExists) {
               return ResponseUtil.validationError(res, `分类ID ${lesson.category_id} 不存在`);
             }

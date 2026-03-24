@@ -67,7 +67,7 @@ class CourseController {
 
       // 验证课程分类是否存在
       const categories = coach.course_categories || [];
-      const categoryExists = categories.some(cat => cat.id === category_id);
+      const categoryExists = categories.some(cat => Number(cat.id) === Number(category_id));
       if (!categoryExists) {
         return ResponseUtil.validationError(res, '课程分类不存在');
       }
@@ -157,7 +157,7 @@ class CourseController {
         // 普通课程验证 - 使用原有的课时检查逻辑
         // 验证课程分类是否存在
         const categories = coach.course_categories || [];
-        const categoryExists = categories.some(cat => cat.id === category_id);
+        const categoryExists = categories.some(cat => Number(cat.id) === Number(category_id));
         if (!categoryExists) {
           return ResponseUtil.validationError(res, '课程分类不存在');
         }
@@ -320,7 +320,7 @@ class CourseController {
         try {
           if (isAutoConfirm) {
             // 自动确认的课程：只向学员发送"预约成功通知"
-            const categoryName = categories.find(cat => cat.id === category_id)?.name || '默认分类';
+            const categoryName = categories.find(cat => Number(cat.id) === Number(category_id))?.name || '默认分类';
             
             await SubscribeMessageService.sendBookingSuccessNotice({
               booking,
@@ -703,7 +703,7 @@ class CourseController {
           // 获取课程分类名称
           const coach = course.coach;
           const categories = coach.course_categories || [];
-          const category = categories.find(cat => cat.id === course.category_id);
+          const category = categories.find(cat => Number(cat.id) === Number(course.category_id));
           const categoryName = category ? category.name : '默认';
 
           // 确定确认人和接收人（接收人是创建预约的人）
@@ -1107,7 +1107,7 @@ class CourseController {
         if (finalBookingType === 1) {
           // 普通课程需要验证分类
           const categories = course.coach.course_categories || [];
-          const categoryExists = categories.some(cat => cat.id === category_id);
+          const categoryExists = categories.some(cat => Number(cat.id) === Number(category_id));
           if (!categoryExists) {
             await t.rollback();
             return ResponseUtil.validationError(res, '课程分类不存在');

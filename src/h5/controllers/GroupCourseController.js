@@ -1,11 +1,11 @@
 /*
  * @Author: diaochan
  * @Date: 2025-10-09 19:16:44
- * @LastEditors: diaochan
- * @LastEditTime: 2025-10-19 16:06:36
+ * @LastEditors: diaochan diaochan@seatent.com
+ * @LastEditTime: 2026-03-24 20:55:16
  * @Description: 
  */
-const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation, CourseContent } = require('../../shared/models');
+const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation, CourseContent, StudentCardInstance, CoachCard, sequelize } = require('../../shared/models');
 const { Op } = require('sequelize');
 const ResponseUtil = require('../../shared/utils/response');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
@@ -38,6 +38,7 @@ class GroupCourseController {
       price_type = 1,
       lesson_cost = 1,
       price_amount = 0,
+      card_id = null,
       enrollment_scope = 1,
       is_show = 1,
     } = req.body;
@@ -49,9 +50,22 @@ class GroupCourseController {
     }
 
     const categories = coach.course_categories || [];
-    const categoryExists = categories.some(cat => cat.id === category_id);
+    const categoryExists = categories.some(cat => Number(cat.id) === Number(category_id));
     if (!categoryExists) {
       return ResponseUtil.validationError(res, '课程分类不存在');
+    }
+
+    // price_type=4（课程卡）时，验证 card_id
+    if (price_type === 4) {
+      if (!card_id) {
+        return ResponseUtil.validationError(res, 'price_type 为课程卡时，card_id 不能为空');
+      }
+      const coachCard = await CoachCard.findOne({
+        where: { id: card_id, coach_id: coachId, is_active: 1 }
+      });
+      if (!coachCard) {
+        return ResponseUtil.validationError(res, '课程卡模板不存在或已禁用');
+      }
     }
 
     // 验证地址
@@ -80,10 +94,10 @@ class GroupCourseController {
       price_type,
       lesson_cost,
       price_amount,
+      card_id: price_type === 4 ? card_id : null,
       enrollment_scope,
       is_show,
-      // 默认为草稿状态（status = 0）
-      status: 0 // 草稿状态：0-待发布
+      status: 0
     });
 
     logger.info(`教练 ${coachId} 创建团课成功，团课ID: ${groupCourse.id}`);
@@ -276,10 +290,23 @@ class GroupCourseController {
 
     // 添加分类名称
     if (course.coach && course.coach.course_categories) {
-      const category = course.coach.course_categories.find(cat => cat.id === course.category_id);
+      const category = course.coach.course_categories.find(cat => Number(cat.id) === Number(course.category_id));
       courseData.category_name = category ? category.name : '未知分类';
     } else {
       courseData.category_name = '未知分类';
+    }
+
+    // price_type=4（课程卡）时，补充卡片名称
+    if (course.price_type === 4 && course.card_id) {
+      const coachCard = await CoachCard.findByPk(course.card_id, {
+        attributes: ['id', 'card_name', 'card_color', 'card_lessons', 'valid_days'],
+        paranoid: false // 包含软删除的记录
+      });
+      courseData.card_info = coachCard
+        ? { id: coachCard.id, card_name: coachCard.card_name, card_color: coachCard.card_color, card_lessons: coachCard.card_lessons, valid_days: coachCard.valid_days }
+        : null;
+    } else {
+      courseData.card_info = null;
     }
 
     // 获取团课内容
@@ -324,9 +351,29 @@ class GroupCourseController {
     if (updateData.category_id !== undefined) {
       const coach = await User.findByPk(coachId);
       const categories = coach.course_categories || [];
-      const categoryExists = categories.some(cat => cat.id === updateData.category_id);
+      const categoryExists = categories.some(cat => Number(cat.id) === Number(updateData.category_id));
       if (!categoryExists) {
         return ResponseUtil.validationError(res, '课程分类不存在');
+      }
+    }
+
+    // price_type=4（课程卡）时，验证 card_id
+    const effectivePriceType = updateData.price_type !== undefined ? updateData.price_type : course.price_type;
+    if (effectivePriceType === 4) {
+      const effectiveCardId = updateData.card_id !== undefined ? updateData.card_id : course.card_id;
+      if (!effectiveCardId) {
+        return ResponseUtil.validationError(res, 'price_type 为课程卡时，card_id 不能为空');
+      }
+      const coachCard = await CoachCard.findOne({
+        where: { id: effectiveCardId, coach_id: coachId, is_active: 1 }
+      });
+      if (!coachCard) {
+        return ResponseUtil.validationError(res, '课程卡模板不存在或已禁用');
+      }
+    } else {
+      // 切换为非课程卡类型时，清空 card_id
+      if (updateData.price_type !== undefined && updateData.price_type !== 4) {
+        updateData.card_id = null;
       }
     }
 
@@ -484,6 +531,7 @@ class GroupCourseController {
     });
 
     let relationId = null;
+    let cardInstanceId = null;
     
     // 如果是仅学员可报名，需要验证师生关系
     if (course.enrollment_scope === 1) {
@@ -491,7 +539,7 @@ class GroupCourseController {
         where: {
           student_id: studentId,
           coach_id: course.coach_id,
-          relation_status: 1 // 只查找有效的师生关系
+          relation_status: 1
         }
       });
 
@@ -501,9 +549,8 @@ class GroupCourseController {
 
       relationId = relation.id;
 
-      // 如果是扣课时的团课，检查课时和有效期
+      // 扣课时：检查课时和有效期
       if (course.price_type === 1) {
-        // 检查团课日期是否在课时有效期内
         const lessons = relation.lessons || [];
         const categoryLesson = lessons.find(l => l.category_id === course.category_id);
         if (categoryLesson && categoryLesson.expire_date) {
@@ -516,7 +563,6 @@ class GroupCourseController {
           }
         }
         
-        // 检查课时是否足够
         const availableLessons = await relation.getAvailableLessons(course.category_id);
         if (availableLessons < course.lesson_cost) {
           return ResponseUtil.validationError(res, '课程分类可用课时不足，无法报名');
@@ -524,15 +570,79 @@ class GroupCourseController {
       }
     }
 
+    // 课程卡报名：price_type=4 时无论 enrollment_scope 如何，均需验证师生关系和卡片
+    if (course.price_type === 4) {
+      if (!course.card_id) {
+        return ResponseUtil.validationError(res, '该团课未设置课程卡，无法使用课程卡报名');
+      }
+
+      // 未通过 enrollment_scope=1 检查时，补充查询师生关系
+      if (!relationId) {
+        const relation = await StudentCoachRelation.findOne({
+          where: {
+            student_id: studentId,
+            coach_id: course.coach_id,
+            relation_status: 1
+          }
+        });
+        if (!relation) {
+          return ResponseUtil.validationError(res, '您不是该教练的学员，无法使用课程卡报名');
+        }
+        relationId = relation.id;
+      }
+
+      // 查找该学员持有的、对应卡片模板的可用卡片实例
+      // 优先选已开启的卡，其次是未开卡（报名时不自动开卡，签到时再开）
+      const moment = require('moment-timezone');
+      const today = moment.tz('Asia/Shanghai').startOf('day').format('YYYY-MM-DD');
+
+      const validCard = await StudentCardInstance.findOne({
+        where: {
+          student_id: studentId,
+          coach_id: course.coach_id,
+          coach_card_id: course.card_id,
+          card_status: { [Op.in]: [0, 1] },
+          [Op.and]: [
+            {
+              [Op.or]: [
+                { card_status: 0 },               // 未开卡，无到期日限制
+                { expire_date: null },
+                { expire_date: { [Op.gte]: today } }
+              ]
+            },
+            {
+              [Op.or]: [
+                { total_lessons: null },
+                { remaining_lessons: { [Op.gt]: 0 } }
+              ]
+            }
+          ]
+        },
+        order: [
+          // 已开启排前
+          [sequelize.literal('CASE WHEN card_status = 1 THEN 1 ELSE 2 END'), 'ASC'],
+          [sequelize.literal('CASE WHEN expire_date IS NULL THEN 1 ELSE 0 END'), 'ASC'],
+          ['expire_date', 'ASC']
+        ]
+      });
+
+      if (!validCard) {
+        return ResponseUtil.validationError(res, '您没有可用的对应课程卡，无法报名');
+      }
+
+      cardInstanceId = validCard.id;
+    }
+
     let registration;
     
     if (cancelledRegistration) {
       // 如果有已取消的记录，修改状态为已报名
       registration = cancelledRegistration;
-      registration.registration_status = 1; // 已报名
-      registration.cancelled_at = null; // 清除取消时间
-      registration.cancel_reason = null; // 清除取消原因
-      registration.cancelled_by = null; // 清除取消操作人
+      registration.registration_status = 1;
+      registration.cancelled_at = null;
+      registration.cancel_reason = null;
+      registration.cancelled_by = null;
+      registration.card_instance_id = cardInstanceId; // 更新课程卡实例（可能换了一张卡）
       await registration.save();
       
       logger.info(`学员 ${studentId} 重新报名团课 ${groupCourseId}（修改状态）`);
@@ -544,7 +654,8 @@ class GroupCourseController {
         coach_id: course.coach_id,
         relation_id: relationId,
         payment_type: course.price_type,
-        registration_status: 1 // 已报名
+        card_instance_id: cardInstanceId,
+        registration_status: 1
       });
       
       logger.info(`学员 ${studentId} 首次报名团课 ${groupCourseId}（创建记录）`);

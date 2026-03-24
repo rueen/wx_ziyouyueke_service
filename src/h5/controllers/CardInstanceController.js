@@ -1,4 +1,4 @@
-const { StudentCardInstance, CoachCard, User, StudentCoachRelation, CourseBooking, sequelize } = require('../../shared/models');
+const { StudentCardInstance, CoachCard, User, StudentCoachRelation, CourseBooking, GroupCourseRegistration, GroupCourse, sequelize } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
@@ -464,15 +464,60 @@ class CardInstanceController {
       return ResponseUtil.notFound(res, '卡片不存在或无权限查看');
     }
 
-    // 获取使用记录（最近10条）
-    const usageRecords = await CourseBooking.findAll({
-      where: {
-        card_instance_id: id
-      },
+    // 获取一对一课程使用记录
+    const courseRecords = await CourseBooking.findAll({
+      where: { card_instance_id: id },
       order: [['course_date', 'DESC'], ['start_time', 'DESC']],
-      limit: 10,
       attributes: ['id', 'course_date', 'start_time', 'end_time', 'booking_status', 'complete_at']
     });
+
+    // 获取团课使用记录
+    const groupCourseRecords = await GroupCourseRegistration.findAll({
+      where: {
+        card_instance_id: id,
+        registration_status: 1
+      },
+      include: [{
+        model: GroupCourse,
+        as: 'groupCourse',
+        attributes: ['id', 'title', 'course_date', 'start_time', 'end_time']
+      }],
+      attributes: ['id', 'check_in_status', 'check_in_time']
+    });
+
+    // 统一格式：record_type 区分来源
+    const normalizedCourse = courseRecords.map(r => ({
+      id: r.id,
+      record_type: 'course',
+      title: null,
+      course_date: r.course_date,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      status: r.booking_status,
+      complete_at: r.complete_at
+    }));
+
+    const normalizedGroup = groupCourseRecords.map(r => ({
+      id: r.groupCourse ? r.groupCourse.id : null, // 团课ID
+      registration_id: r.id,                       // 报名记录ID
+      record_type: 'group_course',
+      title: r.groupCourse ? r.groupCourse.title : null,
+      course_date: r.groupCourse ? r.groupCourse.course_date : null,
+      start_time: r.groupCourse ? r.groupCourse.start_time : null,
+      end_time: r.groupCourse ? r.groupCourse.end_time : null,
+      status: r.check_in_status, // 0-未签到，1-已签到，2-缺席
+      complete_at: r.check_in_time
+    }));
+
+    // 合并后按日期倒序排列，取最近 10 条
+    const usageRecords = [...normalizedCourse, ...normalizedGroup]
+      .sort((a, b) => {
+        if (a.course_date !== b.course_date) {
+          return (b.course_date || '') > (a.course_date || '') ? 1 : -1;
+        }
+        return (b.start_time || '') > (a.start_time || '') ? 1 : -1;
+      })
+      .slice(0, 10);
 
     // 获取实际可预约的课时数量
     const availableLessons = await instance.getAvailableLessons();

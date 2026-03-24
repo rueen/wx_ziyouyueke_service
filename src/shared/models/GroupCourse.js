@@ -97,7 +97,7 @@ const GroupCourse = sequelize.define('group_courses', {
     type: DataTypes.TINYINT(1),
     allowNull: false,
     defaultValue: 1,
-    comment: '收费方式：1-扣课时，2-金额展示（暂不真实支付），3-免费'
+    comment: '收费方式：1-扣课时，2-金额展示（暂不真实支付），3-免费，4-课程卡'
   },
   lesson_cost: {
     type: DataTypes.INTEGER,
@@ -110,6 +110,11 @@ const GroupCourse = sequelize.define('group_courses', {
     allowNull: true,
     defaultValue: 0.00,
     comment: '费用金额（前期仅记录，不实际支付）'
+  },
+  card_id: {
+    type: DataTypes.BIGINT.UNSIGNED,
+    allowNull: true,
+    comment: '课程卡模板ID（price_type=4时必填，关联coach_cards表）'
   },
   
   // 报名设置

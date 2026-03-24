@@ -44,7 +44,12 @@ const GroupCourseRegistration = sequelize.define('group_course_registrations', {
   payment_type: {
     type: DataTypes.TINYINT(1),
     allowNull: false,
-    comment: '支付方式：1-课时，2-金额，3-免费'
+    comment: '支付方式：1-课时，2-金额，3-免费，4-课程卡'
+  },
+  card_instance_id: {
+    type: DataTypes.BIGINT.UNSIGNED,
+    allowNull: true,
+    comment: '课程卡实例ID（payment_type=4时有值，关联student_card_instances表）'
   },
   lesson_deducted: {
     type: DataTypes.INTEGER,
@@ -167,7 +172,7 @@ GroupCourseRegistration.prototype.checkIn = async function(operatorId) {
   const transaction = await sequelize.transaction();
   
   try {
-    // 如果是扣课时的团课且有师生关系，签到时扣除课时
+    // 扣课时：price_type=1，且有师生关系
     if (this.payment_type === 1 && this.relation_id) {
       const StudentCoachRelation = this.sequelize.models.student_coach_relations;
       const GroupCourse = this.sequelize.models.group_courses;
@@ -176,20 +181,53 @@ GroupCourseRegistration.prototype.checkIn = async function(operatorId) {
       const course = await GroupCourse.findByPk(this.group_course_id);
       
       if (relation && course) {
-        // 扣除课时
         await relation.decreaseCategoryLessons(course.category_id, course.lesson_cost, { transaction });
-        
-        // 更新支付信息
         this.lesson_deducted = course.lesson_cost;
-        this.payment_status = 1; // 已支付（课时已扣）
+        this.payment_status = 1;
+      }
+    }
+
+    // 扣课程卡：price_type=4，且有 card_instance_id
+    if (this.payment_type === 4 && this.card_instance_id) {
+      const StudentCardInstance = this.sequelize.models.student_card_instances;
+      const GroupCourse = this.sequelize.models.group_courses;
+
+      const cardInstance = await StudentCardInstance.findByPk(this.card_instance_id);
+      const course = await GroupCourse.findByPk(this.group_course_id);
+
+      if (cardInstance && course) {
+        const lessonCost = course.lesson_cost || 1;
+
+        // 未开卡时自动开卡
+        if (cardInstance.card_status === 0) {
+          await cardInstance.activate(transaction);
+        }
+
+        // 检查卡片是否可用
+        const checkResult = cardInstance.checkAvailable();
+        if (!checkResult.available) {
+          throw new Error(`课程卡不可用：${checkResult.reason}`);
+        }
+
+        // 检查并扣除课时
+        if (cardInstance.total_lessons !== null) {
+          if ((cardInstance.remaining_lessons || 0) < lessonCost) {
+            throw new Error('课程卡课时不足，无法完成签到');
+          }
+          cardInstance.remaining_lessons -= lessonCost;
+        }
+        cardInstance.used_count = (cardInstance.used_count || 0) + lessonCost;
+        await cardInstance.save({ transaction });
+
+        this.lesson_deducted = lessonCost;
+        this.payment_status = 1;
       }
     }
     
-    // 更新签到状态（签到即完成，但报名状态保持为已报名）
-    this.check_in_status = 1; // 已签到
+    // 更新签到状态（签到即完成，报名状态保持为已报名）
+    this.check_in_status = 1;
     this.check_in_time = new Date();
     this.checked_in_by = operatorId;
-    // registration_status 保持为 1（已报名），不再更改
     
     await this.save({ transaction });
     await transaction.commit();
