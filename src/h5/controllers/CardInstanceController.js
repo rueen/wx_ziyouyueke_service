@@ -509,7 +509,7 @@ class CardInstanceController {
       complete_at: r.check_in_time
     }));
 
-    // 合并后按日期倒序排列，取最近 10 条
+    // 合并后按日期倒序排列，取最近 200 条
     const usageRecords = [...normalizedCourse, ...normalizedGroup]
       .sort((a, b) => {
         if (a.course_date !== b.course_date) {
@@ -517,7 +517,7 @@ class CardInstanceController {
         }
         return (b.start_time || '') > (a.start_time || '') ? 1 : -1;
       })
-      .slice(0, 10);
+      .slice(0, 200);
 
     // 获取实际可预约的课时数量
     const availableLessons = await instance.getAvailableLessons();
