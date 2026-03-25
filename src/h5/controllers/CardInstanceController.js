@@ -347,15 +347,19 @@ class CardInstanceController {
     const instanceList = await Promise.all(instances.map(async (instance) => {
       const summary = await instance.getSummary();
       
+      // 获取已使用次数（所有使用记录的条数）
+      const usageCount = await CourseBooking.count({
+        where: {
+          card_instance_id: instance.id
+        }
+      });
+      
       // 获取实际可预约的课时数量
       const availableLessons = await instance.getAvailableLessons();
-      const usageCount = summary.total_lessons === null
-        ? null
-        : Math.max((summary.total_lessons || 0) - availableLessons, 0);
       
       return {
         ...summary,
-        usage_count: usageCount, // 已使用次数：总数 - 实际可预约课时
+        usage_count: usageCount, // 已使用次数
         available_lessons: availableLessons // 实际可预约的课时数量
       };
     }));
@@ -411,15 +415,19 @@ class CardInstanceController {
     const instanceList = await Promise.all(instances.map(async (instance) => {
       const summary = await instance.getSummary();
       
+      // 获取已使用次数（所有使用记录的条数）
+      const usageCount = await CourseBooking.count({
+        where: {
+          card_instance_id: instance.id
+        }
+      });
+      
       // 获取实际可预约的课时数量
       const availableLessons = await instance.getAvailableLessons();
-      const usageCount = summary.total_lessons === null
-        ? null
-        : Math.max((summary.total_lessons || 0) - availableLessons, 0);
       
       return {
         ...summary,
-        usage_count: usageCount, // 已使用次数：总数 - 实际可预约课时
+        usage_count: usageCount, // 已使用次数
         available_lessons: availableLessons // 实际可预约的课时数量
       };
     }));
@@ -519,19 +527,24 @@ class CardInstanceController {
       })
       .slice(0, 200);
 
+    /**
+     * 已使用次数：一对一约课记录条数（与列表接口 usage_count 口径一致）
+     */
+    const usageCount = await CourseBooking.count({
+      where: {
+        card_instance_id: id
+      }
+    });
     // 获取实际可预约的课时数量
     const availableLessons = await instance.getAvailableLessons();
 
     const instanceSummary = await instance.getSummary();
-    const usageCount = instanceSummary.total_lessons === null
-      ? null
-      : Math.max((instanceSummary.total_lessons || 0) - availableLessons, 0);
     const instanceDetail = {
       ...instanceSummary,
       student: instance.student,
       coach: instance.coach,
       usage_records: usageRecords,
-      usage_count: usageCount, // 已使用次数：总数 - 实际可预约课时
+      usage_count: usageCount, // 已使用次数
       available_lessons: availableLessons // 实际可预约的课时数量
     };
 
