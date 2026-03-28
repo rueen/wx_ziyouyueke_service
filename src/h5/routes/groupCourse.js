@@ -37,6 +37,8 @@ const createGroupCourseValidation = [
   body('max_participants').isInt({ min: 1 }).withMessage('最大参与人数必须是正整数'),
   body('min_participants').isInt({ min: 1 }).withMessage('最小开课人数必须是正整数'),
   body('price_type').isIn([1, 2, 3, 4]).withMessage('收费方式必须是1-4之间的数字'),
+  body('card_id').optional().isArray().withMessage('card_id 必须是数组'),
+  body('card_id.*').optional().isInt({ min: 1 }).withMessage('card_id 中的每个元素必须是正整数'),
   body('enrollment_scope').isIn([1, 2]).withMessage('报名范围必须是1或2')
 ];
 
@@ -51,6 +53,8 @@ const updateGroupCourseValidation = [
   body('max_participants').optional().isInt({ min: 1 }).withMessage('最大参与人数必须是正整数'),
   body('min_participants').optional().isInt({ min: 1 }).withMessage('最小开课人数必须是正整数'),
   body('price_type').optional().isIn([1, 2, 3, 4]).withMessage('收费方式必须是1-4之间的数字'),
+  body('card_id').optional().isArray().withMessage('card_id 必须是数组'),
+  body('card_id.*').optional().isInt({ min: 1 }).withMessage('card_id 中的每个元素必须是正整数'),
   body('enrollment_scope').optional().isIn([1, 2]).withMessage('报名范围必须是1或2')
 ];
 

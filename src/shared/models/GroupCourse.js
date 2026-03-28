@@ -112,9 +112,10 @@ const GroupCourse = sequelize.define('group_courses', {
     comment: '费用金额（前期仅记录，不实际支付）'
   },
   card_id: {
-    type: DataTypes.BIGINT.UNSIGNED,
+    type: DataTypes.JSON,
     allowNull: true,
-    comment: '课程卡模板ID（price_type=4时必填，关联coach_cards表）'
+    defaultValue: [],
+    comment: '课程卡模板ID数组（price_type=4时必填，支持多种卡类型，关联coach_cards表）'
   },
   
   // 报名设置

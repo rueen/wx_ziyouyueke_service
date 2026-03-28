@@ -38,7 +38,7 @@ class GroupCourseController {
       price_type = 1,
       lesson_cost = 1,
       price_amount = 0,
-      card_id = null,
+      card_id = [],
       enrollment_scope = 1,
       is_show = 1,
     } = req.body;
@@ -55,16 +55,19 @@ class GroupCourseController {
       return ResponseUtil.validationError(res, '课程分类不存在');
     }
 
-    // price_type=4（课程卡）时，验证 card_id
+    // price_type=4（课程卡）时，验证 card_id 数组
     if (price_type === 4) {
-      if (!card_id) {
+      if (!Array.isArray(card_id) || card_id.length === 0) {
         return ResponseUtil.validationError(res, 'price_type 为课程卡时，card_id 不能为空');
       }
-      const coachCard = await CoachCard.findOne({
-        where: { id: card_id, coach_id: coachId, is_active: 1 }
-      });
-      if (!coachCard) {
-        return ResponseUtil.validationError(res, '课程卡模板不存在或已禁用');
+      // 逐一验证每个卡片模板是否属于该教练且启用
+      for (const cid of card_id) {
+        const coachCard = await CoachCard.findOne({
+          where: { id: cid, coach_id: coachId, is_active: 1 }
+        });
+        if (!coachCard) {
+          return ResponseUtil.validationError(res, `课程卡模板 ${cid} 不存在或已禁用`);
+        }
       }
     }
 
@@ -94,7 +97,7 @@ class GroupCourseController {
       price_type,
       lesson_cost,
       price_amount,
-      card_id: price_type === 4 ? card_id : null,
+      card_id: price_type === 4 ? card_id : [],
       enrollment_scope,
       is_show,
       status: 0
@@ -296,17 +299,23 @@ class GroupCourseController {
       courseData.category_name = '未知分类';
     }
 
-    // price_type=4（课程卡）时，补充卡片名称
-    if (course.price_type === 4 && course.card_id) {
-      const coachCard = await CoachCard.findByPk(course.card_id, {
+    // price_type=4（课程卡）时，补充卡片列表信息
+    const cardIds = Array.isArray(course.card_id) ? course.card_id : [];
+    if (course.price_type === 4 && cardIds.length > 0) {
+      const coachCards = await CoachCard.findAll({
+        where: { id: { [Op.in]: cardIds } },
         attributes: ['id', 'card_name', 'card_color', 'card_lessons', 'valid_days'],
         paranoid: false // 包含软删除的记录
       });
-      courseData.card_info = coachCard
-        ? { id: coachCard.id, card_name: coachCard.card_name, card_color: coachCard.card_color, card_lessons: coachCard.card_lessons, valid_days: coachCard.valid_days }
-        : null;
+      // 保持原有顺序
+      courseData.card_info = cardIds.map(cid => {
+        const card = coachCards.find(c => Number(c.id) === Number(cid));
+        return card
+          ? { id: card.id, card_name: card.card_name, card_color: card.card_color, card_lessons: card.card_lessons, valid_days: card.valid_days }
+          : null;
+      }).filter(Boolean);
     } else {
-      courseData.card_info = null;
+      courseData.card_info = [];
     }
 
     // 获取团课内容
@@ -357,23 +366,27 @@ class GroupCourseController {
       }
     }
 
-    // price_type=4（课程卡）时，验证 card_id
+    // price_type=4（课程卡）时，验证 card_id 数组
     const effectivePriceType = updateData.price_type !== undefined ? updateData.price_type : course.price_type;
     if (effectivePriceType === 4) {
-      const effectiveCardId = updateData.card_id !== undefined ? updateData.card_id : course.card_id;
-      if (!effectiveCardId) {
+      const effectiveCardId = updateData.card_id !== undefined
+        ? updateData.card_id
+        : (Array.isArray(course.card_id) ? course.card_id : []);
+      if (!Array.isArray(effectiveCardId) || effectiveCardId.length === 0) {
         return ResponseUtil.validationError(res, 'price_type 为课程卡时，card_id 不能为空');
       }
-      const coachCard = await CoachCard.findOne({
-        where: { id: effectiveCardId, coach_id: coachId, is_active: 1 }
-      });
-      if (!coachCard) {
-        return ResponseUtil.validationError(res, '课程卡模板不存在或已禁用');
+      for (const cid of effectiveCardId) {
+        const coachCard = await CoachCard.findOne({
+          where: { id: cid, coach_id: coachId, is_active: 1 }
+        });
+        if (!coachCard) {
+          return ResponseUtil.validationError(res, `课程卡模板 ${cid} 不存在或已禁用`);
+        }
       }
     } else {
       // 切换为非课程卡类型时，清空 card_id
       if (updateData.price_type !== undefined && updateData.price_type !== 4) {
-        updateData.card_id = null;
+        updateData.card_id = [];
       }
     }
 
@@ -572,7 +585,8 @@ class GroupCourseController {
 
     // 课程卡报名：price_type=4 时无论 enrollment_scope 如何，均需验证师生关系和卡片
     if (course.price_type === 4) {
-      if (!course.card_id) {
+      const courseCardIds = Array.isArray(course.card_id) ? course.card_id : [];
+      if (courseCardIds.length === 0) {
         return ResponseUtil.validationError(res, '该团课未设置课程卡，无法使用课程卡报名');
       }
 
@@ -591,7 +605,7 @@ class GroupCourseController {
         relationId = relation.id;
       }
 
-      // 查找该学员持有的、对应卡片模板的可用卡片实例
+      // 查找该学员持有的、匹配任意卡片模板的可用卡片实例
       // 优先选已开启的卡，其次是未开卡（报名时不自动开卡，签到时再开）
       const moment = require('moment-timezone');
       const today = moment.tz('Asia/Shanghai').startOf('day').format('YYYY-MM-DD');
@@ -600,7 +614,7 @@ class GroupCourseController {
         where: {
           student_id: studentId,
           coach_id: course.coach_id,
-          coach_card_id: course.card_id,
+          coach_card_id: { [Op.in]: courseCardIds }, // 匹配团课允许的任意卡片类型
           card_status: { [Op.in]: [0, 1] },
           [Op.and]: [
             {
