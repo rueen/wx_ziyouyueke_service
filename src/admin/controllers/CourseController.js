@@ -285,36 +285,36 @@ class CourseController {
       };
 
       // 删除前操作日志
-      await OperationLog.log({
-        userId: admin.id,
-        operationType: 'admin_course_delete_before',
-        operationDesc: `Admin删除课程-删除前(${admin.username})`,
-        tableName: 'course_bookings',
-        recordId: course.id,
-        oldData: logPayload,
-        newData: null,
-        ipAddress,
-        userAgent
-      });
+      // await OperationLog.log({
+      //   userId: admin.id,
+      //   operationType: 'admin_course_delete_before',
+      //   operationDesc: `Admin删除课程-删除前(${admin.username})`,
+      //   tableName: 'course_bookings',
+      //   recordId: course.id,
+      //   oldData: logPayload,
+      //   newData: null,
+      //   ipAddress,
+      //   userAgent
+      // });
 
       // 删除课程
       await course.destroy();
 
       // 删除后操作日志
-      await OperationLog.log({
-        userId: admin.id,
-        operationType: 'admin_course_delete_after',
-        operationDesc: `Admin删除课程-删除后(${admin.username})`,
-        tableName: 'course_bookings',
-        recordId: course.id,
-        oldData: null,
-        newData: {
-          ...logPayload,
-          deleted: true
-        },
-        ipAddress,
-        userAgent
-      });
+      // await OperationLog.log({
+      //   userId: admin.id,
+      //   operationType: 'admin_course_delete_after',
+      //   operationDesc: `Admin删除课程-删除后(${admin.username})`,
+      //   tableName: 'course_bookings',
+      //   recordId: course.id,
+      //   oldData: null,
+      //   newData: {
+      //     ...logPayload,
+      //     deleted: true
+      //   },
+      //   ipAddress,
+      //   userAgent
+      // });
 
       logger.info(`管理员 ${admin.username} 删除课程: ID ${course.id}, 学员: ${course.student?.nickname || course.student?.phone}, 教练: ${course.coach?.nickname || course.coach?.phone}`);
       
