@@ -1,4 +1,4 @@
-const { User } = require('../../shared/models');
+const { User, StudentCoachRelation } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
@@ -51,6 +51,11 @@ class UserController {
       return ResponseUtil.notFound(res, '用户不存在');
     }
 
+    // 查询已绑定的正式教练数量（前端用于判断是否需要引导绑定手机号）
+    const coachCount = await StudentCoachRelation.count({
+      where: { student_id: user.id, relation_status: 1 }
+    });
+
     return ResponseUtil.success(res, {
       id: user.id,
       openid: user.openid,
@@ -65,7 +70,8 @@ class UserController {
       register_time: user.register_time,
       last_login_time: user.last_login_time,
       status: user.status,
-      is_show: user.is_show
+      is_show: user.is_show,
+      coachCount
     }, '获取用户信息成功');
   });
 
@@ -150,7 +156,8 @@ class UserController {
         timestamp: new Date().toISOString()
       });
 
-      // 可选：自动更新用户手机号
+      // 自动更新用户手机号
+      let phoneUpdated = false;
       if (phoneInfo.phone && phoneInfo.phone !== user.phone) {
         // 检查手机号是否已被其他用户使用
         const existingUser = await User.findOne({
@@ -162,6 +169,7 @@ class UserController {
         
         if (!existingUser) {
           await user.update({ phone: phoneInfo.phone });
+          phoneUpdated = true;
           logger.info('自动更新用户手机号:', { 
             userId: user.id,
             phone: phoneInfo.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
@@ -172,6 +180,14 @@ class UserController {
             phone: phoneInfo.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
           });
         }
+      } else if (user.phone === phoneInfo.phone) {
+        // 手机号未变更，也视为已绑定，尝试激活待关系
+        phoneUpdated = true;
+      }
+
+      // 激活与该手机号匹配的所有待激活师生关系
+      if (phoneUpdated && phoneInfo.phone) {
+        await activatePendingRelations(user.id, phoneInfo.phone);
       }
 
       return ResponseUtil.success(res, {
@@ -194,6 +210,75 @@ class UserController {
       return ResponseUtil.serverError(res, '手机号解密失败');
     }
   });
+}
+
+/**
+ * 激活与指定手机号匹配的所有待激活师生关系
+ * @param {number} userId - 刚绑定手机号的用户 ID
+ * @param {string} phone - 手机号
+ */
+async function activatePendingRelations(userId, phone) {
+  const { Op } = require('sequelize');
+
+  try {
+    const pendingRelations = await StudentCoachRelation.findAll({
+      where: { pending_phone: phone, relation_status: 2 }
+    });
+
+    if (pendingRelations.length === 0) return;
+
+    for (const relation of pendingRelations) {
+      // 检查该学员与教练之间是否已存在正式关系（避免唯一索引冲突）
+      const existingNormal = await StudentCoachRelation.findOne({
+        where: {
+          student_id: userId,
+          coach_id: relation.coach_id,
+          relation_status: { [Op.in]: [0, 1] }
+        }
+      });
+
+      if (existingNormal) {
+        if (existingNormal.relation_status === 1) {
+          // 已有正式关系：直接移除待激活记录即可
+          await relation.destroy();
+          logger.info('待激活关系已有正式关系，移除待激活记录:', {
+            userId,
+            coachId: relation.coach_id,
+            pendingRelationId: relation.id
+          });
+        } else {
+          // 已有已解除关系（status=0）：重新激活已有关系，移除待激活记录
+          await existingNormal.update({
+            relation_status: 1,
+            pending_phone: null,
+            bind_time: new Date()
+          });
+          await relation.destroy();
+          logger.info('待激活关系激活已解除的旧关系:', {
+            userId,
+            coachId: relation.coach_id,
+            existingRelationId: existingNormal.id
+          });
+        }
+      } else {
+        // 正常激活：填入 student_id，清除 pending_phone
+        await relation.update({
+          student_id: userId,
+          pending_phone: null,
+          relation_status: 1,
+          bind_time: new Date()
+        });
+        logger.info('待激活师生关系激活成功:', {
+          userId,
+          coachId: relation.coach_id,
+          relationId: relation.id
+        });
+      }
+    }
+  } catch (error) {
+    // 激活失败不影响手机号绑定的主流程，仅记录日志
+    logger.error('激活待激活师生关系失败:', { userId, phone, error: error.message });
+  }
 }
 
 module.exports = UserController; 

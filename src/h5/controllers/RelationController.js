@@ -48,16 +48,29 @@ class RelationController {
 
     if (existingRelation) {
       if (existingRelation.relation_status === 1) {
-        return ResponseUtil.validationError(res, '师生关系已存在');
+        // 关系已存在且正常（可能由教练手动录入或学员绑定手机号时自动激活）
+        // 幂等处理：直接返回成功，避免学员通过邀请链接绑定时遇到误导性错误
+        const relationWithUsers = await StudentCoachRelation.findByPk(existingRelation.id, {
+          include: [
+            {
+              model: User,
+              as: 'student',
+              attributes: ['id', 'nickname', 'avatar_url', 'phone']
+            },
+            {
+              model: User,
+              as: 'coach',
+              attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image']
+            }
+          ]
+        });
+        return ResponseUtil.success(res, relationWithUsers, '师生关系绑定成功');
       } else {
-        // 如果关系存在但已禁用，重新启用
-        // 获取教练的课程分类，更新分类课时
+        // 关系存在但已解除（status=0）：重新启用
         const categories = coach.course_categories || [];
         
-        // 构建按分类的课时结构，保留现有课时并添加新分类
+        // 保留现有课时并补充新分类
         let lessons = existingRelation.lessons || [];
-        
-        // 为新增的分类添加课时项
         for (const category of categories) {
           if (!lessons.some(lesson => lesson.category_id === category.id)) {
             lessons.push({
@@ -70,7 +83,7 @@ class RelationController {
         await existingRelation.update({
           relation_status: 1,
           lessons: lessons,
-          student_name: existingRelation.student_name || student.nickname, // 如果没有student_name则使用nickname
+          student_name: existingRelation.student_name || student.nickname,
           student_remark: student_remark || existingRelation.student_remark
         });
         
@@ -128,6 +141,131 @@ class RelationController {
     return ResponseUtil.success(res, relationWithUsers, '师生关系绑定成功');
   });
 
+
+  /**
+   * 教练手动录入学员（通过手机号）
+   * @route POST /api/h5/relations/add-by-phone
+   * @description 教练录入学员手机号：
+   *   - 手机号已注册 → 直接建立正式师生关系（relation_status=1）
+   *   - 手机号未注册 → 创建待激活关系（relation_status=2），等待学员绑定手机号后自动激活
+   */
+  static addStudentByPhone = asyncHandler(async (req, res) => {
+    const coachId = req.user.id;
+    const { phone, student_name, coach_remark } = req.body;
+
+    // 获取教练信息及课程分类，用于初始化课时结构
+    const coach = await User.findByPk(coachId);
+    if (!coach) {
+      return ResponseUtil.notFound(res, '教练不存在');
+    }
+
+    const categories = coach.course_categories || [];
+    const lessons = categories.map(category => ({
+      category_id: category.id,
+      remaining_lessons: 0
+    }));
+
+    // 查询该手机号是否已注册
+    const existingUser = await User.findOne({ where: { phone } });
+
+    if (existingUser) {
+      // 手机号已注册：直接建立正式关系
+      if (existingUser.id === coachId) {
+        return ResponseUtil.validationError(res, '不能将自己添加为学员');
+      }
+
+      const existingRelation = await StudentCoachRelation.findOne({
+        where: { student_id: existingUser.id, coach_id: coachId }
+      });
+
+      if (existingRelation) {
+        if (existingRelation.relation_status === 1) {
+          return ResponseUtil.validationError(res, '该学员已在您的学员列表中');
+        }
+        // 已解除关系（status=0）：重新激活
+        await existingRelation.update({
+          relation_status: 1,
+          student_name: student_name || existingRelation.student_name || existingUser.nickname,
+          coach_remark: coach_remark !== undefined ? coach_remark : existingRelation.coach_remark,
+          pending_phone: null,
+          bind_time: new Date()
+        });
+        logger.info('师生关系重新激活（手动录入）:', {
+          coachId,
+          studentId: existingUser.id,
+          relationId: existingRelation.id
+        });
+        return ResponseUtil.success(res, { ...existingRelation.toJSON(), is_pending: false }, '学员添加成功');
+      }
+
+      // 创建新的正式关系
+      const relation = await StudentCoachRelation.create({
+        student_id: existingUser.id,
+        coach_id: coachId,
+        student_name: student_name || existingUser.nickname,
+        lessons,
+        coach_remark,
+        relation_status: 1
+      });
+
+      logger.info('师生关系创建（手动录入已注册用户）:', {
+        coachId,
+        studentId: existingUser.id,
+        relationId: relation.id
+      });
+      return ResponseUtil.success(res, { ...relation.toJSON(), is_pending: false }, '学员添加成功');
+    }
+
+    // 手机号未注册：查询是否存在任何状态的待激活关系（含已解除的历史记录）
+    // 用 student_id=null 识别"从未激活"的关系，避免遗漏已解除（status=0）的记录
+    const existingPending = await StudentCoachRelation.findOne({
+      where: { pending_phone: phone, coach_id: coachId, student_id: null }
+    });
+
+    if (existingPending) {
+      if (existingPending.relation_status === 2) {
+        return ResponseUtil.validationError(res, '该手机号已在待激活学员列表中，请等待学员绑定手机号');
+      }
+      // 已解除的待激活关系（status=0）：重新恢复为待激活，更新录入信息
+      await existingPending.update({
+        relation_status: 2,
+        student_name: student_name || existingPending.student_name,
+        coach_remark: coach_remark !== undefined ? coach_remark : existingPending.coach_remark,
+        bind_time: new Date()
+      });
+      logger.info('待激活师生关系重新启用:', {
+        coachId,
+        pendingPhone: phone,
+        relationId: existingPending.id
+      });
+      return ResponseUtil.success(
+        res,
+        { ...existingPending.toJSON(), is_pending: true },
+        '学员信息已录入，等待学员绑定手机号后自动激活'
+      );
+    }
+
+    const pendingRelation = await StudentCoachRelation.create({
+      student_id: null,
+      coach_id: coachId,
+      pending_phone: phone,
+      student_name: student_name || null,
+      lessons,
+      coach_remark,
+      relation_status: 2
+    });
+
+    logger.info('待激活师生关系创建（手动录入未注册手机号）:', {
+      coachId,
+      pendingPhone: phone,
+      relationId: pendingRelation.id
+    });
+    return ResponseUtil.success(
+      res,
+      { ...pendingRelation.toJSON(), is_pending: true },
+      '学员信息已录入，等待学员绑定手机号后自动激活'
+    );
+  });
 
   /**
    * 更新师生关系
@@ -442,27 +580,32 @@ class RelationController {
     const offset = (page - 1) * limit;
 
     try {
-      // 构建查询条件
+      // 构建查询条件（包含正常关系和待激活关系）
       const whereConditions = {
         coach_id: coachId,
-        relation_status: 1
+        relation_status: { [Op.in]: [1, 2] }
       };
 
-      // 构建关联表查询条件
+      // 使用 LEFT JOIN，待激活关系的 student_id 为 NULL，允许无学员用户记录
       const includeConditions = {
         model: User,
         as: 'student',
-        attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image']
+        attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image'],
+        required: false
       };
 
-      // 如果有关键词，添加筛选条件
+      // 如果有关键词，添加筛选条件（同时支持 pending_phone 搜索）
       if (keyword && keyword.trim()) {
         const trimmedKeyword = keyword.trim();
         
-        // 在主表中筛选 student_name，在关联表中筛选 nickname 和 phone
         whereConditions[Op.or] = [
           {
             student_name: {
+              [Op.like]: `%${trimmedKeyword}%`
+            }
+          },
+          {
+            pending_phone: {
               [Op.like]: `%${trimmedKeyword}%`
             }
           },
@@ -482,8 +625,8 @@ class RelationController {
       const { count, rows: relations } = await StudentCoachRelation.findAndCountAll({
         where: whereConditions,
         attributes: [
-          'id', 'student_id', 'coach_id', 'student_name', 'lessons',
-          'student_remark', 'coach_remark', 'relation_status', 
+          'id', 'student_id', 'coach_id', 'pending_phone', 'student_name', 'lessons',
+          'student_remark', 'coach_remark', 'relation_status',
           'booking_status', 'booking_closed_at', 'booking_reopened_at',
           'createdAt', 'updatedAt'
         ],

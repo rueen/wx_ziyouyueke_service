@@ -10,7 +10,8 @@ const router = express.Router();
 const RelationController = require('../controllers/RelationController');
 const { authenticateToken } = require('../../shared/middlewares/auth');
 const { 
-  relationBindValidation, 
+  relationBindValidation,
+  addStudentByPhoneValidation,
   relationUpdateValidation, 
   validateRequest, 
   idParamValidation
@@ -20,8 +21,11 @@ const {
  * 师生关系相关路由
  */
 
-// 绑定师生关系
+// 绑定师生关系（学员扫码/邀请链接方式）
 router.post('/', authenticateToken, relationBindValidation, validateRequest, RelationController.bindRelation);
+
+// 教练手动录入学员（通过手机号）
+router.post('/add-by-phone', authenticateToken, addStudentByPhoneValidation, validateRequest, RelationController.addStudentByPhone);
 
 // 获取我的教练列表
 router.get('/my-coaches', authenticateToken, RelationController.getMyCoaches);

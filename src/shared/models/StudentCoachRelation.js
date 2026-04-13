@@ -14,13 +14,18 @@ const StudentCoachRelation = sequelize.define('student_coach_relations', {
   },
   student_id: {
     type: DataTypes.BIGINT.UNSIGNED,
-    allowNull: false,
-    comment: '学员ID'
+    allowNull: true,
+    comment: '学员ID（待激活关系为 NULL）'
   },
   coach_id: {
     type: DataTypes.BIGINT.UNSIGNED,
     allowNull: false,
     comment: '教练ID'
+  },
+  pending_phone: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: '待激活学员手机号（教练手动录入未注册手机号时使用，激活后清空）'
   },
   student_name: {
     type: DataTypes.STRING(50),
@@ -47,7 +52,7 @@ const StudentCoachRelation = sequelize.define('student_coach_relations', {
     type: DataTypes.TINYINT(1),
     allowNull: false,
     defaultValue: 1,
-    comment: '关系状态：0-已解除，1-正常'
+    comment: '关系状态：0-已解除，1-正常，2-待激活（教练手动录入未注册手机号）'
   },
   booking_status: {
     type: DataTypes.TINYINT(1),
@@ -102,6 +107,10 @@ const StudentCoachRelation = sequelize.define('student_coach_relations', {
     {
       fields: ['booking_status'],
       name: 'idx_booking_status'
+    },
+    {
+      fields: ['pending_phone'],
+      name: 'idx_pending_phone'
     }
   ]
 });

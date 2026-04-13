@@ -189,6 +189,25 @@ const relationBindValidation = [
 ];
 
 /**
+ * 教练手动录入学员验证规则
+ */
+const addStudentByPhoneValidation = [
+  body('phone')
+    .notEmpty()
+    .withMessage('手机号不能为空')
+    .matches(/^1[3-9]\d{9}$/)
+    .withMessage('手机号格式不正确'),
+  body('student_name')
+    .optional()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('学员姓名长度必须在1-50个字符之间'),
+  body('coach_remark')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('教练备注不能超过500个字符')
+];
+
+/**
  * 师生关系更新验证规则
  */
 const relationUpdateValidation = [
@@ -317,6 +336,7 @@ module.exports = {
   courseConfirmValidation,
   courseCancelValidation,
   relationBindValidation,
+  addStudentByPhoneValidation,
   relationUpdateValidation,
   paginationValidation,
   idParamValidation,
