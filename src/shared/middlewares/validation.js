@@ -100,6 +100,10 @@ const timeTemplateValidation = [
   body('min_advance_days')
     .isInt({ min: 0, max: 30 })
     .withMessage('最少提前天数必须在0-30之间'),
+  body('min_advance_hours')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('最短提前预约时间必须是非负整数（小时）'),
   body('max_advance_days')
     .isInt({ min: 1, max: 365 })
     .withMessage('最多预约天数必须在1-365之间'),

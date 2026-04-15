@@ -35,7 +35,7 @@ class TimeTemplateController {
   static updateTemplate = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const coach_id = req.user.id;
-    const { min_advance_days, max_advance_days, max_advance_nums, time_slots, date_slots, is_active, time_type, week_slots, free_time_range } = req.body;
+    const { min_advance_days, min_advance_hours, max_advance_days, max_advance_nums, time_slots, date_slots, is_active, time_type, week_slots, free_time_range } = req.body;
 
     const template = await TimeTemplate.findOne({
       where: { id, coach_id }
@@ -48,6 +48,12 @@ class TimeTemplateController {
     const updateData = {};
 
     if (min_advance_days !== undefined) updateData.min_advance_days = min_advance_days;
+    if (min_advance_hours !== undefined) {
+      if (!Number.isInteger(min_advance_hours) || min_advance_hours < 0) {
+        return ResponseUtil.validationError(res, '最短提前预约时间必须是非负整数（小时）');
+      }
+      updateData.min_advance_hours = min_advance_hours;
+    }
     if (max_advance_days !== undefined) updateData.max_advance_days = max_advance_days;
     if (max_advance_nums !== undefined) updateData.max_advance_nums = max_advance_nums;
     if (is_active !== undefined) updateData.is_active = is_active;

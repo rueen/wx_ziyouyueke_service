@@ -22,6 +22,12 @@ const TimeTemplate = sequelize.define('time_templates', {
     defaultValue: 1,
     comment: '最少提前预约天数'
   },
+  min_advance_hours: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    comment: '最短提前预约时间（小时），0 表示不限制'
+  },
   max_advance_days: {
     type: DataTypes.INTEGER,
     allowNull: false,
