@@ -1,4 +1,4 @@
-const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address, StudentCardInstance, OperationLog, sequelize } = require('../../shared/models');
+const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address, StudentCardInstance, OperationLog, CancellationSetting, sequelize } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
@@ -784,13 +784,30 @@ class CourseController {
         return ResponseUtil.validationError(res, '课程已被取消');
       }
 
+      // 取消次数限制校验（仅对学员取消「已确认」课程生效）
+      const isStudentCancelling = userId === course.student_id;
+      const isConfirmed = course.booking_status === 2;
+      let cancellationExtra = null;
+
+      if (isStudentCancelling && isConfirmed) {
+        const limitResult = await checkCancellationLimit({
+          studentId: course.student_id,
+          coachId: course.coach_id
+        });
+
+        if (limitResult.blocked) {
+          return ResponseUtil.error(res, limitResult.message, 403);
+        }
+
+        cancellationExtra = limitResult.extra;
+      }
+
       await course.update({
         booking_status: 4, // 已取消
         cancel_reason: cancel_reason,
         cancelled_at: new Date(),
         cancelled_by: userId
       });
-
 
       logger.info('课程取消成功:', { 
         courseId: id, 
@@ -816,7 +833,8 @@ class CourseController {
 
       return ResponseUtil.success(res, {
         booking_id: course.id,
-        booking_status: course.booking_status
+        booking_status: course.booking_status,
+        ...(cancellationExtra || {})
       }, '课程取消成功');
 
     } catch (error) {
@@ -1376,6 +1394,103 @@ class CourseController {
   });
 
 
+}
+
+/**
+ * 统计周期文案映射
+ */
+const TIME_WINDOW_TEXT = {
+  day: '今日',
+  week: '本自然周',
+  month: '本自然月',
+  quarter: '本自然季度',
+  year: '本自然年'
+};
+
+/**
+ * 获取自然周期的开始和结束时间
+ * @param {string} timeWindow - 周期类型
+ * @returns {{ startDate: Date, endDate: Date }}
+ */
+function getTimeWindowRange(timeWindow) {
+  const moment = require('moment-timezone');
+  const now = moment.tz('Asia/Shanghai');
+  let startDate, endDate;
+
+  switch (timeWindow) {
+    case 'day':
+      startDate = now.clone().startOf('day');
+      endDate = now.clone().endOf('day');
+      break;
+    case 'week':
+      startDate = now.clone().startOf('isoWeek'); // 周一为起点
+      endDate = now.clone().endOf('isoWeek');
+      break;
+    case 'quarter':
+      startDate = now.clone().startOf('quarter');
+      endDate = now.clone().endOf('quarter');
+      break;
+    case 'year':
+      startDate = now.clone().startOf('year');
+      endDate = now.clone().endOf('year');
+      break;
+    case 'month':
+    default:
+      startDate = now.clone().startOf('month');
+      endDate = now.clone().endOf('month');
+      break;
+  }
+
+  return { startDate: startDate.toDate(), endDate: endDate.toDate() };
+}
+
+/**
+ * 检查学员在当前自然周期内的取消次数是否达到上限
+ * @param {{ studentId: number, coachId: number }} params
+ * @returns {Promise<{ blocked: boolean, message?: string, extra?: object }>}
+ */
+async function checkCancellationLimit({ studentId, coachId }) {
+  const setting = await CancellationSetting.findOne({
+    where: { coach_id: coachId }
+  });
+
+  // 未配置或未启用，直接放行
+  if (!setting || !setting.is_enabled) {
+    return { blocked: false };
+  }
+
+  const { time_window, max_count } = setting;
+  const { startDate, endDate } = getTimeWindowRange(time_window);
+
+  // 统计该学员在周期内取消的「已确认」课程数量
+  // 判断依据：booking_status=4（已取消）+ cancelled_by=student + confirmed_at IS NOT NULL（曾被确认过）
+  // paranoid: false 确保软删除的记录也纳入统计，防止通过删除记录绕过限制
+  const cancelledCount = await CourseBooking.count({
+    where: {
+      student_id: studentId,
+      coach_id: coachId,
+      booking_status: 4,
+      cancelled_by: studentId,
+      confirmed_at: { [Op.not]: null },
+      cancelled_at: { [Op.between]: [startDate, endDate] }
+    },
+    paranoid: false
+  });
+
+  if (cancelledCount >= max_count) {
+    return {
+      blocked: true,
+      message: `本${TIME_WINDOW_TEXT[time_window] || '周期'}内取消次数已达上限，无法取消`
+    };
+  }
+
+  return {
+    blocked: false,
+    extra: {
+      remaining_cancellations: max_count - cancelledCount - 1,
+      time_window_text: TIME_WINDOW_TEXT[time_window] || '本周期'
+    }
+  };
 }
 
 module.exports = CourseController; 

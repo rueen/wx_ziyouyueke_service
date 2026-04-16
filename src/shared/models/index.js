@@ -18,6 +18,7 @@ const StudentCardInstance = require('./StudentCardInstance');
 const Donation = require('./Donation');
 const CourseContent = require('./CourseContent');
 const Plan = require('./Plan');
+const CancellationSetting = require('./CancellationSetting');
 
 /**
  * 设置模型关联关系
@@ -352,6 +353,17 @@ Plan.belongsTo(User, {
   as: 'coach' 
 });
 
+// User 与 CancellationSetting 的关联
+User.hasOne(CancellationSetting, {
+  foreignKey: 'coach_id',
+  as: 'cancellationSetting'
+});
+
+CancellationSetting.belongsTo(User, {
+  foreignKey: 'coach_id',
+  as: 'coach'
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -373,5 +385,6 @@ module.exports = {
   StudentCardInstance,
   Donation,
   CourseContent,
-  Plan
+  Plan,
+  CancellationSetting
 }; 

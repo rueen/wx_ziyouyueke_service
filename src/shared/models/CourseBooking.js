@@ -109,10 +109,17 @@ const CourseBooking = sequelize.define('course_bookings', {
     type: DataTypes.DATE,
     allowNull: true,
     comment: '完成时间'
+  },
+  deleted_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: '软删除时间（非 NULL 表示已删除）'
   }
 }, {
   tableName: 'course_bookings',
   comment: '课程预约表',
+  paranoid: true,
+  deletedAt: 'deleted_at',
   indexes: [
     {
       fields: ['student_id', 'course_date'],

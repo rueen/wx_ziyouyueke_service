@@ -25,6 +25,7 @@ const coachCardRoutes = require('./coachCard');
 const cardInstanceRoutes = require('./cardInstance');
 const donationRoutes = require('./donation');
 const planRoutes = require('./plan');
+const cancellationSettingRoutes = require('./cancellationSetting');
 
 /**
  * H5端路由配置
@@ -87,5 +88,8 @@ router.use('/donations', donationRoutes);
 
 // 训练计划相关路由
 router.use('/plans', planRoutes);
+
+// 取消次数限制配置路由
+router.use('/cancellation-settings', cancellationSettingRoutes);
 
 module.exports = router;
