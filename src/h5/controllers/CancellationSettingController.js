@@ -6,7 +6,7 @@ const logger = require('../../shared/utils/logger');
 /** 默认配置（无记录时返回） */
 const DEFAULT_SETTING = {
   is_enabled: 0,
-  time_window: 'month',
+  time_window: 'week',
   max_count: 3
 };
 

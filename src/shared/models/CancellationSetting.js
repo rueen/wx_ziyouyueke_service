@@ -27,7 +27,7 @@ const CancellationSetting = sequelize.define('cancellation_settings', {
   time_window: {
     type: DataTypes.ENUM('day', 'week', 'month', 'quarter', 'year'),
     allowNull: false,
-    defaultValue: 'month',
+    defaultValue: 'week',
     comment: '统计周期：day-自然日，week-自然周，month-自然月，quarter-自然季度，year-自然年'
   },
   max_count: {

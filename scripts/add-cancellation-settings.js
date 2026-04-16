@@ -21,7 +21,7 @@ async function migrate() {
         id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
         coach_id BIGINT UNSIGNED NOT NULL UNIQUE COMMENT '教练ID（FK → users.id），一个教练只有一条配置',
         is_enabled TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否启用：0-关闭，1-开启',
-        time_window ENUM('day','week','month','quarter','year') NOT NULL DEFAULT 'month' COMMENT '统计周期：自然日/周/月/季度/年',
+        time_window ENUM('day','week','month','quarter','year') NOT NULL DEFAULT 'week' COMMENT '统计周期：自然日/周/月/季度/年',
         max_count INT NOT NULL DEFAULT 3 COMMENT '周期内学员最多可取消次数',
         createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
