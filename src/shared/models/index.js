@@ -19,6 +19,7 @@ const Donation = require('./Donation');
 const CourseContent = require('./CourseContent');
 const Plan = require('./Plan');
 const CancellationSetting = require('./CancellationSetting');
+const BlockedSlot = require('./BlockedSlot');
 
 /**
  * 设置模型关联关系
@@ -364,6 +365,18 @@ CancellationSetting.belongsTo(User, {
   as: 'coach'
 });
 
+// User 与 BlockedSlot 的关联
+User.hasMany(BlockedSlot, {
+  foreignKey: 'coach_id',
+  as: 'blockedSlots',
+  onDelete: 'CASCADE'
+});
+
+BlockedSlot.belongsTo(User, {
+  foreignKey: 'coach_id',
+  as: 'coach'
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -386,5 +399,6 @@ module.exports = {
   Donation,
   CourseContent,
   Plan,
-  CancellationSetting
+  CancellationSetting,
+  BlockedSlot
 }; 
