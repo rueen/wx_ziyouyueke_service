@@ -35,7 +35,7 @@ class TimeTemplateController {
   static updateTemplate = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const coach_id = req.user.id;
-    const { min_advance_days, min_advance_hours, max_advance_days, max_advance_nums, time_slots, date_slots, is_active, time_type, week_slots, free_time_range } = req.body;
+    const { min_advance_days, min_advance_hours, max_advance_days, max_advance_nums, time_slots, date_slots, is_active, time_type, week_slots, free_time_range, lesson_duration, slot_interval } = req.body;
 
     const template = await TimeTemplate.findOne({
       where: { id, coach_id }
@@ -147,6 +147,14 @@ class TimeTemplateController {
     const finalMaxNums = updateData.max_advance_nums ?? template.max_advance_nums;
     if (finalMaxNums < 1) {
       return ResponseUtil.validationError(res, '同时段最多可预约人数不能小于1');
+    }
+
+    // 0 或 null 均视为未配置，统一存 null
+    if (lesson_duration !== undefined) {
+      updateData.lesson_duration = (lesson_duration === null || Number(lesson_duration) === 0) ? null : Number(lesson_duration);
+    }
+    if (slot_interval !== undefined) {
+      updateData.slot_interval = (slot_interval === null || Number(slot_interval) === 0) ? null : Number(slot_interval);
     }
 
     // 如果设置为启用，先将其他模板设为禁用

@@ -82,6 +82,18 @@ const TimeTemplate = sequelize.define('time_templates', {
     allowNull: true,
     defaultValue: null,
     comment: '自由日程时间范围，仅 time_type 为 2 时使用，格式：{"startTime":"09:00","endTime":"18:00"}'
+  },
+  lesson_duration: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: null,
+    comment: '课程时长（分钟），NULL 表示未配置'
+  },
+  slot_interval: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: null,
+    comment: '时间步长（分钟），NULL 表示未配置'
   }
 }, {
   tableName: 'time_templates',

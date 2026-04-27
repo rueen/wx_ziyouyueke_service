@@ -89,6 +89,42 @@ class BlockedSlotController {
   });
 
   /**
+   * 批量取消休息时段
+   * @route DELETE /api/h5/blocked-slots/batch
+   * @param {number[]} req.body.ids - 要删除的记录 ID 数组
+   * @description 只能删除自己的记录，含他人记录时整体拒绝
+   */
+  static batchRemove = asyncHandler(async (req, res) => {
+    const coachId = req.user.id;
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return ResponseUtil.validationError(res, 'ids 必须为非空数组');
+    }
+
+    // 查出所有目标记录
+    const slots = await BlockedSlot.findAll({
+      where: { id: ids }
+    });
+
+    // 校验是否存在不属于当前用户的记录
+    const forbidden = slots.some(slot => slot.coach_id !== coachId);
+    if (forbidden) {
+      return ResponseUtil.forbidden(res, '无权删除他人的休息时段');
+    }
+
+    // 以实际查到的 id 为准删除（忽略不存在的 id）
+    const foundIds = slots.map(slot => slot.id);
+    if (foundIds.length > 0) {
+      await BlockedSlot.destroy({ where: { id: foundIds } });
+    }
+
+    logger.info('教练批量取消休息时段:', { coachId, ids: foundIds });
+
+    return ResponseUtil.success(res, { deleted: foundIds.length }, '批量取消成功');
+  });
+
+  /**
    * 取消休息时段
    * @route DELETE /api/h5/blocked-slots/:id
    * @description 只能删除自己的记录
