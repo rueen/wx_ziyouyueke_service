@@ -25,6 +25,9 @@ router.put('/:id/cancel', authenticateToken, CourseController.cancelCourse);
 // 完成课程
 router.put('/:id/complete', authenticateToken, CourseController.completeCourse);
 
+// 补录完成课程（将超时取消的课程标记为已完成）
+router.put('/:id/restore-complete', authenticateToken, CourseController.restoreComplete);
+
 // 修改课程
 router.put('/:id', authenticateToken, CourseController.updateCourse);
 

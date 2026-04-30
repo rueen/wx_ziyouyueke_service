@@ -960,6 +960,124 @@ class CourseController {
   });
 
   /**
+   * 教练补录完成课程（将超时取消的课程标记为已完成）
+   * @route PUT /api/h5/courses/:id/restore-complete
+   * @description 仅限教练本人操作，仅适用于 booking_status=5（超时取消）的课程，课时扣减逻辑与正常完成一致
+   */
+  static restoreComplete = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { userId } = req;
+
+    const t = await sequelize.transaction();
+
+    try {
+      const course = await CourseBooking.findByPk(id, { transaction: t });
+
+      if (!course) {
+        await t.rollback();
+        return ResponseUtil.notFound(res, '课程不存在');
+      }
+
+      // 只有教练可以补录
+      if (course.coach_id !== userId) {
+        await t.rollback();
+        return ResponseUtil.forbidden(res, '只有教练可以补录完成课程');
+      }
+
+      // 只有超时取消的课程可以补录
+      if (course.booking_status !== 5) {
+        await t.rollback();
+        return ResponseUtil.validationError(res, '只有超时取消的课程才可以补录完成');
+      }
+
+      // 根据预约类型扣除课时（与 completeCourse 逻辑一致）
+      if (course.booking_type === 2 && course.card_instance_id) {
+        // 卡片课程 - 从卡片中扣除
+        const cardInstance = await StudentCardInstance.findByPk(course.card_instance_id, { transaction: t });
+
+        if (!cardInstance) {
+          await t.rollback();
+          return ResponseUtil.notFound(res, '卡片不存在');
+        }
+
+        try {
+          await cardInstance.deductLesson(t);
+          logger.info('补录完成-卡片课时扣除:', {
+            cardInstanceId: cardInstance.id,
+            courseId: id,
+            remainingLessons: cardInstance.remaining_lessons,
+            usedCount: cardInstance.used_count
+          });
+        } catch (error) {
+          await t.rollback();
+          logger.error('补录完成-扣除卡片课时失败:', {
+            cardInstanceId: cardInstance.id,
+            courseId: id,
+            error: error.message
+          });
+          return ResponseUtil.error(res, error.message || '扣除卡片课时失败');
+        }
+      } else if (course.booking_type === 1 && course.relation_id) {
+        // 普通课程 - 从分类课时中扣除
+        const relation = await StudentCoachRelation.findByPk(course.relation_id, { transaction: t });
+        if (relation) {
+          const targetCategoryId = course.category_id !== null && course.category_id !== undefined
+            ? course.category_id
+            : 0;
+
+          try {
+            const categoryLessons = await relation.getCategoryLessons(targetCategoryId);
+            if (categoryLessons > 0) {
+              await relation.decreaseCategoryLessons(targetCategoryId, 1, t);
+              logger.info('补录完成-课时消耗（按分类）:', {
+                relationId: course.relation_id,
+                courseId: id,
+                categoryId: targetCategoryId,
+                remainingLessons: categoryLessons - 1
+              });
+            } else {
+              await t.rollback();
+              return ResponseUtil.validationError(res, '该分类课时不足或已过期，请先为学员补充课时后再补录');
+            }
+          } catch (error) {
+            await t.rollback();
+            logger.error('补录完成-扣除课时失败:', {
+              relationId: course.relation_id,
+              courseId: id,
+              categoryId: targetCategoryId,
+              error: error.message
+            });
+            return ResponseUtil.error(res, error.message || '扣除课时失败');
+          }
+        }
+      }
+
+      // 更新课程状态为已完成，清除取消相关字段
+      await course.update({
+        booking_status: 3,
+        complete_at: new Date(),
+        cancel_reason: null,
+        cancelled_at: null,
+        cancelled_by: null
+      }, { transaction: t });
+
+      await t.commit();
+
+      logger.info('课程补录完成:', { courseId: id, coachId: userId });
+
+      return ResponseUtil.success(res, {
+        booking_id: course.id,
+        booking_status: course.booking_status
+      }, '课程已补录为完成');
+
+    } catch (error) {
+      await t.rollback();
+      logger.error('补录完成课程失败:', error);
+      return ResponseUtil.error(res, '补录完成课程失败');
+    }
+  });
+
+  /**
    * 修改课程
    * @route PUT /api/h5/courses/:id
    */
