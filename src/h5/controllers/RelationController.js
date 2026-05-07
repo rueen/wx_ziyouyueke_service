@@ -794,9 +794,7 @@ class RelationController {
       // 整合分类和课时信息，并检查过期状态
       const categoryLessons = await Promise.all(categories.map(async (category) => {
         const categoryLesson = lessons.find(lesson => lesson.category_id === category.id);
-        // 调用 getCategoryLessons 触发过期检查
-        const remaining = categoryLesson ? await relation.getCategoryLessons(category.id) : 0;
-        
+
         // 计算 is_expired
         let is_expired = false;
         if (categoryLesson && categoryLesson.expire_date) {
@@ -804,7 +802,10 @@ class RelationController {
           const now = moment.tz('Asia/Shanghai');
           is_expired = now.isAfter(expireEndTime);
         }
-        
+
+        // remaining_lessons：真实剩余课时，过期后不清零，直接取原始字段
+        const remaining = categoryLesson ? (categoryLesson.remaining_lessons || 0) : 0;
+
         return {
           category: category,
           remaining_lessons: remaining,
