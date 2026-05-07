@@ -127,54 +127,20 @@ StudentCoachRelation.prototype.getCategoryLessons = async function(categoryId) {
   
   if (!category) return 0;
   
-  // 已清零，直接返回
+  // 历史已清零记录，直接返回 0
   if (category.is_cleared) return 0;
-  
+
   // 检查是否过期（只有约课状态开启时才执行过期检查）
+  // 过期后仅阻断预约（返回 0），不修改剩余课时数据
   if (category.expire_date && this.booking_status === 1) {
     const expireEndTime = moment.tz(category.expire_date, 'Asia/Shanghai').endOf('day');
     const now = moment.tz('Asia/Shanghai');
-    
+
     if (now.isAfter(expireEndTime)) {
-      // 记录清零前的课时数
-      const clearedLessons = category.remaining_lessons;
-      
-      // 清零课时并标记（original_lessons 只在清零时设置一次）
-      category.original_lessons = clearedLessons;
-      category.remaining_lessons = 0;
-      category.is_cleared = true;
-      
-      this.changed('lessons', true);
-      await this.save();
-      
-      // 记录操作日志
-      const OperationLog = this.sequelize.models.operation_logs;
-      await OperationLog.create({
-        user_id: this.student_id,
-        operation_type: 'lesson_expire',
-        operation_desc: `课时过期自动清零: 分类${categoryId}清零${clearedLessons}节课`,
-        table_name: 'student_coach_relations',
-        record_id: this.id,
-        old_data: {
-          category_id: categoryId,
-          remaining_lessons: clearedLessons,
-          expire_date: category.expire_date
-        },
-        new_data: {
-          category_id: categoryId,
-          remaining_lessons: 0,
-          expire_date: category.expire_date,
-          is_cleared: true,
-          coach_id: this.coach_id
-        },
-        ip_address: null,
-        user_agent: 'System-Auto'
-      });
-      
       return 0;
     }
   }
-  
+
   return category.remaining_lessons || 0;
 };
 

@@ -880,12 +880,7 @@ class RelationController {
       // 整合分类和课时信息，并检查过期状态
       const categoryLessons = await Promise.all(categories.map(async (category) => {
         const categoryLesson = lessons.find(lesson => lesson.category_id === category.id);
-        // 调用 getCategoryLessons 触发过期检查
-        const remaining = categoryLesson ? await relation.getCategoryLessons(category.id) : 0;
-        
-        // 计算可用课时（扣除已预约但未核销的课时）
-        const availableLessons = await relation.getAvailableLessons(category.id);
-        
+
         // 计算 is_expired
         let is_expired = false;
         if (categoryLesson && categoryLesson.expire_date) {
@@ -893,11 +888,17 @@ class RelationController {
           const now = moment.tz('Asia/Shanghai');
           is_expired = now.isAfter(expireEndTime);
         }
-        
+
+        // remaining_lessons：真实剩余课时，过期后不清零，直接取原始字段
+        const remaining = categoryLesson ? (categoryLesson.remaining_lessons || 0) : 0;
+
+        // available_lessons：可用于预约的课时（过期时为 0，不可预约）
+        const availableLessons = await relation.getAvailableLessons(category.id);
+
         return {
           category: category,
           remaining_lessons: remaining,
-          available_lessons: availableLessons, // 新增：剩余可用课时
+          available_lessons: availableLessons,
           expire_date: categoryLesson ? categoryLesson.expire_date : null,
           is_expired: is_expired
         };

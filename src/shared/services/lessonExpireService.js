@@ -35,44 +35,34 @@ class LessonExpireService {
         let needUpdate = false;
         
         for (const lesson of relation.lessons) {
-          // 跳过已清零或无过期日期的
-          if (lesson.is_cleared || !lesson.expire_date) continue;
-          
+          // 跳过无过期日期的
+          if (!lesson.expire_date) continue;
+
           const expireEndTime = moment.tz(lesson.expire_date, 'Asia/Shanghai').endOf('day');
-          
-          // 检查是否过期
-          if (now.isAfter(expireEndTime)) {
-            const clearedLessons = lesson.remaining_lessons;
-            
-            // 清零处理（original_lessons 只在清零时设置一次）
-            lesson.original_lessons = clearedLessons;
-            lesson.remaining_lessons = 0;
-            lesson.is_cleared = true;
-            needUpdate = true;
-            
-            // 记录操作日志
+
+          // 过期后仅记录日志用于统计，不修改剩余课时（阻断预约由 getCategoryLessons 在调用时判断）
+          if (now.isAfter(expireEndTime) && !lesson.is_cleared) {
             operations.push({
               user_id: relation.student_id,
               operation_type: 'lesson_expire',
-              operation_desc: `课时过期自动清零: 分类${lesson.category_id}清零${clearedLessons}节课`,
+              operation_desc: `课时已过期（未清零）: 分类${lesson.category_id}剩余${lesson.remaining_lessons}节课`,
               table_name: 'student_coach_relations',
               record_id: relation.id,
               old_data: {
                 category_id: lesson.category_id,
-                remaining_lessons: clearedLessons,
+                remaining_lessons: lesson.remaining_lessons,
                 expire_date: lesson.expire_date
               },
               new_data: {
                 category_id: lesson.category_id,
-                remaining_lessons: 0,
+                remaining_lessons: lesson.remaining_lessons,
                 expire_date: lesson.expire_date,
-                is_cleared: true,
                 coach_id: relation.coach_id
               },
               ip_address: null,
               user_agent: 'System-Cron'
             });
-            
+
             clearedCount++;
           }
         }
@@ -91,7 +81,7 @@ class LessonExpireService {
       
       await t.commit();
       
-      logger.info(`[定时任务] 完成: 处理 ${processedCount} 个关系, 清零 ${clearedCount} 个课时包`);
+      logger.info(`[定时任务] 完成: 处理 ${processedCount} 个关系, 过期 ${clearedCount} 个课时包（仅记录，不清零）`);
     } catch (error) {
       await t.rollback();
       logger.error('[定时任务] 执行失败:', error);
