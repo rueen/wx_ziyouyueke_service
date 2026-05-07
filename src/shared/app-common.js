@@ -198,23 +198,29 @@ const setupCronJobs = () => {
   const lessonExpireService = require('./services/lessonExpireService');
   const bookingReminderService = require('./services/bookingReminderService');
   const bookingReminder24HService = require('./services/bookingReminder24HService');
-  
+  const lessonExpireReminderService = require('./services/lessonExpireReminderService');
+
   // 每天凌晨 2:00 执行课时过期检查
   cron.schedule('0 2 * * *', async () => {
     await lessonExpireService.processExpiredLessons();
   });
-  
+
   // 每10分钟检查一次即将开始的课程并发送提醒（2小时前）
   cron.schedule('*/10 * * * *', async () => {
     await bookingReminderService.sendUpcomingReminders();
   });
-  
+
   // 每小时检查一次并发送24小时课程提醒
   cron.schedule('0 * * * *', async () => {
     await bookingReminder24HService.sendUpcomingReminders();
   });
-  
-  logger.info('定时任务已注册: 每天凌晨 2:00 检查过期课时；每10分钟发送2小时课程提醒；每小时发送24小时课程提醒');
+
+  // 每天上午 9:00 发送课程到期提醒（到期前3天通知教练和学员）
+  cron.schedule('0 9 * * *', async () => {
+    await lessonExpireReminderService.sendExpiringReminders();
+  });
+
+  logger.info('定时任务已注册: 凌晨2:00检查过期课时；每10分钟发送2小时课程提醒；每小时发送24小时课程提醒；上午9:00发送课程到期提醒');
 };
 
 module.exports = {

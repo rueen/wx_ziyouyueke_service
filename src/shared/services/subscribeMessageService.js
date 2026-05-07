@@ -29,7 +29,9 @@ class SubscribeMessageService {
     // 上课提醒（2小时前）
     BOOKING_REMINDER: '92wWk3WlAV8raKdjYB9Ffb_x7G4LDfHrrcE0xoLvvO4',
     // 课程预约提醒（24小时前）
-    BOOKING_REMINDER_24H: '92wWk3WlAV8raKdjYB9FfbM0ggobNYM4PqQdiKLiR5o' // TODO: 替换为实际的模板ID
+    BOOKING_REMINDER_24H: '92wWk3WlAV8raKdjYB9FfbM0ggobNYM4PqQdiKLiR5o',
+    // 课程到期提醒（到期前3天）
+    LESSON_EXPIRE: 'wQMLCAmIDJN6VbWeG11GRhWVBZ_EL3_i2uHtOZLQro4'
   };
 
   /**
@@ -37,7 +39,11 @@ class SubscribeMessageService {
    */
   static PAGES = {
     // 课程详情页
-    COURSE_DETAIL: (courseId) => `pages/courseDetail/courseDetail?id=${courseId}`
+    COURSE_DETAIL: (courseId) => `pages/courseDetail/courseDetail?id=${courseId}`,
+    // 学员详情页（学员侧：查看教练详情）
+    COACH_DETAIL: (relationId, coachId) => `/pages/coachDetail/coachDetail?relationId=${relationId}&coachId=${coachId}`,
+    // 教练侧：查看学员详情
+    STUDENT_DETAIL: (relationId, studentId) => `/pages/studentDetail/studentDetail?relationId=${relationId}&studentId=${studentId}`
   };
 
   /**
@@ -880,6 +886,143 @@ class SubscribeMessageService {
   }
 
   /**
+   * 场景六：课程到期提醒（到期前3天）
+   * 业务场景：常规课或课程卡即将到期时通知教练和学员
+   *
+   * @param {Object} params
+   * @param {string} params.courseName - 课程名称（分类名 或 卡片名）
+   * @param {string} params.expireDate - 到期日期，格式 YYYY-MM-DD
+   * @param {number} params.daysLeft - 剩余天数
+   * @param {number} params.remainingLessons - 剩余课时
+   * @param {Object} params.receiverUser - 接收人用户对象（含 id、openid）
+   * @param {string} params.businessType - 业务类型：'lesson_expire' | 'card_expire'
+   * @param {number} params.businessId - 业务ID（relation.id 或 cardInstance.id）
+   * @param {string} params.page - 跳转页面路径
+   * @returns {Promise<boolean>}
+   */
+  static async sendLessonExpireNotice(params) {
+    let messageLog = null;
+
+    try {
+      const { courseName, expireDate, daysLeft, remainingLessons, receiverUser, businessType, businessId, page } = params;
+
+      if (!courseName || !expireDate || !receiverUser || !businessType || !businessId) {
+        logger.warn('发送课程到期提醒失败：缺少必要参数');
+        return false;
+      }
+
+      if (!receiverUser.openid) {
+        logger.warn('发送课程到期提醒失败：接收人没有 openid', { userId: receiverUser.id });
+        return false;
+      }
+
+      // 检查用户配额
+      const hasQuota = await UserSubscribeQuota.hasQuota(receiverUser.id, 'LESSON_EXPIRE');
+      if (!hasQuota) {
+        logger.info('用户订阅配额不足，跳过发送课程到期提醒', { userId: receiverUser.id });
+        return false;
+      }
+
+      // 防重：当天内已发送成功则跳过（防止服务重启等导致同天重复发送）
+      const { Op } = require('sequelize');
+      const todayStart = moment().tz('Asia/Shanghai').startOf('day').toDate();
+      const recentlySent = await SubscribeMessageLog.count({
+        where: {
+          business_type: businessType,
+          business_id: businessId,
+          template_type: 'LESSON_EXPIRE',
+          receiver_user_id: receiverUser.id,
+          send_status: 1,
+          send_time: { [Op.gte]: todayStart }
+        }
+      });
+
+      if (recentlySent > 0) {
+        logger.info('课程到期提醒今天已发送，跳过重复发送', {
+          businessType,
+          businessId,
+          receiverId: receiverUser.id
+        });
+        return true;
+      }
+
+      const messageData = {
+        thing1: { value: String(courseName).substring(0, 20) },
+        time3: { value: expireDate },
+        number4: { value: String(daysLeft) },
+        number2: { value: String(remainingLessons) },
+        thing5: { value: '课时即将到期，请尽快安排上课' }
+      };
+
+      messageLog = await SubscribeMessageLog.recordMessage({
+        templateId: this.TEMPLATES.LESSON_EXPIRE,
+        templateType: 'LESSON_EXPIRE',
+        businessType,
+        businessId,
+        receiverUserId: receiverUser.id,
+        receiverOpenid: receiverUser.openid,
+        messageData,
+        pagePath: page || null,
+        sendStatus: 0
+      });
+
+      const sendResult = await wechatUtil.sendTemplateMessage(
+        receiverUser.openid,
+        this.TEMPLATES.LESSON_EXPIRE,
+        messageData,
+        page || null
+      );
+
+      if (sendResult.success) {
+        await messageLog.updateSendStatus(1);
+        await UserSubscribeQuota.decreaseQuota(receiverUser.id, 'LESSON_EXPIRE', 1);
+
+        logger.info('发送课程到期提醒成功', {
+          businessType,
+          businessId,
+          receiverId: receiverUser.id
+        });
+      } else {
+        await messageLog.updateSendStatus(
+          2,
+          sendResult.errcode ?? 'SEND_FAILED',
+          sendResult.errmsg ?? '消息发送失败'
+        );
+
+        if (sendResult.errcode === '43101' || sendResult.errcode === 43101) {
+          await UserSubscribeQuota.resetQuota(receiverUser.id, 'LESSON_EXPIRE');
+          logger.info('检测到用户订阅次数用尽，已重置本地配额', {
+            userId: receiverUser.id,
+            templateType: 'LESSON_EXPIRE'
+          });
+        }
+
+        logger.warn('发送课程到期提醒失败', {
+          businessType,
+          businessId,
+          receiverId: receiverUser.id,
+          errcode: sendResult.errcode,
+          errmsg: sendResult.errmsg
+        });
+      }
+
+      return sendResult.success;
+    } catch (error) {
+      logger.error('发送课程到期提醒异常:', error);
+
+      if (messageLog) {
+        try {
+          await messageLog.updateSendStatus(2, 'EXCEPTION', error.message);
+        } catch (updateError) {
+          logger.error('更新消息发送状态失败:', updateError);
+        }
+      }
+
+      return false;
+    }
+  }
+
+  /**
    * 批量发送订阅消息
    * @param {string} templateType - 模板类型
    * @param {Array<Object>} paramsList - 参数列表
@@ -910,6 +1053,9 @@ class SubscribeMessageService {
           break;
         case 'BOOKING_REMINDER_24H':
           result = await this.sendBookingReminder24HNotice(params);
+          break;
+        case 'LESSON_EXPIRE':
+          result = await this.sendLessonExpireNotice(params);
           break;
         default:
           logger.warn('未知的模板类型:', templateType);
