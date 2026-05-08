@@ -558,7 +558,7 @@ class CardInstanceController {
    * @query coach_id - 教练ID（必填）
    */
   static getAvailableInstances = asyncHandler(async (req, res) => {
-    const { student_id, coach_id } = req.query;
+    const { student_id, coach_id, is_supplementary } = req.query;
 
     // 参数验证
     if (!student_id || !coach_id) {
@@ -567,6 +567,7 @@ class CardInstanceController {
 
     const studentId = parseInt(student_id);
     const coachId = parseInt(coach_id);
+    const isSupplementary = is_supplementary === 'true' || is_supplementary === '1';
 
     // 验证师生关系
     const relation = await StudentCoachRelation.findOne({
@@ -584,34 +585,43 @@ class CardInstanceController {
     const moment = require('moment-timezone');
     const now = moment.tz('Asia/Shanghai').startOf('day').format('YYYY-MM-DD');
 
-    // 查询可用的卡片：已开启(1) + 未开卡(0)，均要求有剩余课时
-    // 未开卡的卡片 expire_date 为 null，不做到期检查；已开启的检查有效期
+    // 补录模式：包含已过期(3)但仍有剩余课时的卡片，不限制 expire_date
+    // 正常模式：仅未开卡(0) + 已开启(1)，已开启的要求未过期
+    const statusFilter = isSupplementary
+      ? { [Op.in]: [0, 1, 3] }
+      : { [Op.in]: [0, 1] };
+
+    const expireDateFilter = isSupplementary
+      ? []  // 补录不限制到期日期
+      : [
+          {
+            [Op.or]: [
+              { card_status: 0 },                   // 未开卡，不受到期日期限制
+              { expire_date: null },                 // 无到期限制
+              { expire_date: { [Op.gte]: now } }     // 已开卡且未过期
+            ]
+          }
+        ];
+
     const instances = await StudentCardInstance.findAll({
       where: {
         student_id: studentId,
         coach_id: coachId,
-        card_status: { [Op.in]: [0, 1] }, // 未开启(0) + 已开启(1)
+        card_status: statusFilter,
         [Op.and]: [
+          ...expireDateFilter,
           {
             [Op.or]: [
-              { card_status: 0 },                    // 未开卡，不受到期日期限制
-              { expire_date: null },                  // 无到期限制
-              { expire_date: { [Op.gte]: now } }      // 已开卡且未过期
-            ]
-          },
-          {
-            [Op.or]: [
-              { total_lessons: null },               // 无限次数
-              { remaining_lessons: { [Op.gt]: 0 } }  // 有剩余课时
+              { total_lessons: null },              // 无限次数
+              { remaining_lessons: { [Op.gt]: 0 } } // 有剩余课时
             ]
           }
         ]
       },
       order: [
-        // 已开启(1) 排在未开卡(0) 前面
         [sequelize.literal('CASE WHEN card_status = 1 THEN 1 WHEN card_status = 0 THEN 2 ELSE 3 END'), 'ASC'],
-        [sequelize.literal('CASE WHEN expire_date IS NULL THEN 1 ELSE 0 END'), 'ASC'], // 有到期日期的排前面
-        ['expire_date', 'ASC'] // 先到期的排在前面
+        [sequelize.literal('CASE WHEN expire_date IS NULL THEN 1 ELSE 0 END'), 'ASC'],
+        ['expire_date', 'ASC']
       ]
     });
 

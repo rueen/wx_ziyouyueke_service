@@ -25,10 +25,12 @@ class CourseController {
       end_time, 
       address_id,
       category_id = 0,
-      booking_type = 1,  // 新增：1-普通课程，2-卡片课程
-      card_instance_id = null,  // 新增：如果是卡片课程，需要提供卡片实例ID
+      booking_type = 1,  // 1-普通课程，2-卡片课程
+      card_instance_id = null,
       student_remark = '',
-      coach_remark = ''
+      coach_remark = '',
+      is_supplementary = false,    // 是否为补录课程
+      booking_status: requestedStatus  // 允许补录时直接指定状态（传 3 = 已完成）
     } = req.body;
 
     try {
@@ -125,62 +127,76 @@ class CourseController {
           return ResponseUtil.notFound(res, '卡片不存在');
         }
 
-        // 允许未开启(0)和已开启(1)的卡片预约；停用(2)和过期(3)拒绝
+        // 停用(2)始终拒绝；过期(3)仅非补录时拒绝；异常状态拒绝
         if (cardInstance.card_status === 2) {
           return ResponseUtil.validationError(res, '卡片已停用，无法预约课程');
         }
-        if (cardInstance.card_status === 3) {
+        if (cardInstance.card_status === 3 && !is_supplementary) {
           return ResponseUtil.validationError(res, '卡片已过期，无法预约课程');
         }
-        if (![0, 1].includes(cardInstance.card_status)) {
+        if (![0, 1, 3].includes(cardInstance.card_status)) {
           return ResponseUtil.validationError(res, '卡片状态异常');
         }
 
-        // 检查可用课时（getAvailableLessons 已支持 card_status=0）
-        const availableLessons = await cardInstance.getAvailableLessons();
-        if (availableLessons <= 0) {
-          return ResponseUtil.validationError(res, '卡片可用课时不足，无法预约课程');
-        }
+        if (is_supplementary) {
+          // 补录：直接检查原始剩余课时，跳过过期和可用课时检查
+          const rawRemaining = cardInstance.total_lessons === null ? Infinity : (cardInstance.remaining_lessons || 0);
+          if (rawRemaining <= 0) {
+            return ResponseUtil.validationError(res, '卡片课时不足，无法补录');
+          }
+        } else {
+          // 检查可用课时（getAvailableLessons 已支持 card_status=0）
+          const availableLessons = await cardInstance.getAvailableLessons();
+          if (availableLessons <= 0) {
+            return ResponseUtil.validationError(res, '卡片可用课时不足，无法预约课程');
+          }
 
-        // 已开启的卡才检查课程日期是否在有效期内（未开卡的到期日期在开卡时才计算）
-        if (cardInstance.card_status === 1 && cardInstance.expire_date) {
-          const moment = require('moment-timezone');
-          const courseDateTime = moment.tz(course_date, 'Asia/Shanghai').startOf('day');
-          const expireDate = moment.tz(cardInstance.expire_date, 'Asia/Shanghai').endOf('day');
-          
-          if (courseDateTime.isAfter(expireDate)) {
-            return ResponseUtil.validationError(res, `卡片有效期至 ${cardInstance.expire_date}，无法预约该日期的课程`);
+          // 已开启的卡才检查课程日期是否在有效期内（未开卡的到期日期在开卡时才计算）
+          if (cardInstance.card_status === 1 && cardInstance.expire_date) {
+            const moment = require('moment-timezone');
+            const courseDateTime = moment.tz(course_date, 'Asia/Shanghai').startOf('day');
+            const expireDate = moment.tz(cardInstance.expire_date, 'Asia/Shanghai').endOf('day');
+            
+            if (courseDateTime.isAfter(expireDate)) {
+              return ResponseUtil.validationError(res, `卡片有效期至 ${cardInstance.expire_date}，无法预约该日期的课程`);
+            }
           }
         }
 
       } else {
-        // 普通课程验证 - 使用原有的课时检查逻辑
-        // 验证课程分类是否存在
-        const categories = coach.course_categories || [];
-        const categoryExists = categories.some(cat => Number(cat.id) === Number(category_id));
-        if (!categoryExists) {
-          return ResponseUtil.validationError(res, '课程分类不存在');
-        }
+        // 普通课程验证
+        if (is_supplementary) {
+          // 补录：直接检查原始剩余课时，跳过过期和日期范围检查
+          const lessons = relation.lessons || [];
+          const categoryLesson = lessons.find(l => l.category_id === category_id);
+          const rawRemaining = categoryLesson ? (categoryLesson.remaining_lessons || 0) : 0;
+          if (rawRemaining <= 0) {
+            return ResponseUtil.validationError(res, '该分类课时不足，无法补录');
+          }
+        } else {
+          // 检查课程日期是否在课时有效期内
+          const lessons = relation.lessons || [];
+          const categoryLesson = lessons.find(l => l.category_id === category_id);
+          if (categoryLesson && categoryLesson.expire_date) {
+            const moment = require('moment-timezone');
+            const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
+            const courseDateTime = moment.tz(course_date, 'Asia/Shanghai').startOf('day');
+            
+            if (courseDateTime.isAfter(expireEndTime)) {
+              return ResponseUtil.validationError(res, `该分类课时有效期至 ${categoryLesson.expire_date}，无法预约该日期的课程`);
+            }
+          }
 
-        // 检查课程日期是否在课时有效期内
-        const lessons = relation.lessons || [];
-        const categoryLesson = lessons.find(l => l.category_id === category_id);
-        if (categoryLesson && categoryLesson.expire_date) {
-          const moment = require('moment-timezone');
-          const expireEndTime = moment.tz(categoryLesson.expire_date, 'Asia/Shanghai').endOf('day');
-          const courseDateTime = moment.tz(course_date, 'Asia/Shanghai').startOf('day');
-          
-          if (courseDateTime.isAfter(expireEndTime)) {
-            return ResponseUtil.validationError(res, `该分类课时有效期至 ${categoryLesson.expire_date}，无法预约该日期的课程`);
+          // 检查指定分类的可用课时（考虑已预约但未完成的课程占用）
+          const availableLessons = await relation.getAvailableLessons(category_id);
+          if (availableLessons <= 0) {
+            return ResponseUtil.validationError(res, '该分类可用课时不足，无法预约课程');
           }
         }
-
-        // 检查指定分类的可用课时（考虑已预约但未完成的课程占用）
-        const availableLessons = await relation.getAvailableLessons(category_id);
-        if (availableLessons <= 0) {
-          return ResponseUtil.validationError(res, '该分类可用课时不足，无法预约课程');
-        }
       }
+
+      // 补录课程跳过时间段人数和冲突校验（历史课程无需检查）
+      if (!is_supplementary) {
 
       // 检查教练时间段人数限制
       const activeTemplate = await TimeTemplate.getActiveByCoachId(coach_id);
@@ -263,11 +279,26 @@ class CourseController {
         return ResponseUtil.validationError(res, '学员在该时间段已有其他预约');
       }
 
-      // 判断是否需要自动确认
-      // 条件：教练创建 && 学员开启了自动确认
-      const isAutoConfirm = userId === coach_id && relation.auto_confirm_by_coach === 1;
-      
-      // 使用事务：创建预约 + 未开卡时自动开卡（保证原子性）
+      } // end if (!is_supplementary)
+
+      // 判断是否需要自动确认（补录直接用请求的状态；否则按自动确认规则）
+      const isAutoConfirm = !is_supplementary && userId === coach_id && relation.auto_confirm_by_coach === 1;
+      const isSupplementaryComplete = is_supplementary && requestedStatus === 3;
+
+      let finalBookingStatus;
+      let finalConfirmedAt = null;
+      let finalCompleteAt = null;
+      if (isSupplementaryComplete) {
+        finalBookingStatus = 3;
+        finalCompleteAt = new Date();
+      } else if (isAutoConfirm) {
+        finalBookingStatus = 2;
+        finalConfirmedAt = new Date();
+      } else {
+        finalBookingStatus = 1;
+      }
+
+      // 使用事务：创建预约 + 课时扣减 + 未开卡时自动开卡（保证原子性）
       const t = await sequelize.transaction();
       let booking;
       try {
@@ -284,19 +315,55 @@ class CourseController {
           card_instance_id: booking_type === 2 ? card_instance_id : null,
           student_remark: student_remark,
           coach_remark: coach_remark,
-          booking_status: isAutoConfirm ? 2 : 1, // 自动确认：2-已确认，否则：1-待确认
-          confirmed_at: isAutoConfirm ? new Date() : null, // 自动确认时设置确认时间
-          created_by: userId
+          booking_status: finalBookingStatus,
+          confirmed_at: finalConfirmedAt,
+          complete_at: finalCompleteAt,
+          created_by: userId,
+          is_supplementary: is_supplementary ? 1 : 0
         }, { transaction: t });
 
-        // 卡片未开启时，预约成功后自动开卡
-        if (booking_type === 2 && cardInstance && cardInstance.card_status === 0) {
-          await cardInstance.activate(t);
-          logger.info('卡片预约时自动开卡:', {
-            cardInstanceId: cardInstance.id,
-            bookingId: booking.id,
-            expireDate: cardInstance.expire_date
-          });
+        if (isSupplementaryComplete) {
+          // 补录直接完成：绕过过期检查，直接扣减原始课时
+          const targetCategoryId = category_id !== null && category_id !== undefined ? category_id : 0;
+
+          if (booking_type === 2 && cardInstance) {
+            // 卡片课程：直接扣减，不走 checkAvailable（跳过过期判断）
+            if (cardInstance.total_lessons !== null) {
+              await cardInstance.update({
+                remaining_lessons: Math.max((cardInstance.remaining_lessons || 1) - 1, 0),
+                used_count: (cardInstance.used_count || 0) + 1
+              }, { transaction: t });
+            } else {
+              await cardInstance.update({
+                used_count: (cardInstance.used_count || 0) + 1
+              }, { transaction: t });
+            }
+            logger.info('补录-卡片课时扣除:', { cardInstanceId: cardInstance.id, bookingId: booking.id });
+          } else if (booking_type === 1 && relation) {
+            // 普通课程：直接操作 lessons JSON，跳过 getCategoryLessons 的过期检查
+            const lessons = [...(relation.lessons || [])];
+            const lessonIndex = lessons.findIndex(l => l.category_id === targetCategoryId);
+            if (lessonIndex === -1 || (lessons[lessonIndex].remaining_lessons || 0) < 1) {
+              await t.rollback();
+              return ResponseUtil.validationError(res, '该分类课时不足，无法补录');
+            }
+            lessons[lessonIndex].remaining_lessons -= 1;
+            relation.lessons = lessons;
+            relation.changed('lessons', true);
+            relation.last_course_time = new Date();
+            await relation.save({ transaction: t });
+            logger.info('补录-普通课时扣除:', { relationId: relation.id, categoryId: targetCategoryId, bookingId: booking.id });
+          }
+        } else {
+          // 非补录：卡片未开启时自动开卡
+          if (booking_type === 2 && cardInstance && cardInstance.card_status === 0) {
+            await cardInstance.activate(t);
+            logger.info('卡片预约时自动开卡:', {
+              cardInstanceId: cardInstance.id,
+              bookingId: booking.id,
+              expireDate: cardInstance.expire_date
+            });
+          }
         }
 
         await t.commit();
@@ -315,8 +382,8 @@ class CourseController {
         bookingStatus: booking.booking_status
       });
 
-      // 异步发送订阅消息（不阻塞响应）
-      setImmediate(async () => {
+      // 补录课程不发送订阅消息（历史课程无需通知）
+      if (!is_supplementary) setImmediate(async () => {
         try {
           if (isAutoConfirm) {
             // 自动确认的课程：只向学员发送"预约成功通知"
@@ -357,8 +424,9 @@ class CourseController {
       return ResponseUtil.success(res, {
         booking_id: booking.id,
         booking_status: booking.booking_status,
+        is_supplementary: !!is_supplementary,
         is_auto_confirm: isAutoConfirm
-      }, isAutoConfirm ? '预约成功（已自动确认）' : '预约成功');
+      }, isSupplementaryComplete ? '补录成功' : isAutoConfirm ? '预约成功（已自动确认）' : '预约成功');
 
     } catch (error) {
       logger.error('课程预约失败:', error);
@@ -1052,13 +1120,14 @@ class CourseController {
         }
       }
 
-      // 更新课程状态为已完成，清除取消相关字段
+      // 更新课程状态为已完成，清除取消相关字段，标记为补录
       await course.update({
         booking_status: 3,
         complete_at: new Date(),
         cancel_reason: null,
         cancelled_at: null,
-        cancelled_by: null
+        cancelled_by: null,
+        is_supplementary: 1
       }, { transaction: t });
 
       await t.commit();

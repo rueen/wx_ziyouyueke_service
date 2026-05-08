@@ -110,6 +110,12 @@ const CourseBooking = sequelize.define('course_bookings', {
     allowNull: true,
     comment: '完成时间'
   },
+  is_supplementary: {
+    type: DataTypes.TINYINT(1),
+    allowNull: false,
+    defaultValue: 0,
+    comment: '是否为补录课程：0-否，1-是'
+  },
   deleted_at: {
     type: DataTypes.DATE,
     allowNull: true,
