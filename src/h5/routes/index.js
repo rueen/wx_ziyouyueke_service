@@ -27,6 +27,7 @@ const donationRoutes = require('./donation');
 const planRoutes = require('./plan');
 const cancellationSettingRoutes = require('./cancellationSetting');
 const blockedSlotsRoutes = require('./blockedSlots');
+const coachSettingRoutes = require('./coachSetting');
 
 /**
  * H5端路由配置
@@ -92,6 +93,9 @@ router.use('/plans', planRoutes);
 
 // 取消次数限制配置路由
 router.use('/cancellation-settings', cancellationSettingRoutes);
+
+// 教练设置路由
+router.use('/coach-settings', coachSettingRoutes);
 
 // 教练休息时段路由
 router.use('/blocked-slots', blockedSlotsRoutes);

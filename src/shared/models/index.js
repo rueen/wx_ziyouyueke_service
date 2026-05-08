@@ -20,6 +20,7 @@ const CourseContent = require('./CourseContent');
 const Plan = require('./Plan');
 const CancellationSetting = require('./CancellationSetting');
 const BlockedSlot = require('./BlockedSlot');
+const CoachSetting = require('./CoachSetting');
 
 /**
  * 设置模型关联关系
@@ -377,6 +378,17 @@ BlockedSlot.belongsTo(User, {
   as: 'coach'
 });
 
+// User 与 CoachSetting 的关联
+User.hasOne(CoachSetting, {
+  foreignKey: 'coach_id',
+  as: 'coachSetting'
+});
+
+CoachSetting.belongsTo(User, {
+  foreignKey: 'coach_id',
+  as: 'coach'
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -400,5 +412,6 @@ module.exports = {
   CourseContent,
   Plan,
   CancellationSetting,
-  BlockedSlot
+  BlockedSlot,
+  CoachSetting
 }; 
