@@ -28,6 +28,7 @@ const planRoutes = require('./plan');
 const cancellationSettingRoutes = require('./cancellationSetting');
 const blockedSlotsRoutes = require('./blockedSlots');
 const coachSettingRoutes = require('./coachSetting');
+const tagRoutes = require('./tags');
 
 /**
  * H5端路由配置
@@ -99,5 +100,8 @@ router.use('/coach-settings', coachSettingRoutes);
 
 // 教练休息时段路由
 router.use('/blocked-slots', blockedSlotsRoutes);
+
+// 教练标签路由
+router.use('/tags', tagRoutes);
 
 module.exports = router;

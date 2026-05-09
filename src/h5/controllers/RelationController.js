@@ -1,4 +1,4 @@
-const { StudentCoachRelation, User, Plan } = require('../../shared/models');
+const { StudentCoachRelation, User, Plan, CoachTag, RelationTag } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
@@ -576,8 +576,13 @@ class RelationController {
    */
   static getMyStudents = asyncHandler(async (req, res) => {
     const coachId = req.user.id;
-    const { page = 1, limit = 10, keyword = '' } = req.query;
+    const { page = 1, limit = 10, keyword = '', tag_ids } = req.query;
     const offset = (page - 1) * limit;
+
+    // 支持 tag_ids=1,2,3 或 tag_ids[]=1&tag_ids[]=2 两种传参方式
+    const tagIdList = tag_ids
+      ? (Array.isArray(tag_ids) ? tag_ids : String(tag_ids).split(',')).map(Number).filter(Boolean)
+      : [];
 
     try {
       // 构建查询条件（包含正常关系和待激活关系）
@@ -585,6 +590,17 @@ class RelationController {
         coach_id: coachId,
         relation_status: { [Op.in]: [1, 2] }
       };
+
+      // 按标签筛选：包含任意一个指定标签即返回（OR 语义）
+      if (tagIdList.length > 0) {
+        const matchedRows = await RelationTag.findAll({
+          attributes: ['relation_id'],
+          where: { tag_id: { [Op.in]: tagIdList } },
+          raw: true
+        });
+        const matchedRelationIds = [...new Set(matchedRows.map(r => r.relation_id))];
+        whereConditions.id = { [Op.in]: matchedRelationIds };
+      }
 
       // 使用 LEFT JOIN，待激活关系的 student_id 为 NULL，允许无学员用户记录
       const includeConditions = {
@@ -630,10 +646,15 @@ class RelationController {
           'booking_status', 'booking_closed_at', 'booking_reopened_at',
           'createdAt', 'updatedAt'
         ],
-        include: [includeConditions],
+        include: [
+          includeConditions,
+          { model: CoachTag, as: 'tags', through: { attributes: [] } }
+        ],
         order: [['createdAt', 'DESC']],
         limit: parseInt(limit),
-        offset
+        offset,
+        distinct: true,
+        subQuery: false
       });
 
       // 获取教练的分类信息
@@ -700,6 +721,7 @@ class RelationController {
         page: parseInt(page),
         pageSize: parseInt(limit),
         keyword: keyword,
+        tag_ids: tagIdList,
         pagination: {
           current_page: parseInt(page),
           total_pages: totalPages,
@@ -862,7 +884,8 @@ class RelationController {
             model: User,
             as: 'student',
             attributes: ['id', 'nickname', 'avatar_url', 'phone', 'intro', 'certification', 'motto', 'poster_image']
-          }
+          },
+          { model: CoachTag, as: 'tags', through: { attributes: [] } }
         ]
       });
 

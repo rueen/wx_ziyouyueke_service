@@ -21,6 +21,8 @@ const Plan = require('./Plan');
 const CancellationSetting = require('./CancellationSetting');
 const BlockedSlot = require('./BlockedSlot');
 const CoachSetting = require('./CoachSetting');
+const CoachTag = require('./CoachTag');
+const RelationTag = require('./RelationTag');
 
 /**
  * 设置模型关联关系
@@ -389,6 +391,37 @@ CoachSetting.belongsTo(User, {
   as: 'coach'
 });
 
+// User 与 CoachTag 的关联
+User.hasMany(CoachTag, {
+  foreignKey: 'coach_id',
+  as: 'coachTags',
+  onDelete: 'CASCADE'
+});
+
+CoachTag.belongsTo(User, {
+  foreignKey: 'coach_id',
+  as: 'coach'
+});
+
+// StudentCoachRelation 与 CoachTag 的多对多关联（通过 RelationTag）
+StudentCoachRelation.belongsToMany(CoachTag, {
+  through: RelationTag,
+  foreignKey: 'relation_id',
+  otherKey: 'tag_id',
+  as: 'tags'
+});
+
+CoachTag.belongsToMany(StudentCoachRelation, {
+  through: RelationTag,
+  foreignKey: 'tag_id',
+  otherKey: 'relation_id',
+  as: 'relations'
+});
+
+// RelationTag 直接关联
+RelationTag.belongsTo(StudentCoachRelation, { foreignKey: 'relation_id', as: 'relation' });
+RelationTag.belongsTo(CoachTag, { foreignKey: 'tag_id', as: 'tag' });
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -413,5 +446,7 @@ module.exports = {
   Plan,
   CancellationSetting,
   BlockedSlot,
-  CoachSetting
+  CoachSetting,
+  CoachTag,
+  RelationTag
 }; 
