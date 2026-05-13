@@ -23,6 +23,8 @@ const BlockedSlot = require('./BlockedSlot');
 const CoachSetting = require('./CoachSetting');
 const CoachTag = require('./CoachTag');
 const RelationTag = require('./RelationTag');
+const TrainingRecordType = require('./TrainingRecordType');
+const TrainingRecord = require('./TrainingRecord');
 
 /**
  * 设置模型关联关系
@@ -422,6 +424,51 @@ CoachTag.belongsToMany(StudentCoachRelation, {
 RelationTag.belongsTo(StudentCoachRelation, { foreignKey: 'relation_id', as: 'relation' });
 RelationTag.belongsTo(CoachTag, { foreignKey: 'tag_id', as: 'tag' });
 
+// User 与 TrainingRecordType 的关联（教练）
+User.hasMany(TrainingRecordType, {
+  foreignKey: 'coach_id',
+  as: 'trainingRecordTypes',
+  onDelete: 'CASCADE'
+});
+
+TrainingRecordType.belongsTo(User, {
+  foreignKey: 'coach_id',
+  as: 'coach'
+});
+
+// TrainingRecordType 与 TrainingRecord 的关联
+TrainingRecordType.hasMany(TrainingRecord, {
+  foreignKey: 'type_id',
+  as: 'trainingRecords'
+});
+
+TrainingRecord.belongsTo(TrainingRecordType, {
+  foreignKey: 'type_id',
+  as: 'trainingType'
+});
+
+// User 与 TrainingRecord 的关联（学员）
+User.hasMany(TrainingRecord, {
+  foreignKey: 'student_id',
+  as: 'studentTrainingRecords'
+});
+
+TrainingRecord.belongsTo(User, {
+  foreignKey: 'student_id',
+  as: 'student'
+});
+
+// User 与 TrainingRecord 的关联（教练）
+User.hasMany(TrainingRecord, {
+  foreignKey: 'coach_id',
+  as: 'coachTrainingRecords'
+});
+
+TrainingRecord.belongsTo(User, {
+  foreignKey: 'coach_id',
+  as: 'coach'
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -448,5 +495,7 @@ module.exports = {
   BlockedSlot,
   CoachSetting,
   CoachTag,
-  RelationTag
+  RelationTag,
+  TrainingRecordType,
+  TrainingRecord
 }; 

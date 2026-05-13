@@ -29,6 +29,8 @@ const cancellationSettingRoutes = require('./cancellationSetting');
 const blockedSlotsRoutes = require('./blockedSlots');
 const coachSettingRoutes = require('./coachSetting');
 const tagRoutes = require('./tags');
+const trainingRecordTypeRoutes = require('./trainingRecordType');
+const trainingRecordRoutes = require('./trainingRecord');
 
 /**
  * H5端路由配置
@@ -103,5 +105,11 @@ router.use('/blocked-slots', blockedSlotsRoutes);
 
 // 教练标签路由
 router.use('/tags', tagRoutes);
+
+// 训练类型路由
+router.use('/training-record-types', trainingRecordTypeRoutes);
+
+// 训练记录路由
+router.use('/training-records', trainingRecordRoutes);
 
 module.exports = router;

@@ -104,6 +104,14 @@ class DatabaseInitializer {
         await this.createDefaultCourseCategories();
         break;
       
+      case 'training_record_types':
+        logger.info('训练类型表已创建，无需创建默认数据');
+        break;
+
+      case 'training_records':
+        logger.info('训练记录表已创建，无需创建默认数据');
+        break;
+
       // 在这里添加更多表的默认数据创建逻辑
       // case 'your_table_name':
       //   await this.createDefaultYourTableData();

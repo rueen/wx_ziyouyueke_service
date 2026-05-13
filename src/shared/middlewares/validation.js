@@ -327,6 +327,156 @@ const addressUpdateValidation = [
     .withMessage('是否默认地址必须是布尔值')
 ];
 
+/**
+ * 新增训练类型验证规则
+ */
+const createTrainingRecordTypeValidation = [
+  body('name')
+    .notEmpty()
+    .withMessage('类型名称不能为空')
+    .isLength({ min: 1, max: 50 })
+    .withMessage('类型名称长度必须在1-50个字符之间'),
+  body('fields')
+    .optional()
+    .isArray({ max: 20 })
+    .withMessage('字段列表最多20个')
+    .custom((fields) => {
+      if (!Array.isArray(fields)) return true;
+      for (const field of fields) {
+        if (typeof field !== 'string' || field.trim() === '') {
+          throw new Error('字段名不能为空字符串');
+        }
+        if (field.length > 20) {
+          throw new Error('每个字段名长度不能超过20个字符');
+        }
+      }
+      return true;
+    })
+];
+
+/**
+ * 编辑训练类型验证规则
+ */
+const updateTrainingRecordTypeValidation = [
+  body('name')
+    .optional()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('类型名称长度必须在1-50个字符之间'),
+  body('fields')
+    .optional()
+    .isArray({ max: 20 })
+    .withMessage('字段列表最多20个')
+    .custom((fields) => {
+      if (!Array.isArray(fields)) return true;
+      for (const field of fields) {
+        if (typeof field !== 'string' || field.trim() === '') {
+          throw new Error('字段名不能为空字符串');
+        }
+        if (field.length > 20) {
+          throw new Error('每个字段名长度不能超过20个字符');
+        }
+      }
+      return true;
+    })
+];
+
+/**
+ * 新增训练记录验证规则
+ */
+const createTrainingRecordValidation = [
+  body('student_id')
+    .notEmpty()
+    .withMessage('学员ID不能为空')
+    .isInt({ min: 1 })
+    .withMessage('学员ID必须是正整数'),
+  body('type_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('训练类型ID必须是正整数'),
+  body('type_values')
+    .optional()
+    .isObject()
+    .withMessage('类型字段值必须是对象格式')
+    .custom((values) => {
+      if (!values || typeof values !== 'object') return true;
+      for (const [, val] of Object.entries(values)) {
+        if (typeof val !== 'string') {
+          throw new Error('类型字段值必须是字符串');
+        }
+        if (val.length > 30) {
+          throw new Error('每个类型字段值长度不能超过30个字符');
+        }
+      }
+      return true;
+    }),
+  body('content')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('记录内容不能超过500个字符'),
+  body('images')
+    .optional()
+    .isArray({ max: 9 })
+    .withMessage('图片最多9张')
+    .custom((images) => {
+      if (!Array.isArray(images)) return true;
+      for (const img of images) {
+        if (typeof img !== 'string' || img.trim() === '') {
+          throw new Error('图片URL不能为空');
+        }
+        if (img.length > 500) {
+          throw new Error('图片URL长度不能超过500个字符');
+        }
+      }
+      return true;
+    })
+];
+
+/**
+ * 编辑训练记录验证规则
+ */
+const updateTrainingRecordValidation = [
+  body('type_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('训练类型ID必须是正整数'),
+  body('type_values')
+    .optional()
+    .isObject()
+    .withMessage('类型字段值必须是对象格式')
+    .custom((values) => {
+      if (!values || typeof values !== 'object') return true;
+      for (const [, val] of Object.entries(values)) {
+        if (typeof val !== 'string') {
+          throw new Error('类型字段值必须是字符串');
+        }
+        if (val.length > 30) {
+          throw new Error('每个类型字段值长度不能超过30个字符');
+        }
+      }
+      return true;
+    }),
+  body('content')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('记录内容不能超过500个字符'),
+  body('images')
+    .optional()
+    .isArray({ max: 9 })
+    .withMessage('图片最多9张')
+    .custom((images) => {
+      if (!Array.isArray(images)) return true;
+      for (const img of images) {
+        if (typeof img !== 'string' || img.trim() === '') {
+          throw new Error('图片URL不能为空');
+        }
+        if (img.length > 500) {
+          throw new Error('图片URL长度不能超过500个字符');
+        }
+      }
+      return true;
+    })
+];
+
 // 通用验证中间件别名
 const validate = validateRequest;
 
@@ -346,5 +496,9 @@ module.exports = {
   idParamValidation,
   decryptPhoneValidation,
   addressCreateValidation,
-  addressUpdateValidation
+  addressUpdateValidation,
+  createTrainingRecordTypeValidation,
+  updateTrainingRecordTypeValidation,
+  createTrainingRecordValidation,
+  updateTrainingRecordValidation
 }; 
