@@ -104,6 +104,10 @@ class DatabaseInitializer {
         await this.createDefaultCourseCategories();
         break;
       
+      case 'addresses':
+        logger.info('地址表已创建，无需创建默认数据');
+        break;
+
       case 'training_record_types':
         logger.info('训练类型表已创建，无需创建默认数据');
         break;

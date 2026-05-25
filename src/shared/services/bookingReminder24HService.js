@@ -50,7 +50,8 @@ class BookingReminder24HService {
           {
             model: Address,
             as: 'address',
-            attributes: ['id', 'name']
+            attributes: ['id', 'name'],
+            paranoid: false
           }
         ]
       });

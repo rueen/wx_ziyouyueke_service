@@ -212,7 +212,8 @@ class GroupCourseController {
         {
           model: Address,
           as: 'address',
-          attributes: ['id', 'name', 'address', 'latitude', 'longitude']
+          attributes: ['id', 'name', 'address', 'latitude', 'longitude'],
+          paranoid: false
         },
         {
           model: GroupCourseRegistration,
@@ -265,7 +266,8 @@ class GroupCourseController {
         {
           model: Address,
           as: 'address',
-          attributes: ['id', 'name', 'address', 'latitude', 'longitude']
+          attributes: ['id', 'name', 'address', 'latitude', 'longitude'],
+          paranoid: false
         },
         {
           model: GroupCourseRegistration,
@@ -771,7 +773,8 @@ class GroupCourseController {
             {
               model: Address,
               as: 'address',
-              attributes: ['id', 'name', 'address']
+              attributes: ['id', 'name', 'address'],
+              paranoid: false
             }
           ]
         }

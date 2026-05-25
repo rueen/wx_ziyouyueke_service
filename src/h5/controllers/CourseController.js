@@ -524,7 +524,8 @@ class CourseController {
           {
             model: Address,
             as: 'address',
-            attributes: ['id', 'name', 'address', 'latitude', 'longitude']
+            attributes: ['id', 'name', 'address', 'latitude', 'longitude'],
+            paranoid: false
           },
           {
             model: StudentCoachRelation,
@@ -615,7 +616,8 @@ class CourseController {
           {
             model: Address,
             as: 'address',
-            attributes: ['id', 'name', 'address', 'latitude', 'longitude']
+            attributes: ['id', 'name', 'address', 'latitude', 'longitude'],
+            paranoid: false
           },
           {
             model: StudentCoachRelation,
@@ -734,7 +736,8 @@ class CourseController {
           {
             model: Address,
             as: 'address',
-            attributes: ['id', 'name']
+            attributes: ['id', 'name'],
+            paranoid: false
           }
         ]
       });
@@ -828,7 +831,8 @@ class CourseController {
           {
             model: Address,
             as: 'address',
-            attributes: ['id', 'name']
+            attributes: ['id', 'name'],
+            paranoid: false
           }
         ]
       });
@@ -1452,7 +1456,8 @@ class CourseController {
           {
             model: Address,
             as: 'address',
-            attributes: ['id', 'name', 'address', 'latitude', 'longitude']
+            attributes: ['id', 'name', 'address', 'latitude', 'longitude'],
+            paranoid: false
           },
           {
             model: StudentCoachRelation,

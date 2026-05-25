@@ -281,7 +281,8 @@ CourseBooking.autoTimeoutCancel = async function() {
         {
           model: sequelize.models.addresses,
           as: 'address',
-          attributes: ['id', 'name']
+          attributes: ['id', 'name'],
+          paranoid: false
         }
       ]
     });

@@ -45,6 +45,9 @@ const Address = sequelize.define('addresses', {
 }, {
   tableName: 'addresses',
   comment: '地址表',
+  paranoid: true,
+  timestamps: true,
+  deletedAt: 'deleted_at',
   indexes: [
     {
       fields: ['user_id'],

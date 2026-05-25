@@ -87,7 +87,8 @@ class CourseController {
         {
           model: Address,
           as: 'address',
-          attributes: ['id', 'name', 'address']
+          attributes: ['id', 'name', 'address'],
+          paranoid: false
         }
       ];
 
@@ -179,7 +180,8 @@ class CourseController {
           {
             model: Address,
             as: 'address',
-            attributes: ['id', 'name', 'address', 'latitude', 'longitude']
+            attributes: ['id', 'name', 'address', 'latitude', 'longitude'],
+            paranoid: false
           }
         ]
       });
