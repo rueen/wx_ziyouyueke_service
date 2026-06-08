@@ -23,6 +23,12 @@ const CoachSetting = sequelize.define('coach_settings', {
     allowNull: false,
     defaultValue: 'scan',
     comment: '课程完成方式：scan-扫码完成，manual-手动完成'
+  },
+  group_checkin_method: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+    defaultValue: 'scan',
+    comment: '团课签到方式：scan-扫码签到，button-学员自主按钮签到'
   }
 }, {
   tableName: 'coach_settings',

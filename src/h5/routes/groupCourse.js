@@ -203,6 +203,19 @@ router.get('/:id/registrations',
 );
 
 /**
+ * 学员自主签到
+ * POST /api/h5/group-courses/:courseId/self-check-in
+ */
+router.post('/:courseId/self-check-in',
+  authenticateToken,
+  [
+    param('courseId').isInt({ min: 1 }).withMessage('团课ID必须是正整数')
+  ],
+  validateRequest,
+  GroupCourseController.selfCheckIn
+);
+
+/**
  * 签到团课
  * POST /api/h5/group-courses/:courseId/registrations/:registrationId/check-in
  */

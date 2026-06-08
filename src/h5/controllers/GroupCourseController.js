@@ -5,7 +5,7 @@
  * @LastEditTime: 2026-03-24 20:55:16
  * @Description: 
  */
-const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation, CourseContent, StudentCardInstance, CoachCard, sequelize } = require('../../shared/models');
+const { GroupCourse, GroupCourseRegistration, User, Address, StudentCoachRelation, CourseContent, StudentCardInstance, CoachCard, CoachSetting, sequelize } = require('../../shared/models');
 const { Op } = require('sequelize');
 const ResponseUtil = require('../../shared/utils/response');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
@@ -768,7 +768,13 @@ class GroupCourseController {
             {
               model: User,
               as: 'coach',
-              attributes: ['id', 'nickname', 'avatar_url']
+              attributes: ['id', 'nickname', 'avatar_url'],
+              include: [{
+                model: CoachSetting,
+                as: 'coachSetting',
+                attributes: ['group_checkin_method'],
+                required: false
+              }]
             },
             {
               model: Address,
@@ -784,8 +790,20 @@ class GroupCourseController {
       offset
     });
 
+    // 将 group_checkin_method 提升到 groupCourse 层级，方便前端直接读取
+    const list = registrations.map(reg => {
+      const item = reg.toJSON();
+      if (item.groupCourse) {
+        const coachSetting = item.groupCourse.coach && item.groupCourse.coach.coachSetting;
+        item.groupCourse.checkin_method = coachSetting
+          ? coachSetting.group_checkin_method
+          : 'scan';
+      }
+      return item;
+    });
+
     return ResponseUtil.success(res, {
-      list: registrations,
+      list,
       page: parseInt(page),
       pageSize: parseInt(limit),
       total,
@@ -874,6 +892,66 @@ class GroupCourseController {
     await registration.checkIn(coachId);
     
     logger.info(`教练 ${coachId} 为学员 ${registration.student_id} 签到团课 ${courseId}`);
+    return ResponseUtil.success(res, registration, '签到成功');
+  });
+
+  /**
+   * 学员自主签到
+   * POST /api/h5/group-courses/:courseId/self-check-in
+   * @description 仅当教练配置 group_checkin_method 为 'button' 时允许学员自主签到
+   */
+  static selfCheckIn = asyncHandler(async (req, res) => {
+    const studentId = req.user.id;
+    const { courseId } = req.params;
+
+    // 查找团课，同时加载教练的签到方式配置
+    const course = await GroupCourse.findByPk(courseId, {
+      include: [{
+        model: User,
+        as: 'coach',
+        attributes: ['id'],
+        include: [{
+          model: CoachSetting,
+          as: 'coachSetting',
+          attributes: ['group_checkin_method'],
+          required: false
+        }]
+      }]
+    });
+
+    if (!course) {
+      return ResponseUtil.notFound(res, '团课不存在');
+    }
+
+    // 校验教练是否开启了按钮签到
+    const checkinMethod = course.coach && course.coach.coachSetting
+      ? course.coach.coachSetting.group_checkin_method
+      : 'scan';
+
+    if (checkinMethod !== 'button') {
+      return ResponseUtil.forbidden(res, '该活动未开启学员自主签到');
+    }
+
+    // 查找该学员的有效报名记录
+    const registration = await GroupCourseRegistration.findOne({
+      where: {
+        group_course_id: courseId,
+        student_id: studentId,
+        registration_status: 1 // 已报名
+      }
+    });
+
+    if (!registration) {
+      return ResponseUtil.notFound(res, '报名记录不存在');
+    }
+
+    if (registration.check_in_status !== 0) {
+      return ResponseUtil.validationError(res, '您已签到或已被标记缺席，无法重复签到');
+    }
+
+    await registration.checkIn(studentId);
+
+    logger.info(`学员 ${studentId} 自主签到团课 ${courseId} 成功`);
     return ResponseUtil.success(res, registration, '签到成功');
   });
 
