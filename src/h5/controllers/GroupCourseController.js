@@ -484,14 +484,12 @@ class GroupCourseController {
       return ResponseUtil.notFound(res, '团课不存在或无权限');
     }
 
-    // 检查是否可以删除的条件：
-    // 1. 已取消/人数不足取消的团课可以删除
-    // 2. 无人报名的团课可以删除
-    if (course.status === 1 && course.current_participants > 0) {
-      return ResponseUtil.validationError(res, '有学员报名的团课不能删除，请先取消团课');
+    // 报名中的团课不允许删除，需先取消
+    if (course.status === 1) {
+      return ResponseUtil.validationError(res, '报名中的团课不能删除，请先取消团课');
     }
 
-    // 删除团课（真删除）
+    // 软删除（设置 deleted_at，数据保留）
     await course.destroy();
     
     logger.info(`教练 ${coachId} 删除团课 ${id}`);

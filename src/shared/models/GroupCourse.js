@@ -162,13 +162,20 @@ const GroupCourse = sequelize.define('group_courses', {
     type: DataTypes.DATE,
     allowNull: true,
     comment: '完成时间'
+  },
+  deleted_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: '软删除时间'
   }
 }, {
   tableName: 'group_courses',
   timestamps: true,
+  paranoid: true,
   underscored: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
+  deletedAt: 'deleted_at',
   indexes: [
     { fields: ['coach_id'] },
     { fields: ['category_id'] },
