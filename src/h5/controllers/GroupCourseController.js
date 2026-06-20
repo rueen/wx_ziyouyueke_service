@@ -233,10 +233,47 @@ class GroupCourseController {
       offset
     });
 
-    // 为已结束的团课添加结束原因
+    // 收集列表中所有 price_type=4 且当前用户已报名的 card_instance_id，批量查询 deduct_lessons_per_use
+    const currentStudentId = req.user ? req.user.id : null;
+    let cardInstanceDeductMap = {};
+
+    if (currentStudentId) {
+      const cardInstanceIds = [];
+      courses.forEach(course => {
+        if (course.price_type === 4 && Array.isArray(course.registrations)) {
+          const myReg = course.registrations.find(
+            r => r.student_id === currentStudentId && r.registration_status === 1 && r.card_instance_id
+          );
+          if (myReg) cardInstanceIds.push(myReg.card_instance_id);
+        }
+      });
+
+      if (cardInstanceIds.length > 0) {
+        const cardInstances = await StudentCardInstance.findAll({
+          where: { id: { [Op.in]: cardInstanceIds } },
+          attributes: ['id', 'deduct_lessons_per_use']
+        });
+        cardInstances.forEach(ci => {
+          cardInstanceDeductMap[ci.id] = ci.deduct_lessons_per_use ?? 1;
+        });
+      }
+    }
+
+    // 为已结束的团课添加结束原因，并附加 deduct_lessons_per_use
     const coursesWithEndReason = courses.map(course => {
       const courseData = course.toJSON();
       courseData.end_reason = course.getEndReason();
+
+      // price_type=4 时，从已报名记录推导 deduct_lessons_per_use
+      if (course.price_type === 4 && currentStudentId) {
+        const myReg = courseData.registrations?.find(
+          r => r.student_id === currentStudentId && r.registration_status === 1 && r.card_instance_id
+        );
+        courseData.deduct_lessons_per_use = myReg
+          ? (cardInstanceDeductMap[myReg.card_instance_id] ?? null)
+          : null;
+      }
+
       return courseData;
     });
 
@@ -301,21 +338,69 @@ class GroupCourseController {
       courseData.category_name = '未知分类';
     }
 
-    // price_type=4（课程卡）时，补充卡片列表信息
+    // price_type=4（课程卡）时，补充卡片列表信息及学员预计扣减课时数
     const cardIds = Array.isArray(course.card_id) ? course.card_id : [];
     if (course.price_type === 4 && cardIds.length > 0) {
       const coachCards = await CoachCard.findAll({
         where: { id: { [Op.in]: cardIds } },
         attributes: ['id', 'card_name', 'card_color', 'card_lessons', 'valid_days'],
-        paranoid: false // 包含软删除的记录
+        paranoid: false
       });
-      // 保持原有顺序
       courseData.card_info = cardIds.map(cid => {
         const card = coachCards.find(c => Number(c.id) === Number(cid));
         return card
           ? { id: card.id, card_name: card.card_name, card_color: card.card_color, card_lessons: card.card_lessons, valid_days: card.valid_days }
           : null;
       }).filter(Boolean);
+
+      // 当已登录学员查看时，返回该学员匹配卡的单次扣减课时数
+      courseData.deduct_lessons_per_use = null;
+      if (req.user) {
+        const studentId = req.user.id;
+        // 优先取已报名记录关联的卡
+        const existingReg = await GroupCourseRegistration.findOne({
+          where: { group_course_id: id, student_id: studentId, registration_status: 1 }
+        });
+        if (existingReg && existingReg.card_instance_id) {
+          const regCard = await StudentCardInstance.findByPk(existingReg.card_instance_id, {
+            attributes: ['deduct_lessons_per_use']
+          });
+          if (regCard) courseData.deduct_lessons_per_use = regCard.deduct_lessons_per_use ?? 1;
+        } else {
+          // 未报名：找该学员对该团课可用的匹配卡
+          const moment = require('moment-timezone');
+          const today = moment.tz('Asia/Shanghai').startOf('day').format('YYYY-MM-DD');
+          const candidateCard = await StudentCardInstance.findOne({
+            where: {
+              student_id: studentId,
+              coach_id: course.coach_id,
+              coach_card_id: { [Op.in]: cardIds },
+              card_status: { [Op.in]: [0, 1] },
+              [Op.and]: [
+                {
+                  [Op.or]: [
+                    { card_status: 0 },
+                    { expire_date: null },
+                    { expire_date: { [Op.gte]: today } }
+                  ]
+                },
+                {
+                  [Op.or]: [
+                    { total_lessons: null },
+                    { remaining_lessons: { [Op.gt]: 0 } }
+                  ]
+                }
+              ]
+            },
+            attributes: ['deduct_lessons_per_use'],
+            order: [
+              [sequelize.literal('CASE WHEN card_status = 1 THEN 1 ELSE 2 END'), 'ASC'],
+              ['expire_date', 'ASC']
+            ]
+          });
+          if (candidateCard) courseData.deduct_lessons_per_use = candidateCard.deduct_lessons_per_use ?? 1;
+        }
+      }
     } else {
       courseData.card_info = [];
     }
@@ -610,21 +695,22 @@ class GroupCourseController {
       const moment = require('moment-timezone');
       const today = moment.tz('Asia/Shanghai').startOf('day').format('YYYY-MM-DD');
 
-      const validCard = await StudentCardInstance.findOne({
+      const candidateCards = await StudentCardInstance.findAll({
         where: {
           student_id: studentId,
           coach_id: course.coach_id,
-          coach_card_id: { [Op.in]: courseCardIds }, // 匹配团课允许的任意卡片类型
+          coach_card_id: { [Op.in]: courseCardIds },
           card_status: { [Op.in]: [0, 1] },
           [Op.and]: [
             {
               [Op.or]: [
-                { card_status: 0 },               // 未开卡，无到期日限制
+                { card_status: 0 },
                 { expire_date: null },
                 { expire_date: { [Op.gte]: today } }
               ]
             },
             {
+              // 无限次数卡或有剩余课时的卡
               [Op.or]: [
                 { total_lessons: null },
                 { remaining_lessons: { [Op.gt]: 0 } }
@@ -633,12 +719,17 @@ class GroupCourseController {
           ]
         },
         order: [
-          // 已开启排前
           [sequelize.literal('CASE WHEN card_status = 1 THEN 1 ELSE 2 END'), 'ASC'],
           [sequelize.literal('CASE WHEN expire_date IS NULL THEN 1 ELSE 0 END'), 'ASC'],
           ['expire_date', 'ASC']
         ]
       });
+
+      // 进一步过滤：剩余课时须满足该卡 deduct_lessons_per_use 的要求
+      const validCard = candidateCards.find(card =>
+        card.total_lessons === null ||
+        (card.remaining_lessons || 0) >= (card.deduct_lessons_per_use || 1)
+      );
 
       if (!validCard) {
         return ResponseUtil.validationError(res, '您没有可用的对应课程卡，无法报名');
@@ -845,6 +936,12 @@ class GroupCourseController {
           model: StudentCoachRelation,
           as: 'relation',
           attributes: ['id', 'student_remark', 'coach_remark']
+        },
+        {
+          model: StudentCardInstance,
+          as: 'cardInstance',
+          attributes: ['id', 'deduct_lessons_per_use'],
+          required: false
         }
       ],
       order: [['created_at', 'DESC']],
@@ -852,8 +949,19 @@ class GroupCourseController {
       offset
     });
 
+    // 将 deduct_lessons_per_use 提升到顶层，方便前端直接读取
+    const list = registrations.map(reg => {
+      const item = reg.toJSON();
+      if (item.payment_type === 4 && item.cardInstance) {
+        item.deduct_lessons_per_use = item.cardInstance.deduct_lessons_per_use ?? 1;
+      } else {
+        item.deduct_lessons_per_use = null;
+      }
+      return item;
+    });
+
     return ResponseUtil.success(res, {
-      list: registrations,
+      list,
       page: parseInt(page),
       pageSize: parseInt(limit),
       total,

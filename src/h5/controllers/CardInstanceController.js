@@ -17,12 +17,18 @@ class CardInstanceController {
     const { 
       student_id,
       relation_id,
-      coach_card_id
+      coach_card_id,
+      deduct_lessons_per_use = 1
     } = req.body;
 
     // 参数验证
     if (!student_id || !relation_id || !coach_card_id) {
       return ResponseUtil.validationError(res, '缺少必要参数');
+    }
+
+    const deductNum = parseInt(deduct_lessons_per_use, 10);
+    if (!Number.isInteger(deductNum) || deductNum < 1) {
+      return ResponseUtil.validationError(res, '单次销课扣减课时数必须为大于 0 的整数');
     }
 
     // 验证师生关系
@@ -57,14 +63,16 @@ class CardInstanceController {
       coachCard, 
       student_id, 
       coachId, 
-      relation_id
+      relation_id,
+      deductNum
     );
 
     logger.info('卡片实例创建成功:', {
       instanceId: instance.id,
       coachId,
       studentId: student_id,
-      coachCardId: coach_card_id
+      coachCardId: coach_card_id,
+      deductLessonsPerUse: deductNum
     });
 
     const instanceSummary = await instance.getSummary();
@@ -225,17 +233,25 @@ class CardInstanceController {
   static updateInstance = asyncHandler(async (req, res) => {
     const coachId = req.user.id;
     const { id } = req.params;
-    const { expire_date } = req.body;
+    const { expire_date, deduct_lessons_per_use } = req.body;
 
-    // 目前至少需要提供 expire_date
-    if (!expire_date) {
-      return ResponseUtil.validationError(res, '缺少修改内容，目前支持修改：expire_date');
+    if (!expire_date && deduct_lessons_per_use === undefined) {
+      return ResponseUtil.validationError(res, '缺少修改内容，目前支持修改：expire_date、deduct_lessons_per_use');
     }
 
     const moment = require('moment-timezone');
 
+    // 校验 deduct_lessons_per_use
+    let deductNum;
+    if (deduct_lessons_per_use !== undefined) {
+      deductNum = parseInt(deduct_lessons_per_use, 10);
+      if (!Number.isInteger(deductNum) || deductNum < 1) {
+        return ResponseUtil.validationError(res, '单次销课扣减课时数必须为大于 0 的整数');
+      }
+    }
+
     // 校验日期格式
-    if (!moment(expire_date, 'YYYY-MM-DD', true).isValid()) {
+    if (expire_date && !moment(expire_date, 'YYYY-MM-DD', true).isValid()) {
       return ResponseUtil.validationError(res, '过期时间格式错误，请使用 YYYY-MM-DD 格式');
     }
 
@@ -247,52 +263,52 @@ class CardInstanceController {
       return ResponseUtil.notFound(res, '卡片不存在或无权限操作');
     }
 
-    // 未开卡(0)的卡片 expire_date 在开卡时自动计算，不允许手动提前修改
-    if (instance.card_status === 0) {
-      return ResponseUtil.validationError(res, '未开启的卡片无法修改过期时间，请先开卡');
+    /** @type {Object} 需要更新的字段 */
+    const updates = {};
+
+    // 处理 deduct_lessons_per_use 更新
+    if (deductNum !== undefined) {
+      updates.deduct_lessons_per_use = deductNum;
     }
 
-    const today = moment.tz('Asia/Shanghai').startOf('day');
-    const newExpireEnd = moment.tz(expire_date, 'Asia/Shanghai').endOf('day');
-    const isExpired = today.isAfter(newExpireEnd);
+    // 处理 expire_date 更新
+    if (expire_date) {
+      // 未开卡(0)的卡片 expire_date 在开卡时自动计算，不允许手动提前修改
+      if (instance.card_status === 0) {
+        return ResponseUtil.validationError(res, '未开启的卡片无法修改过期时间，请先开卡');
+      }
+
+      const today = moment.tz('Asia/Shanghai').startOf('day');
+      const newExpireEnd = moment.tz(expire_date, 'Asia/Shanghai').endOf('day');
+      const isExpired = today.isAfter(newExpireEnd);
+
+      updates.expire_date = expire_date;
+
+      if (instance.card_status === 1) {
+        if (isExpired) updates.card_status = 3;
+      } else if (instance.card_status === 3) {
+        if (!isExpired) updates.card_status = 1;
+      } else if (instance.card_status === 2) {
+        if (isExpired) {
+          updates.card_status = 3;
+        } else {
+          updates.remaining_valid_days = Math.max(newExpireEnd.diff(today, 'days'), 0);
+        }
+      }
+    }
 
     const oldExpireDate = instance.expire_date;
     const oldStatus = instance.card_status;
 
-    /** @type {Object} 需要更新的字段 */
-    const updates = { expire_date };
-
-    if (instance.card_status === 1) {
-      // 已开启：新到期日已过 → 标记过期
-      if (isExpired) {
-        updates.card_status = 3;
-      }
-    } else if (instance.card_status === 3) {
-      // 已过期：新到期日未过 → 恢复已开启
-      if (!isExpired) {
-        updates.card_status = 1;
-      }
-    } else if (instance.card_status === 2) {
-      if (isExpired) {
-        // 已停用：新到期日已过 → 标记过期
-        updates.card_status = 3;
-      } else {
-        // 已停用：重新计算剩余有效天数
-        updates.remaining_valid_days = Math.max(
-          newExpireEnd.diff(today, 'days'),
-          0
-        );
-      }
-    }
-
     await instance.update(updates);
 
-    logger.info('卡片过期时间修改成功:', {
+    logger.info('卡片信息修改成功:', {
       instanceId: instance.id,
       coachId,
       studentId: instance.student_id,
       oldExpireDate,
-      newExpireDate: expire_date,
+      newExpireDate: expire_date || '未修改',
+      deductLessonsPerUse: deductNum !== undefined ? deductNum : '未修改',
       statusChange: updates.card_status !== undefined
         ? `${oldStatus} → ${updates.card_status}`
         : '无变化'

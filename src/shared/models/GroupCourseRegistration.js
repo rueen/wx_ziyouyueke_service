@@ -190,18 +190,17 @@ GroupCourseRegistration.prototype.checkIn = async function(operatorId) {
     // 扣课程卡：price_type=4，且有 card_instance_id
     if (this.payment_type === 4 && this.card_instance_id) {
       const StudentCardInstance = this.sequelize.models.student_card_instances;
-      const GroupCourse = this.sequelize.models.group_courses;
 
       const cardInstance = await StudentCardInstance.findByPk(this.card_instance_id);
-      const course = await GroupCourse.findByPk(this.group_course_id);
 
-      if (cardInstance && course) {
-        const lessonCost = course.lesson_cost || 1;
-
+      if (cardInstance) {
         // 未开卡时自动开卡
         if (cardInstance.card_status === 0) {
           await cardInstance.activate(transaction);
         }
+
+        // 使用卡实例配置的扣减数，忽略团课 lesson_cost（仅 price_type=4 时）
+        const deductCount = cardInstance.deduct_lessons_per_use || 1;
 
         // 检查卡片是否可用
         const checkResult = cardInstance.checkAvailable();
@@ -211,15 +210,15 @@ GroupCourseRegistration.prototype.checkIn = async function(operatorId) {
 
         // 检查并扣除课时
         if (cardInstance.total_lessons !== null) {
-          if ((cardInstance.remaining_lessons || 0) < lessonCost) {
+          if ((cardInstance.remaining_lessons || 0) < deductCount) {
             throw new Error('课程卡课时不足，无法完成签到');
           }
-          cardInstance.remaining_lessons -= lessonCost;
+          cardInstance.remaining_lessons -= deductCount;
         }
-        cardInstance.used_count = (cardInstance.used_count || 0) + lessonCost;
+        cardInstance.used_count = (cardInstance.used_count || 0) + deductCount;
         await cardInstance.save({ transaction });
 
-        this.lesson_deducted = lessonCost;
+        this.lesson_deducted = deductCount;
         this.payment_status = 1;
       }
     }

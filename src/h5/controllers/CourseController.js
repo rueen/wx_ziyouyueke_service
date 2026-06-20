@@ -140,14 +140,16 @@ class CourseController {
 
         if (is_supplementary) {
           // 补录：直接检查原始剩余课时，跳过过期和可用课时检查
+          const deductCount = cardInstance.deduct_lessons_per_use || 1;
           const rawRemaining = cardInstance.total_lessons === null ? Infinity : (cardInstance.remaining_lessons || 0);
-          if (rawRemaining <= 0) {
+          if (rawRemaining < deductCount) {
             return ResponseUtil.validationError(res, '卡片课时不足，无法补录');
           }
         } else {
-          // 检查可用课时（getAvailableLessons 已支持 card_status=0）
+          // 检查可用课时（getAvailableLessons 已支持 card_status=0，且已按 deduct_lessons_per_use 计算占用）
           const availableLessons = await cardInstance.getAvailableLessons();
-          if (availableLessons <= 0) {
+          const deductCount = cardInstance.deduct_lessons_per_use || 1;
+          if (availableLessons < deductCount) {
             return ResponseUtil.validationError(res, '卡片可用课时不足，无法预约课程');
           }
 
@@ -327,18 +329,19 @@ class CourseController {
           const targetCategoryId = category_id !== null && category_id !== undefined ? category_id : 0;
 
           if (booking_type === 2 && cardInstance) {
-            // 卡片课程：直接扣减，不走 checkAvailable（跳过过期判断）
+            // 卡片课程：直接扣减，不走 checkAvailable（跳过过期判断），按 deduct_lessons_per_use 扣减
+            const deductCount = cardInstance.deduct_lessons_per_use || 1;
             if (cardInstance.total_lessons !== null) {
               await cardInstance.update({
-                remaining_lessons: Math.max((cardInstance.remaining_lessons || 1) - 1, 0),
-                used_count: (cardInstance.used_count || 0) + 1
+                remaining_lessons: Math.max((cardInstance.remaining_lessons || deductCount) - deductCount, 0),
+                used_count: (cardInstance.used_count || 0) + deductCount
               }, { transaction: t });
             } else {
               await cardInstance.update({
-                used_count: (cardInstance.used_count || 0) + 1
+                used_count: (cardInstance.used_count || 0) + deductCount
               }, { transaction: t });
             }
-            logger.info('补录-卡片课时扣除:', { cardInstanceId: cardInstance.id, bookingId: booking.id });
+            logger.info('补录-卡片课时扣除:', { cardInstanceId: cardInstance.id, bookingId: booking.id, deductCount });
           } else if (booking_type === 1 && relation) {
             // 普通课程：直接操作 lessons JSON，跳过 getCategoryLessons 的过期检查
             const lessons = [...(relation.lessons || [])];
@@ -536,7 +539,7 @@ class CourseController {
           {
             model: StudentCardInstance,
             as: 'cardInstance',
-            attributes: ['id', 'coach_card_id', 'total_lessons', 'remaining_lessons', 'expire_date', 'card_status', 'valid_days'],
+            attributes: ['id', 'coach_card_id', 'total_lessons', 'remaining_lessons', 'expire_date', 'card_status', 'valid_days', 'deduct_lessons_per_use'],
             required: false,
             include: [
               {
@@ -558,13 +561,14 @@ class CourseController {
       // 格式化课程列表，处理卡片信息
       const formattedCourses = courses.map(course => {
         const courseData = course.toJSON();
-        
-        // 如果是卡片课程且有卡片信息，添加卡片名称和颜色
+
+        // 如果是卡片课程且有卡片信息，添加卡片名称、颜色及单次扣减课时数
         if (courseData.booking_type === 2 && courseData.cardInstance) {
           courseData.card_name = courseData.cardInstance.coachCard?.card_name || '未知卡片';
           courseData.card_color = courseData.cardInstance.coachCard?.card_color || '#999999';
+          courseData.deduct_lessons_per_use = courseData.cardInstance.deduct_lessons_per_use ?? 1;
         }
-        
+
         return courseData;
       });
 
@@ -628,7 +632,7 @@ class CourseController {
           {
             model: StudentCardInstance,
             as: 'cardInstance',
-            attributes: ['id', 'coach_card_id', 'total_lessons', 'remaining_lessons', 'expire_date', 'card_status', 'valid_days'],
+            attributes: ['id', 'coach_card_id', 'total_lessons', 'remaining_lessons', 'expire_date', 'card_status', 'valid_days', 'deduct_lessons_per_use'],
             required: false,
             include: [
               {
@@ -656,6 +660,7 @@ class CourseController {
       if (courseData.booking_type === 2 && courseData.cardInstance) {
         courseData.card_name = courseData.cardInstance.coachCard?.card_name || '未知卡片';
         courseData.card_color = courseData.cardInstance.coachCard?.card_color || '#999999';
+        courseData.deduct_lessons_per_use = courseData.cardInstance.deduct_lessons_per_use ?? 1;
       }
 
       // 获取课程内容

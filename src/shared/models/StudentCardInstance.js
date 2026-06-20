@@ -48,6 +48,12 @@ const StudentCardInstance = sequelize.define('student_card_instances', {
     defaultValue: 0,
     comment: '已使用次数'
   },
+  deduct_lessons_per_use: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 1,
+    comment: '单次销课扣减课时数：每次预约完成或团课签到时从卡内扣除的课时数，默认 1'
+  },
   expire_date: {
     type: DataTypes.DATEONLY,
     allowNull: true,
@@ -233,24 +239,27 @@ StudentCardInstance.prototype.reactivate = async function() {
 };
 
 /**
- * 实例方法:扣除课时
- * @param {Object} transaction - 事务对象
+ * 实例方法：扣除课时
+ * @param {import('sequelize').Transaction|null} transaction - 事务对象（可选）
+ * @param {number|null} overrideDeduct - 覆盖扣减数量，不传则使用 deduct_lessons_per_use
  */
-StudentCardInstance.prototype.deductLesson = async function(transaction = null) {
+StudentCardInstance.prototype.deductLesson = async function(transaction = null, overrideDeduct = null) {
   const checkResult = this.checkAvailable();
   if (!checkResult.available) {
     throw new Error(checkResult.reason);
   }
 
+  const deductCount = overrideDeduct !== null ? overrideDeduct : (this.deduct_lessons_per_use || 1);
+
   // 无限次数卡片只增加使用次数
   if (this.total_lessons === null) {
-    this.used_count += 1;
+    this.used_count += deductCount;
   } else {
-    if (this.remaining_lessons <= 0) {
+    if ((this.remaining_lessons || 0) < deductCount) {
       throw new Error('卡片课时不足');
     }
-    this.remaining_lessons -= 1;
-    this.used_count += 1;
+    this.remaining_lessons -= deductCount;
+    this.used_count += deductCount;
   }
 
   return await this.save({ transaction });
@@ -282,10 +291,11 @@ StudentCardInstance.prototype.getAvailableLessons = async function() {
   }
   
   const totalLessons = this.remaining_lessons || 0;
-  
+  const deductPerUse = this.deduct_lessons_per_use || 1;
+
   // 4. 查询占用的课时数（待确认、已确认的课程）
   const CourseBooking = this.sequelize.models.course_bookings;
-  const occupiedCount = await CourseBooking.count({
+  const occupiedBookingCount = await CourseBooking.count({
     where: {
       card_instance_id: this.id,
       booking_type: 2, // 卡片课程
@@ -294,9 +304,12 @@ StudentCardInstance.prototype.getAvailableLessons = async function() {
       }
     }
   });
-  
-  // 5. 可用课时 = 剩余课时 - 已占用课时
-  return Math.max(totalLessons - occupiedCount, 0);
+
+  // 5. 每条预约实际占用 deduct_lessons_per_use 课时
+  const occupiedLessons = occupiedBookingCount * deductPerUse;
+
+  // 6. 可用课时 = 剩余课时 - 已占用课时
+  return Math.max(totalLessons - occupiedLessons, 0);
 };
 
 /**
@@ -349,6 +362,7 @@ StudentCardInstance.prototype.getSummary = async function() {
     total_lessons: this.total_lessons,
     remaining_lessons: this.remaining_lessons,
     used_count: this.used_count,
+    deduct_lessons_per_use: this.deduct_lessons_per_use || 1,
     valid_days: this.valid_days,
     expire_date: this.expire_date,
     card_status: this.card_status,
@@ -380,20 +394,22 @@ StudentCardInstance.prototype.getStatusText = function() {
  * @param {number} studentId - 学员ID
  * @param {number} coachId - 教练ID
  * @param {number} relationId - 师生关系ID
+ * @param {number} [deductLessonsPerUse=1] - 单次销课扣减课时数
  * @returns {Promise<StudentCardInstance>} 卡片实例
  */
-StudentCardInstance.createFromTemplate = async function(coachCard, studentId, coachId, relationId) {
+StudentCardInstance.createFromTemplate = async function(coachCard, studentId, coachId, relationId, deductLessonsPerUse = 1) {
   return await this.create({
     coach_card_id: coachCard.id,
     student_id: studentId,
     coach_id: coachId,
     relation_id: relationId,
-    total_lessons: coachCard.card_lessons, // 直接使用模板的课时数
+    total_lessons: coachCard.card_lessons,
     remaining_lessons: coachCard.card_lessons,
-    valid_days: coachCard.valid_days, // 保存有效天数
-    expire_date: null, // 开卡时才计算到期日期
-    card_status: 0, // 默认未开启
-    used_count: 0
+    valid_days: coachCard.valid_days,
+    expire_date: null,
+    card_status: 0,
+    used_count: 0,
+    deduct_lessons_per_use: deductLessonsPerUse > 0 ? deductLessonsPerUse : 1
   });
 };
 

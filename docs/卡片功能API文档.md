@@ -202,7 +202,8 @@ Content-Type: application/json
 {
   "student_id": 123,
   "relation_id": 456,
-  "coach_card_id": 789  // 选择的卡片模板ID
+  "coach_card_id": 789,
+  "deduct_lessons_per_use": 2  // 可选，单次销课扣减课时数，默认 1
 }
 ```
 
@@ -210,6 +211,7 @@ Content-Type: application/json
 - 课时数和有效期自动从模板复制
 - 有效期 = 当前日期 + 模板的 valid_days
 - 默认状态为"未开启"
+- `deduct_lessons_per_use`：每次预约完成或团课签到时从卡内扣除的课时数，最小值为 1。适用于「一次带多人上课」场景，教练可按实际人数配置
 
 **响应示例：**
 ```json
@@ -223,6 +225,7 @@ Content-Type: application/json
     "total_lessons": 30,
     "remaining_lessons": 30,
     "used_count": 0,
+    "deduct_lessons_per_use": 2,
     "expire_date": "2025-12-22",
     "card_status": 0,
     "card_status_text": "未开启",
@@ -424,9 +427,9 @@ Content-Type: application/json
 
 **说明：**
 - 根据 `booking_type` 自动判断扣除来源
-- `booking_type=2`：从卡片实例扣除课时
+- `booking_type=2`：从卡片实例扣除课时，扣除数量 = 卡实例的 `deduct_lessons_per_use`
 - `booking_type=1`：从分类课时扣除课时（原有逻辑）
-- 无限次数卡片只增加使用次数，不扣除课时
+- 无限次数卡片只增加 `used_count`（增量为 `deduct_lessons_per_use`），不扣除课时
 
 ---
 
@@ -467,6 +470,16 @@ Content-Type: application/json
 
 - 模板被删除后，已发放的卡片实例仍可正常使用
 - 查询卡片实例时，即使模板已删除，仍可获取模板信息
+
+### 7. 单次销课扣减课时（deduct_lessons_per_use）
+
+- 默认值为 1，与历史行为完全兼容
+- 教练在为学员添加卡片实例时配置，也可通过 `PUT /api/h5/card-instances/:id` 修改
+- 适用场景：学员每次带 N 人上课，一张卡按 N 倍课时计费
+- 作用范围：
+  - 一对一预约（`booking_type=2`）完成/补录完成时，扣减 N 课时
+  - 团课报名（`payment_type=4`）签到时，扣减 N 课时（不影响团课参与人数统计）
+- 可用课时校验：系统会提前验证剩余课时 >= `deduct_lessons_per_use` 才允许预约/报名
 
 ---
 

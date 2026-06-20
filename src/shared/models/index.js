@@ -294,6 +294,17 @@ CourseBooking.belongsTo(StudentCardInstance, {
   as: 'cardInstance' 
 });
 
+// GroupCourseRegistration 与 StudentCardInstance 的关联
+StudentCardInstance.hasMany(GroupCourseRegistration, {
+  foreignKey: 'card_instance_id',
+  as: 'groupCourseRegistrations'
+});
+
+GroupCourseRegistration.belongsTo(StudentCardInstance, {
+  foreignKey: 'card_instance_id',
+  as: 'cardInstance'
+});
+
 // User 与 Donation 的关联
 User.hasMany(Donation, { 
   foreignKey: 'user_id', 

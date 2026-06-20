@@ -213,11 +213,12 @@ GET /api/h5/group-courses?status=[0,1]
     "duration": 90,
     "max_participants": 10,
     "current_participants": 3,
-    "price_type": 1,
+    "price_type": 4,
     "lesson_cost": 1,
     "enrollment_scope": 1,
     "status": 1,
     "end_reason": null,
+    "deduct_lessons_per_use": 2,
     "coach": {
       "id": 123,
       "nickname": "张教练",
@@ -607,7 +608,9 @@ Content-Type: application/json
 ### 签到流程
 
 1. **权限验证**：只有教练可以为学员签到
-2. **课时扣除**：签到时扣除对应分类的课时
+2. **课时扣除**：
+   - `payment_type=1`（分类课时）：签到时扣除 `lesson_cost` 课时
+   - `payment_type=4`（课程卡）：签到时按该学员卡实例的 `deduct_lessons_per_use` 扣减，**不使用** 团课的 `lesson_cost`
 3. **状态更新**：更新签到状态和报名状态为已完成
 
 ### 数据约束
@@ -618,6 +621,7 @@ Content-Type: application/json
 2. **最小最大人数约束**：`min_participants <= max_participants`
 3. **时间顺序约束**：`start_time < end_time`
 4. **课时费用约束**：扣课时类型必须设置 `lesson_cost > 0`
+5. **课程卡扣减规则**：`price_type=4` 时，签到实际扣减由学员卡实例的 `deduct_lessons_per_use` 决定（非团课 `lesson_cost`）；`deduct_lessons_per_use` 由教练发卡时配置，默认为 1
 5. **金额费用约束**：金额类型必须设置 `price_amount > 0`
 
 ## 错误码说明
