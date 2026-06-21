@@ -274,7 +274,7 @@ class RelationController {
   static updateRelation = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
-    const { coach_remark, student_remark, category_lessons, remaining_lessons, student_name } = req.body;
+    const { coach_remark, student_remark, category_lessons, remaining_lessons, student_name, gender, height, weight, birthday } = req.body;
 
     try {
       const relation = await StudentCoachRelation.findOne({
@@ -295,9 +295,35 @@ class RelationController {
 
       // 根据用户角色确定可以更新的字段
       if (relation.coach_id === userId) {
-        // 教练可以更新教练备注、学员姓名和分类课时
+        // 教练可以更新教练备注、学员姓名、档案信息和分类课时
         if (coach_remark !== undefined) updateData.coach_remark = coach_remark;
         if (student_name !== undefined) updateData.student_name = student_name;
+
+        // 学员档案字段校验与更新
+        if (gender !== undefined) {
+          if (gender !== null && ![0, 1, 2].includes(Number(gender))) {
+            return ResponseUtil.validationError(res, 'gender 值无效，应为 0（未知）、1（男）或 2（女）');
+          }
+          updateData.gender = gender === null ? null : Number(gender);
+        }
+        if (height !== undefined) {
+          if (height !== null && (isNaN(Number(height)) || Number(height) <= 0 || Number(height) > 300)) {
+            return ResponseUtil.validationError(res, 'height 值无效，应为 0~300 之间的数字（cm）');
+          }
+          updateData.height = height === null ? null : Number(height);
+        }
+        if (weight !== undefined) {
+          if (weight !== null && (isNaN(Number(weight)) || Number(weight) <= 0 || Number(weight) > 500)) {
+            return ResponseUtil.validationError(res, 'weight 值无效，应为 0~500 之间的数字（kg）');
+          }
+          updateData.weight = weight === null ? null : Number(weight);
+        }
+        if (birthday !== undefined) {
+          if (birthday !== null && !moment(birthday, 'YYYY-MM-DD', true).isValid()) {
+            return ResponseUtil.validationError(res, 'birthday 格式错误，应为 YYYY-MM-DD');
+          }
+          updateData.birthday = birthday;
+        }
         
         // 处理分类课时更新
         if (category_lessons && Array.isArray(category_lessons)) {

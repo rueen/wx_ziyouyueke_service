@@ -32,6 +32,30 @@ const StudentCoachRelation = sequelize.define('student_coach_relations', {
     allowNull: true,
     comment: '学员姓名（教练可维护）'
   },
+  gender: {
+    type: DataTypes.TINYINT(1),
+    allowNull: true,
+    defaultValue: null,
+    comment: '性别：0-未知，1-男，2-女（教练可维护）'
+  },
+  height: {
+    type: DataTypes.DECIMAL(5, 1),
+    allowNull: true,
+    defaultValue: null,
+    comment: '身高（cm，教练可维护）'
+  },
+  weight: {
+    type: DataTypes.DECIMAL(5, 1),
+    allowNull: true,
+    defaultValue: null,
+    comment: '体重（kg，教练可维护）'
+  },
+  birthday: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    defaultValue: null,
+    comment: '生日（YYYY-MM-DD，教练可维护）'
+  },
   lessons: {
     type: DataTypes.JSON,
     allowNull: false,
