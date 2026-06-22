@@ -1,7 +1,7 @@
 const { LessonChangeLog, StudentCoachRelation, User } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
-const { Op, literal } = require('sequelize');
+const { Op } = require('sequelize');
 
 /**
  * 课时变动日志控制器
@@ -71,7 +71,7 @@ class LessonChangeLogController {
       if ([1, 2, 3].includes(ct)) where.change_type = ct;
     }
 
-    // 时间范围筛选（使用 DB 列名 created_at，与模型 createdAt 映射一致）
+    // 时间范围筛选
     if (start_date || end_date) {
       where.created_at = {};
       if (start_date) where.created_at[Op.gte] = new Date(`${start_date}T00:00:00+08:00`);
@@ -80,7 +80,7 @@ class LessonChangeLogController {
 
     const { count, rows } = await LessonChangeLog.findAndCountAll({
       where,
-      subQuery: false, // 禁止子查询，避免 Sequelize 子查询场景下列名映射问题
+      subQuery: false,
       include: [
         {
           model: User,
@@ -95,7 +95,7 @@ class LessonChangeLogController {
           required: false
         }
       ],
-      order: [[literal('`lesson_change_logs`.`created_at`'), 'DESC']],
+      order: [['created_at', 'DESC']],
       limit: pageSize,
       offset
     });
@@ -116,7 +116,7 @@ class LessonChangeLogController {
       unit_price: log.unit_price !== null && log.unit_price !== undefined ? parseFloat(log.unit_price) : null,
       operator_id: log.operator_id,
       remark: log.remark,
-      created_at: log.createdAt
+      created_at: log.created_at
     }));
 
     return ResponseUtil.success(res, {
