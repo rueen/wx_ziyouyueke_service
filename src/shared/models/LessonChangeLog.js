@@ -80,7 +80,8 @@ const LessonChangeLog = sequelize.define('lesson_change_logs', {
 }, {
   tableName: 'lesson_change_logs',
   comment: '常规课课时变动日志表',
-  updatedAt: false, // 只有 created_at，无需 updated_at
+  createdAt: 'created_at', // DB 列名为 created_at，显式声明避免 subQuery 中列名不匹配
+  updatedAt: false,
   indexes: [
     {
       fields: ['relation_id'],
@@ -99,7 +100,7 @@ const LessonChangeLog = sequelize.define('lesson_change_logs', {
       name: 'idx_change_type'
     },
     {
-      fields: ['createdAt'],
+      fields: ['created_at'],
       name: 'idx_created_at'
     }
   ]
