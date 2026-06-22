@@ -260,20 +260,17 @@
 
 ### 3.3 GET /api/h5/lesson-change-logs — 课时变动日志
 
-> 教练可查自己名下所有学员的日志；学员只能查自己的日志。
-
 **Query 参数：**
 
-| 参数 | 类型 | 说明 |
-|---|---|---|
-| `relation_id` | number | 按师生关系筛选 |
-| `student_id` | number | 按学员筛选（仅教练有效） |
-| `category_id` | number | 按课程分类筛选 |
-| `change_type` | 1\|2\|3 | 变动类型：1-增加，2-减少，3-清零 |
-| `start_date` | string | 起始日期 `YYYY-MM-DD` |
-| `end_date` | string | 截止日期 `YYYY-MM-DD` |
-| `page` | number | 页码，默认 1 |
-| `limit` | number | 每页条数，默认 20，最大 100 |
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `relation_id` | number | ✅ | 师生关系ID |
+| `category_id` | number | | 按课程分类筛选 |
+| `change_type` | 1\|2\|3 | | 变动类型：1-增加，2-减少，3-清零 |
+| `start_date` | string | | 起始日期 `YYYY-MM-DD` |
+| `end_date` | string | | 截止日期 `YYYY-MM-DD` |
+| `page` | number | | 页码，默认 1 |
+| `limit` | number | | 每页条数，默认 20，最大 100 |
 
 **响应示例：**
 ```json

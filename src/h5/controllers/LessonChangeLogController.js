@@ -11,11 +11,7 @@ class LessonChangeLogController {
    * 查询课时变动日志
    * @route GET /api/h5/lesson-change-logs
    *
-   * 教练：可查自己名下所有学员的日志
-   * 学员：可查自己的日志
-   *
-   * @queryParam {number} [relation_id] - 按师生关系筛选
-   * @queryParam {number} [student_id] - 按学员筛选（教练权限）
+   * @queryParam {number} relation_id - 师生关系ID（必传）
    * @queryParam {number} [category_id] - 按课程分类筛选
    * @queryParam {1|2|3} [change_type] - 变动类型：1-增加，2-减少，3-清零
    * @queryParam {string} [start_date] - 起始日期 YYYY-MM-DD（含）
@@ -27,7 +23,6 @@ class LessonChangeLogController {
     const userId = req.user.id;
     const {
       relation_id,
-      student_id,
       category_id,
       change_type,
       start_date,
@@ -36,29 +31,16 @@ class LessonChangeLogController {
       limit = 20
     } = req.query;
 
+    if (!relation_id) {
+      return ResponseUtil.validationError(res, 'relation_id 为必传参数');
+    }
+
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
     const offset = (pageNum - 1) * pageSize;
 
     /** @type {import('sequelize').WhereOptions} */
-    const where = {};
-
-    // 权限判断：检查当前用户是否作为教练存在于师生关系中
-    const coachRelation = await StudentCoachRelation.findOne({
-      where: { coach_id: userId },
-      attributes: ['id']
-    });
-    const isCoach = !!coachRelation;
-
-    if (isCoach) {
-      where.coach_id = userId;
-      if (student_id) where.student_id = parseInt(student_id, 10);
-    } else {
-      where.student_id = userId;
-    }
-
-    // 师生关系筛选
-    if (relation_id) where.relation_id = parseInt(relation_id, 10);
+    const where = { relation_id: parseInt(relation_id, 10) };
 
     // 课程分类筛选
     if (category_id !== undefined && category_id !== '') {
