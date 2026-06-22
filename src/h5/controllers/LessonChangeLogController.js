@@ -1,7 +1,7 @@
 const { LessonChangeLog, StudentCoachRelation, User } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
-const { Op } = require('sequelize');
+const { Op, literal } = require('sequelize');
 
 /**
  * 课时变动日志控制器
@@ -71,15 +71,16 @@ class LessonChangeLogController {
       if ([1, 2, 3].includes(ct)) where.change_type = ct;
     }
 
-    // 时间范围筛选
+    // 时间范围筛选（使用 DB 列名 created_at，与模型 createdAt 映射一致）
     if (start_date || end_date) {
-      where.createdAt = {};
-      if (start_date) where.createdAt[Op.gte] = new Date(`${start_date}T00:00:00+08:00`);
-      if (end_date) where.createdAt[Op.lte] = new Date(`${end_date}T23:59:59+08:00`);
+      where.created_at = {};
+      if (start_date) where.created_at[Op.gte] = new Date(`${start_date}T00:00:00+08:00`);
+      if (end_date) where.created_at[Op.lte] = new Date(`${end_date}T23:59:59+08:00`);
     }
 
     const { count, rows } = await LessonChangeLog.findAndCountAll({
       where,
+      subQuery: false, // 禁止子查询，避免 Sequelize 子查询场景下列名映射问题
       include: [
         {
           model: User,
@@ -94,7 +95,7 @@ class LessonChangeLogController {
           required: false
         }
       ],
-      order: [['createdAt', 'DESC']],
+      order: [[literal('`lesson_change_logs`.`created_at`'), 'DESC']],
       limit: pageSize,
       offset
     });
