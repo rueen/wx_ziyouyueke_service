@@ -25,6 +25,7 @@ const CoachTag = require('./CoachTag');
 const RelationTag = require('./RelationTag');
 const TrainingRecordType = require('./TrainingRecordType');
 const TrainingRecord = require('./TrainingRecord');
+const LessonChangeLog = require('./LessonChangeLog');
 
 /**
  * 设置模型关联关系
@@ -480,6 +481,37 @@ TrainingRecord.belongsTo(User, {
   as: 'coach'
 });
 
+// LessonChangeLog 关联
+StudentCoachRelation.hasMany(LessonChangeLog, {
+  foreignKey: 'relation_id',
+  as: 'lessonChangeLogs'
+});
+
+LessonChangeLog.belongsTo(StudentCoachRelation, {
+  foreignKey: 'relation_id',
+  as: 'relation'
+});
+
+User.hasMany(LessonChangeLog, {
+  foreignKey: 'coach_id',
+  as: 'coachLessonChangeLogs'
+});
+
+User.hasMany(LessonChangeLog, {
+  foreignKey: 'student_id',
+  as: 'studentLessonChangeLogs'
+});
+
+LessonChangeLog.belongsTo(User, {
+  foreignKey: 'coach_id',
+  as: 'coach'
+});
+
+LessonChangeLog.belongsTo(User, {
+  foreignKey: 'student_id',
+  as: 'student'
+});
+
 /**
  * 导出所有模型和Sequelize实例
  */
@@ -508,5 +540,6 @@ module.exports = {
   CoachTag,
   RelationTag,
   TrainingRecordType,
-  TrainingRecord
+  TrainingRecord,
+  LessonChangeLog
 }; 

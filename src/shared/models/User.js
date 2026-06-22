@@ -142,8 +142,11 @@ User.prototype.getNextCategoryId = function() {
 
 /**
  * 实例方法：添加课程分类
+ * @param {string} name - 分类名称
+ * @param {string} [desc=''] - 分类描述
+ * @param {number|null} [unitPrice=null] - 课单价（元/课时），null 表示未设置
  */
-User.prototype.addCourseCategory = function(name, desc) {
+User.prototype.addCourseCategory = function(name, desc, unitPrice = null) {
   const categories = [...(this.course_categories || [])];
   const newId = this.getNextCategoryId();
   
@@ -155,7 +158,8 @@ User.prototype.addCourseCategory = function(name, desc) {
   categories.push({
     id: newId,
     name: name,
-    desc: desc || ''
+    desc: desc || '',
+    unit_price: unitPrice !== null && unitPrice !== undefined ? parseFloat(unitPrice) : null
   });
   
   return this.update({ course_categories: categories });
@@ -163,8 +167,12 @@ User.prototype.addCourseCategory = function(name, desc) {
 
 /**
  * 实例方法：更新课程分类
+ * @param {number} categoryId - 分类ID
+ * @param {string} name - 分类名称
+ * @param {string} [desc=''] - 分类描述
+ * @param {number|null|undefined} [unitPrice=undefined] - 课单价（元/课时），undefined 表示不修改
  */
-User.prototype.updateCourseCategory = function(categoryId, name, desc) {
+User.prototype.updateCourseCategory = function(categoryId, name, desc, unitPrice = undefined) {
   const categories = [...(this.course_categories || [])];
   const categoryIndex = categories.findIndex(cat => cat.id === categoryId);
   
@@ -176,12 +184,18 @@ User.prototype.updateCourseCategory = function(categoryId, name, desc) {
   if (categories.some((cat, index) => cat.name === name && index !== categoryIndex)) {
     throw new Error('分类名称已存在');
   }
-  
-  categories[categoryIndex] = {
+
+  const updated = {
     ...categories[categoryIndex],
     name: name,
-    desc: desc || categories[categoryIndex].desc
+    desc: desc !== undefined ? desc : (categories[categoryIndex].desc || '')
   };
+
+  if (unitPrice !== undefined) {
+    updated.unit_price = unitPrice !== null ? parseFloat(unitPrice) : null;
+  }
+  
+  categories[categoryIndex] = updated;
   
   return this.update({ course_categories: categories });
 };

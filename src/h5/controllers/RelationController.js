@@ -1,4 +1,4 @@
-const { StudentCoachRelation, User, Plan, CoachTag, RelationTag } = require('../../shared/models');
+const { StudentCoachRelation, User, Plan, CoachTag, RelationTag, LessonChangeLog } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
@@ -338,6 +338,15 @@ class RelationController {
               return ResponseUtil.validationError(res, '日期格式错误，应为 YYYY-MM-DD');
             }
             
+            // 验证 unit_price 格式
+            if (lesson.unit_price !== undefined && lesson.unit_price !== null) {
+              const up = parseFloat(lesson.unit_price);
+              if (isNaN(up) || up < 0) {
+                return ResponseUtil.validationError(res, `分类 ${lesson.category_id} 的 unit_price 必须为非负数字`);
+              }
+              lesson.unit_price = up;
+            }
+
             // 初始化新字段
             if (lesson.is_cleared === undefined) {
               lesson.is_cleared = false;
@@ -350,7 +359,7 @@ class RelationController {
             }
           }
 
-          // 获取教练的分类信息，验证分类是否存在
+          // 获取教练的分类信息，验证分类是否存在并获取单价
           const coach = await User.findByPk(relation.coach_id);
           const categories = coach.course_categories || [];
           
@@ -361,12 +370,33 @@ class RelationController {
             }
           }
 
+          // 快照旧课时数据（用于写日志）
+          const oldLessons = relation.lessons ? JSON.parse(JSON.stringify(relation.lessons)) : [];
+
           // 使用特殊的更新方法确保JSON字段正确保存
           relation.lessons = category_lessons;
           relation.changed('lessons', true);
           updateData.lessons = category_lessons;
+
+          // 构建单价映射：优先使用 lesson.unit_price，否则取 coach.course_categories 中的单价
+          const unitPriceMap = category_lessons.map(lesson => {
+            const catDef = categories.find(c => Number(c.id) === Number(lesson.category_id));
+            const effectivePrice = lesson.unit_price !== undefined && lesson.unit_price !== null
+              ? lesson.unit_price
+              : (catDef && catDef.unit_price !== undefined && catDef.unit_price !== null ? catDef.unit_price : null);
+            return { category_id: lesson.category_id, unit_price: effectivePrice };
+          });
+
+          // 写课时变动日志（在保存后执行，此处仅准备参数）
+          updateData._lessonLogParams = {
+            oldLessons,
+            newLessons: category_lessons,
+            unitPriceMap,
+            operatorId: userId
+          };
         } else if (remaining_lessons !== undefined && typeof remaining_lessons === 'number' && remaining_lessons >= 0) {
           // 兼容处理：将 remaining_lessons 组装成默认分类格式
+          const oldLessons = relation.lessons ? JSON.parse(JSON.stringify(relation.lessons)) : [];
           const compatibleLessons = [{
             category_id: 0,
             remaining_lessons: remaining_lessons
@@ -376,6 +406,19 @@ class RelationController {
           relation.lessons = compatibleLessons;
           relation.changed('lessons', true);
           updateData.lessons = compatibleLessons;
+
+          // 获取默认分类单价
+          const coach = await User.findByPk(relation.coach_id);
+          const categories = coach.course_categories || [];
+          const defaultCat = categories.find(c => Number(c.id) === 0);
+          const unitPriceMap = [{ category_id: 0, unit_price: defaultCat ? defaultCat.unit_price || null : null }];
+
+          updateData._lessonLogParams = {
+            oldLessons,
+            newLessons: compatibleLessons,
+            unitPriceMap,
+            operatorId: userId
+          };
         }
       }
 
@@ -387,6 +430,10 @@ class RelationController {
       if (Object.keys(updateData).length === 0) {
         return ResponseUtil.validationError(res, '没有可更新的字段');
       }
+
+      // 提取日志参数（不入库，避免写入 lessons 字段）
+      const lessonLogParams = updateData._lessonLogParams;
+      delete updateData._lessonLogParams;
 
       // 如果包含lessons字段更新，使用save方法确保JSON字段正确保存
       if (updateData.lessons) {
@@ -401,8 +448,27 @@ class RelationController {
         // 没有lessons字段更新，使用普通update方法
         await relation.update(updateData);
       }
+
+      // 写课时变动日志
+      if (lessonLogParams) {
+        try {
+          await LessonChangeLog.createFromDiff(
+            lessonLogParams.oldLessons,
+            lessonLogParams.newLessons,
+            {
+              relationId: relation.id,
+              coachId: relation.coach_id,
+              studentId: relation.student_id || null,
+              operatorId: lessonLogParams.operatorId,
+              unitPriceMap: lessonLogParams.unitPriceMap
+            }
+          );
+        } catch (logErr) {
+          logger.error('课时变动日志写入失败:', { relationId: id, error: logErr.message, stack: logErr.stack });
+        }
+      }
       
-      logger.info('师生关系更新:', { relationId: id, userId, updateData });
+      logger.info('师生关系更新:', { relationId: id, userId });
 
       return ResponseUtil.success(res, relation, '师生关系更新成功');
     } catch (error) {

@@ -54,6 +54,12 @@ const StudentCardInstance = sequelize.define('student_card_instances', {
     defaultValue: 1,
     comment: '单次销课扣减课时数：每次预约完成或团课签到时从卡内扣除的课时数，默认 1'
   },
+  unit_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: null,
+    comment: '实例覆盖单价（元/课时），NULL 则使用模板单价'
+  },
   expire_date: {
     type: DataTypes.DATEONLY,
     allowNull: true,
@@ -363,6 +369,9 @@ StudentCardInstance.prototype.getSummary = async function() {
     remaining_lessons: this.remaining_lessons,
     used_count: this.used_count,
     deduct_lessons_per_use: this.deduct_lessons_per_use || 1,
+    unit_price: this.unit_price !== null && this.unit_price !== undefined
+      ? parseFloat(this.unit_price)
+      : (template ? parseFloat(template.unit_price || 0) : 0),
     valid_days: this.valid_days,
     expire_date: this.expire_date,
     card_status: this.card_status,
@@ -395,9 +404,10 @@ StudentCardInstance.prototype.getStatusText = function() {
  * @param {number} coachId - 教练ID
  * @param {number} relationId - 师生关系ID
  * @param {number} [deductLessonsPerUse=1] - 单次销课扣减课时数
+ * @param {number|null} [unitPrice=null] - 覆盖单价（null 则继承模板单价）
  * @returns {Promise<StudentCardInstance>} 卡片实例
  */
-StudentCardInstance.createFromTemplate = async function(coachCard, studentId, coachId, relationId, deductLessonsPerUse = 1) {
+StudentCardInstance.createFromTemplate = async function(coachCard, studentId, coachId, relationId, deductLessonsPerUse = 1, unitPrice = null) {
   return await this.create({
     coach_card_id: coachCard.id,
     student_id: studentId,
@@ -409,7 +419,8 @@ StudentCardInstance.createFromTemplate = async function(coachCard, studentId, co
     expire_date: null,
     card_status: 0,
     used_count: 0,
-    deduct_lessons_per_use: deductLessonsPerUse > 0 ? deductLessonsPerUse : 1
+    deduct_lessons_per_use: deductLessonsPerUse > 0 ? deductLessonsPerUse : 1,
+    unit_price: unitPrice !== null && unitPrice !== undefined ? parseFloat(unitPrice) : null
   });
 };
 

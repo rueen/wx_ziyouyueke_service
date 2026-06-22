@@ -41,6 +41,12 @@ const CoachCard = sequelize.define('coach_cards', {
     allowNull: true,
     comment: '卡片描述'
   },
+  unit_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    comment: '卡片课单价（元/课时），默认 0'
+  },
   is_active: {
     type: DataTypes.TINYINT(1),
     allowNull: false,
@@ -136,6 +142,7 @@ CoachCard.prototype.getSummary = function() {
     card_lessons: this.card_lessons,
     valid_days: this.valid_days,
     card_desc: this.card_desc,
+    unit_price: this.unit_price !== null && this.unit_price !== undefined ? parseFloat(this.unit_price) : 0,
     is_active: this.is_active,
     is_unlimited: this.card_lessons === null,
     createdAt: this.createdAt,

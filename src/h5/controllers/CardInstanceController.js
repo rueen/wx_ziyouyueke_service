@@ -18,7 +18,8 @@ class CardInstanceController {
       student_id,
       relation_id,
       coach_card_id,
-      deduct_lessons_per_use = 1
+      deduct_lessons_per_use = 1,
+      unit_price
     } = req.body;
 
     // 参数验证
@@ -29,6 +30,15 @@ class CardInstanceController {
     const deductNum = parseInt(deduct_lessons_per_use, 10);
     if (!Number.isInteger(deductNum) || deductNum < 1) {
       return ResponseUtil.validationError(res, '单次销课扣减课时数必须为大于 0 的整数');
+    }
+
+    // 验证课单价（可选，null=继承模板）
+    let parsedUnitPrice = null;
+    if (unit_price !== undefined && unit_price !== null) {
+      parsedUnitPrice = parseFloat(unit_price);
+      if (isNaN(parsedUnitPrice) || parsedUnitPrice < 0) {
+        return ResponseUtil.validationError(res, 'unit_price 必须为非负数字');
+      }
     }
 
     // 验证师生关系
@@ -64,7 +74,8 @@ class CardInstanceController {
       student_id, 
       coachId, 
       relation_id,
-      deductNum
+      deductNum,
+      parsedUnitPrice
     );
 
     logger.info('卡片实例创建成功:', {
@@ -233,10 +244,10 @@ class CardInstanceController {
   static updateInstance = asyncHandler(async (req, res) => {
     const coachId = req.user.id;
     const { id } = req.params;
-    const { expire_date, deduct_lessons_per_use } = req.body;
+    const { expire_date, deduct_lessons_per_use, unit_price } = req.body;
 
-    if (!expire_date && deduct_lessons_per_use === undefined) {
-      return ResponseUtil.validationError(res, '缺少修改内容，目前支持修改：expire_date、deduct_lessons_per_use');
+    if (!expire_date && deduct_lessons_per_use === undefined && unit_price === undefined) {
+      return ResponseUtil.validationError(res, '缺少修改内容，目前支持修改：expire_date、deduct_lessons_per_use、unit_price');
     }
 
     const moment = require('moment-timezone');
@@ -247,6 +258,19 @@ class CardInstanceController {
       deductNum = parseInt(deduct_lessons_per_use, 10);
       if (!Number.isInteger(deductNum) || deductNum < 1) {
         return ResponseUtil.validationError(res, '单次销课扣减课时数必须为大于 0 的整数');
+      }
+    }
+
+    // 校验 unit_price
+    let parsedUnitPrice;
+    if (unit_price !== undefined) {
+      if (unit_price === null) {
+        parsedUnitPrice = null; // 允许清空以继承模板单价
+      } else {
+        parsedUnitPrice = parseFloat(unit_price);
+        if (isNaN(parsedUnitPrice) || parsedUnitPrice < 0) {
+          return ResponseUtil.validationError(res, 'unit_price 必须为非负数字');
+        }
       }
     }
 
@@ -269,6 +293,11 @@ class CardInstanceController {
     // 处理 deduct_lessons_per_use 更新
     if (deductNum !== undefined) {
       updates.deduct_lessons_per_use = deductNum;
+    }
+
+    // 处理 unit_price 更新
+    if (parsedUnitPrice !== undefined) {
+      updates.unit_price = parsedUnitPrice;
     }
 
     // 处理 expire_date 更新

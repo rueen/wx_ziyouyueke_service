@@ -31,6 +31,8 @@ const coachSettingRoutes = require('./coachSetting');
 const tagRoutes = require('./tags');
 const trainingRecordTypeRoutes = require('./trainingRecordType');
 const trainingRecordRoutes = require('./trainingRecord');
+const statRoutes = require('./stat');
+const lessonChangeLogRoutes = require('./lessonChangeLog');
 
 /**
  * H5端路由配置
@@ -111,5 +113,11 @@ router.use('/training-record-types', trainingRecordTypeRoutes);
 
 // 训练记录路由
 router.use('/training-records', trainingRecordRoutes);
+
+// 数据统计路由
+router.use('/stats', statRoutes);
+
+// 课时变动日志路由
+router.use('/lesson-change-logs', lessonChangeLogRoutes);
 
 module.exports = router;

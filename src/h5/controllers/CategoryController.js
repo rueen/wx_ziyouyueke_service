@@ -36,7 +36,7 @@ class CategoryController {
    */
   static addCategory = asyncHandler(async (req, res) => {
     const { userId } = req;
-    const { name, desc = '' } = req.body;
+    const { name, desc = '', unit_price } = req.body;
 
     try {
       // 参数验证
@@ -52,6 +52,14 @@ class CategoryController {
         return ResponseUtil.validationError(res, '分类描述不能超过200个字符');
       }
 
+      let parsedUnitPrice = null;
+      if (unit_price !== undefined && unit_price !== null) {
+        parsedUnitPrice = parseFloat(unit_price);
+        if (isNaN(parsedUnitPrice) || parsedUnitPrice < 0) {
+          return ResponseUtil.validationError(res, 'unit_price 必须为非负数字');
+        }
+      }
+
       // 获取用户信息
       const user = await User.findByPk(userId);
       if (!user) {
@@ -59,7 +67,7 @@ class CategoryController {
       }
 
       // 添加分类
-      await user.addCourseCategory(name.trim(), desc.trim());
+      await user.addCourseCategory(name.trim(), desc.trim(), parsedUnitPrice);
       
       // 获取新添加的分类ID
       const updatedUser = await User.findByPk(userId);
@@ -104,7 +112,7 @@ class CategoryController {
   static updateCategory = asyncHandler(async (req, res) => {
     const { userId } = req;
     const categoryId = parseInt(req.params.id);
-    const { name, desc = '' } = req.body;
+    const { name, desc, unit_price } = req.body;
 
     try {
       // 参数验证
@@ -120,8 +128,21 @@ class CategoryController {
         return ResponseUtil.validationError(res, '分类名称不能超过50个字符');
       }
 
-      if (desc && desc.length > 200) {
+      if (desc !== undefined && desc && desc.length > 200) {
         return ResponseUtil.validationError(res, '分类描述不能超过200个字符');
+      }
+
+      // unit_price：undefined=不修改，null=清空，数字=设置
+      let parsedUnitPrice = undefined;
+      if (unit_price !== undefined) {
+        if (unit_price === null) {
+          parsedUnitPrice = null;
+        } else {
+          parsedUnitPrice = parseFloat(unit_price);
+          if (isNaN(parsedUnitPrice) || parsedUnitPrice < 0) {
+            return ResponseUtil.validationError(res, 'unit_price 必须为非负数字');
+          }
+        }
       }
 
       // 获取用户信息
@@ -131,7 +152,7 @@ class CategoryController {
       }
 
       // 更新分类
-      await user.updateCourseCategory(categoryId, name.trim(), desc.trim());
+      await user.updateCourseCategory(categoryId, name.trim(), desc !== undefined ? desc.trim() : undefined, parsedUnitPrice);
       
       // 获取更新后的分类信息
       const updatedUser = await User.findByPk(userId);

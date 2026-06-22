@@ -64,6 +64,12 @@ const CourseBooking = sequelize.define('course_bookings', {
     allowNull: true,
     comment: '使用的卡片实例ID（如果约课时选择了卡片类型）'
   },
+  lesson_deducted: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    defaultValue: null,
+    comment: '完成时实际扣减课时数快照；普通课=1，卡片课=deduct_lessons_per_use；NULL=历史老数据'
+  },
   booking_type: {
     type: DataTypes.TINYINT(1),
     allowNull: false,

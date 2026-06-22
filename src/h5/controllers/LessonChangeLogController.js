@@ -1,0 +1,133 @@
+const { LessonChangeLog, StudentCoachRelation, User } = require('../../shared/models');
+const { asyncHandler } = require('../../shared/middlewares/errorHandler');
+const ResponseUtil = require('../../shared/utils/response');
+const { Op } = require('sequelize');
+
+/**
+ * 课时变动日志控制器
+ */
+class LessonChangeLogController {
+  /**
+   * 查询课时变动日志
+   * @route GET /api/h5/lesson-change-logs
+   *
+   * 教练：可查自己名下所有学员的日志
+   * 学员：可查自己的日志
+   *
+   * @queryParam {number} [relation_id] - 按师生关系筛选
+   * @queryParam {number} [student_id] - 按学员筛选（教练权限）
+   * @queryParam {number} [category_id] - 按课程分类筛选
+   * @queryParam {1|2|3} [change_type] - 变动类型：1-增加，2-减少，3-清零
+   * @queryParam {string} [start_date] - 起始日期 YYYY-MM-DD（含）
+   * @queryParam {string} [end_date] - 截止日期 YYYY-MM-DD（含）
+   * @queryParam {number} [page=1] - 页码
+   * @queryParam {number} [limit=20] - 每页条数（最大 100）
+   */
+  static getLogs = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const {
+      relation_id,
+      student_id,
+      category_id,
+      change_type,
+      start_date,
+      end_date,
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const offset = (pageNum - 1) * pageSize;
+
+    /** @type {import('sequelize').WhereOptions} */
+    const where = {};
+
+    // 权限判断：检查当前用户是否作为教练存在于师生关系中
+    const coachRelation = await StudentCoachRelation.findOne({
+      where: { coach_id: userId },
+      attributes: ['id']
+    });
+    const isCoach = !!coachRelation;
+
+    if (isCoach) {
+      where.coach_id = userId;
+      if (student_id) where.student_id = parseInt(student_id, 10);
+    } else {
+      where.student_id = userId;
+    }
+
+    // 师生关系筛选
+    if (relation_id) where.relation_id = parseInt(relation_id, 10);
+
+    // 课程分类筛选
+    if (category_id !== undefined && category_id !== '') {
+      where.category_id = parseInt(category_id, 10);
+    }
+
+    // 变动类型筛选
+    if (change_type) {
+      const ct = parseInt(change_type, 10);
+      if ([1, 2, 3].includes(ct)) where.change_type = ct;
+    }
+
+    // 时间范围筛选
+    if (start_date || end_date) {
+      where.createdAt = {};
+      if (start_date) where.createdAt[Op.gte] = new Date(`${start_date}T00:00:00+08:00`);
+      if (end_date) where.createdAt[Op.lte] = new Date(`${end_date}T23:59:59+08:00`);
+    }
+
+    const { count, rows } = await LessonChangeLog.findAndCountAll({
+      where,
+      include: [
+        {
+          model: User,
+          as: 'student',
+          attributes: ['id', 'nickname', 'avatar_url'],
+          required: false
+        },
+        {
+          model: StudentCoachRelation,
+          as: 'relation',
+          attributes: ['id', 'student_name'],
+          required: false
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: pageSize,
+      offset
+    });
+
+    const list = rows.map(log => ({
+      id: log.id,
+      relation_id: log.relation_id,
+      coach_id: log.coach_id,
+      student_id: log.student_id,
+      student_name: log.relation ? log.relation.student_name : (log.student ? log.student.nickname : null),
+      student_avatar: log.student ? log.student.avatar_url : null,
+      category_id: log.category_id,
+      change_type: log.change_type,
+      change_type_text: { 1: '增加', 2: '减少', 3: '清零' }[log.change_type] || '未知',
+      before_lessons: log.before_lessons,
+      after_lessons: log.after_lessons,
+      change_amount: log.change_amount,
+      unit_price: log.unit_price !== null && log.unit_price !== undefined ? parseFloat(log.unit_price) : null,
+      operator_id: log.operator_id,
+      remark: log.remark,
+      created_at: log.createdAt
+    }));
+
+    return ResponseUtil.success(res, {
+      list,
+      pagination: {
+        total: count,
+        page: pageNum,
+        limit: pageSize,
+        total_pages: Math.ceil(count / pageSize)
+      }
+    }, '获取课时变动日志成功');
+  });
+}
+
+module.exports = LessonChangeLogController;

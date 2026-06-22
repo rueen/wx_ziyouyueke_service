@@ -43,7 +43,8 @@ class CoachCardController {
       card_color, 
       card_lessons, // null 表示无限次数
       valid_days,
-      card_desc 
+      card_desc,
+      unit_price
     } = req.body;
 
     // 参数验证
@@ -63,6 +64,15 @@ class CoachCardController {
       }
     }
 
+    // 验证课单价
+    let parsedUnitPrice = 0;
+    if (unit_price !== undefined && unit_price !== null) {
+      parsedUnitPrice = parseFloat(unit_price);
+      if (isNaN(parsedUnitPrice) || parsedUnitPrice < 0) {
+        return ResponseUtil.validationError(res, 'unit_price 必须为非负数字');
+      }
+    }
+
     // 创建卡片模板
     const card = await CoachCard.create({
       coach_id: coachId,
@@ -71,6 +81,7 @@ class CoachCardController {
       card_lessons: card_lessons || null, // 如果为空或0，设为null表示无限次数
       valid_days,
       card_desc: card_desc || null,
+      unit_price: parsedUnitPrice,
       is_active: 1 // 默认启用
     });
 
@@ -95,7 +106,8 @@ class CoachCardController {
       card_color, 
       card_lessons,
       valid_days,
-      card_desc 
+      card_desc,
+      unit_price
     } = req.body;
 
     const card = await CoachCard.findOne({
@@ -121,6 +133,13 @@ class CoachCardController {
       updateData.valid_days = valid_days;
     }
     if (card_desc !== undefined) updateData.card_desc = card_desc;
+    if (unit_price !== undefined) {
+      const up = parseFloat(unit_price);
+      if (isNaN(up) || up < 0) {
+        return ResponseUtil.validationError(res, 'unit_price 必须为非负数字');
+      }
+      updateData.unit_price = up;
+    }
 
     if (Object.keys(updateData).length === 0) {
       return ResponseUtil.validationError(res, '没有可更新的字段');

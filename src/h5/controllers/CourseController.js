@@ -1,4 +1,4 @@
-const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address, StudentCardInstance, OperationLog, CancellationSetting, sequelize } = require('../../shared/models');
+const { User, CourseBooking, StudentCoachRelation, TimeTemplate, Address, StudentCardInstance, OperationLog, CancellationSetting, LessonChangeLog, sequelize } = require('../../shared/models');
 const { asyncHandler } = require('../../shared/middlewares/errorHandler');
 const ResponseUtil = require('../../shared/utils/response');
 const logger = require('../../shared/utils/logger');
@@ -951,6 +951,7 @@ class CourseController {
       }
 
       // 根据预约类型扣除课时
+      let lessonDeductedSnapshot = null;
       if (course.booking_type === 2 && course.card_instance_id) {
         // 卡片课程 - 从卡片中扣除
         const cardInstance = await StudentCardInstance.findByPk(course.card_instance_id, { transaction: t });
@@ -961,7 +962,9 @@ class CourseController {
         }
 
         try {
+          const deductCount = cardInstance.deduct_lessons_per_use || 1;
           await cardInstance.deductLesson(t);
+          lessonDeductedSnapshot = deductCount;
           logger.info('卡片课时扣除:', {
             cardInstanceId: cardInstance.id,
             courseId: id,
@@ -997,6 +1000,31 @@ class CourseController {
                 categoryId: targetCategoryId,
                 remainingLessons: categoryLessons - 1
               });
+
+              // 写课时变动日志
+              try {
+                const coach = await User.findByPk(course.coach_id);
+                const categories = coach ? (coach.course_categories || []) : [];
+                const catDef = categories.find(c => Number(c.id) === Number(targetCategoryId));
+                const unitPrice = catDef && catDef.unit_price !== undefined && catDef.unit_price !== null
+                  ? catDef.unit_price
+                  : null;
+                await LessonChangeLog.createCourseLog({
+                  relationId: course.relation_id,
+                  coachId: course.coach_id,
+                  studentId: course.student_id,
+                  categoryId: targetCategoryId,
+                  changeType: 2,
+                  beforeLessons: categoryLessons,
+                  afterLessons: categoryLessons - 1,
+                  unitPrice,
+                  operatorId: userId,
+                  remark: '普通课完成消课',
+                  transaction: t
+                });
+              } catch (logErr) {
+                logger.warn('completeCourse 课时变动日志写入失败:', { courseId: id, error: logErr.message });
+              }
             } else {
               await t.rollback();
               return ResponseUtil.validationError(res, '该分类课时不足或已过期');
@@ -1014,10 +1042,16 @@ class CourseController {
         }
       }
 
-      // 更新课程状态为完成
+      // 补充普通课的 lesson_deducted
+      if (course.booking_type === 1) {
+        lessonDeductedSnapshot = 1;
+      }
+
+      // 更新课程状态为完成，写入 lesson_deducted 快照
       await course.update({
         booking_status: 3, // 已完成
-        complete_at: new Date()
+        complete_at: new Date(),
+        lesson_deducted: lessonDeductedSnapshot
       }, { transaction: t });
 
       await t.commit();
@@ -1068,6 +1102,7 @@ class CourseController {
       }
 
       // 根据预约类型扣除课时（与 completeCourse 逻辑一致）
+      let restoreLessonDeducted = null;
       if (course.booking_type === 2 && course.card_instance_id) {
         // 卡片课程 - 从卡片中扣除
         const cardInstance = await StudentCardInstance.findByPk(course.card_instance_id, { transaction: t });
@@ -1078,7 +1113,9 @@ class CourseController {
         }
 
         try {
+          const deductCount = cardInstance.deduct_lessons_per_use || 1;
           await cardInstance.deductLesson(t);
+          restoreLessonDeducted = deductCount;
           logger.info('补录完成-卡片课时扣除:', {
             cardInstanceId: cardInstance.id,
             courseId: id,
@@ -1106,12 +1143,38 @@ class CourseController {
             const categoryLessons = await relation.getCategoryLessons(targetCategoryId);
             if (categoryLessons > 0) {
               await relation.decreaseCategoryLessons(targetCategoryId, 1, t);
+              restoreLessonDeducted = 1;
               logger.info('补录完成-课时消耗（按分类）:', {
                 relationId: course.relation_id,
                 courseId: id,
                 categoryId: targetCategoryId,
                 remainingLessons: categoryLessons - 1
               });
+
+              // 写课时变动日志
+              try {
+                const coach = await User.findByPk(course.coach_id);
+                const categories = coach ? (coach.course_categories || []) : [];
+                const catDef = categories.find(c => Number(c.id) === Number(targetCategoryId));
+                const unitPrice = catDef && catDef.unit_price !== undefined && catDef.unit_price !== null
+                  ? catDef.unit_price
+                  : null;
+                await LessonChangeLog.createCourseLog({
+                  relationId: course.relation_id,
+                  coachId: course.coach_id,
+                  studentId: course.student_id,
+                  categoryId: targetCategoryId,
+                  changeType: 2,
+                  beforeLessons: categoryLessons,
+                  afterLessons: categoryLessons - 1,
+                  unitPrice,
+                  operatorId: userId,
+                  remark: '补录完成消课',
+                  transaction: t
+                });
+              } catch (logErr) {
+                logger.warn('restoreComplete 课时变动日志写入失败:', { courseId: id, error: logErr.message });
+              }
             } else {
               await t.rollback();
               return ResponseUtil.validationError(res, '该分类课时不足或已过期，请先为学员补充课时后再补录');
@@ -1129,14 +1192,15 @@ class CourseController {
         }
       }
 
-      // 更新课程状态为已完成，清除取消相关字段，标记为补录
+      // 更新课程状态为已完成，清除取消相关字段，标记为补录，写入 lesson_deducted 快照
       await course.update({
         booking_status: 3,
         complete_at: new Date(),
         cancel_reason: null,
         cancelled_at: null,
         cancelled_by: null,
-        is_supplementary: 1
+        is_supplementary: 1,
+        lesson_deducted: restoreLessonDeducted
       }, { transaction: t });
 
       await t.commit();
