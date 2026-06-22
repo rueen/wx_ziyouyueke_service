@@ -280,6 +280,13 @@ class StatController {
             as: 'coachCard',
             attributes: ['id', 'unit_price'],
             paranoid: false
+          },
+          {
+            model: StudentCoachRelation,
+            as: 'relation',
+            attributes: ['id', 'relation_status'],
+            required: true, // INNER JOIN，过滤掉关系已删除的卡片
+            where: { relation_status: 1 }
           }
         ]
       });
