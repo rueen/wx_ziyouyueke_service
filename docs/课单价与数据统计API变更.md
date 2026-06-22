@@ -258,39 +258,7 @@
 
 ---
 
-### 3.3 GET /api/h5/stats/growth — 新增统计
-
-> 仅教练可访问。
-
-**Query 参数：**
-
-| 参数 | 类型 | 说明 |
-|---|---|---|
-| `start_date` | string | 起始日期 `YYYY-MM-DD` |
-| `end_date` | string | 截止日期 `YYYY-MM-DD` |
-
-**响应示例：**
-```json
-{
-  "code": 0,
-  "data": {
-    "new_students": 5,
-    "new_card_lessons": 120,
-    "new_regular_lessons": 80
-  },
-  "message": "获取新增统计成功"
-}
-```
-
-| 字段 | 说明 |
-|---|---|
-| `new_students` | 时间范围内绑定的新学员数 |
-| `new_card_lessons` | 时间范围内新建卡片实例的课时总数 |
-| `new_regular_lessons` | 时间范围内常规课手动增加的课时总数（来自课时变动日志） |
-
----
-
-### 3.4 GET /api/h5/lesson-change-logs — 课时变动日志
+### 3.3 GET /api/h5/lesson-change-logs — 课时变动日志
 
 > 教练可查自己名下所有学员的日志；学员只能查自己的日志。
 

@@ -4,7 +4,6 @@ const {
   StudentCoachRelation,
   StudentCardInstance,
   CoachCard,
-  LessonChangeLog,
   User,
   sequelize
 } = require('../../shared/models');
@@ -300,9 +299,9 @@ class StatController {
         } else if (inst.coachCard && inst.coachCard.unit_price !== null) {
           unitPrice = parseFloat(inst.coachCard.unit_price || 0);
         }
-        // 未消课金额 = 剩余课时 / deductPerUse（可使用次数）× 每次单价
+        // 未消课金额 = 可使用次数 × 每次扣减课时数 × 课单价
         const usableTimes = deductPerUse > 0 ? Math.floor(remaining / deductPerUse) : 0;
-        remainingRevenue += usableTimes * unitPrice;
+        remainingRevenue += usableTimes * deductPerUse * unitPrice;
       }
     }
 
@@ -408,75 +407,6 @@ class StatController {
     return ResponseUtil.success(res, { list }, '获取消课排行榜成功');
   });
 
-  /**
-   * 新增统计（新增学员数、新增课时数、续课数）
-   * @route GET /api/h5/stats/growth
-   *
-   * @queryParam {string} [start_date] - 起始日期 YYYY-MM-DD
-   * @queryParam {string} [end_date] - 截止日期 YYYY-MM-DD
-   */
-  static getGrowth = asyncHandler(async (req, res) => {
-    const coachId = req.user.id;
-    const { start_date, end_date } = req.query;
-
-    const dateStart = start_date ? new Date(`${start_date}T00:00:00+08:00`) : null;
-    const dateEnd = end_date ? new Date(`${end_date}T23:59:59+08:00`) : null;
-
-    // === 1. 新增学员数 ===
-    const newStudentWhere = { coach_id: coachId };
-    if (dateStart || dateEnd) {
-      newStudentWhere.bind_time = {};
-      if (dateStart) newStudentWhere.bind_time[Op.gte] = dateStart;
-      if (dateEnd) newStudentWhere.bind_time[Op.lte] = dateEnd;
-    }
-    const newStudents = await StudentCoachRelation.count({ where: newStudentWhere });
-
-    // === 2. 新增卡片课时数 ===
-    const newCardWhere = { coach_id: coachId };
-    if (dateStart || dateEnd) {
-      newCardWhere.createdAt = {};
-      if (dateStart) newCardWhere.createdAt[Op.gte] = dateStart;
-      if (dateEnd) newCardWhere.createdAt[Op.lte] = dateEnd;
-    }
-    const cardInstances = await StudentCardInstance.findAll({
-      where: newCardWhere,
-      attributes: ['id', 'total_lessons'],
-    });
-
-    let newCardLessons = 0;
-
-    for (const inst of cardInstances) {
-      newCardLessons += inst.total_lessons || 0;
-    }
-
-    // === 3. 常规课新增课时（来自 lesson_change_logs）===
-    const logWhere = {
-      coach_id: coachId,
-      change_type: 1 // 只统计增加类型
-    };
-    if (dateStart || dateEnd) {
-      logWhere.createdAt = {};
-      if (dateStart) logWhere.createdAt[Op.gte] = dateStart;
-      if (dateEnd) logWhere.createdAt[Op.lte] = dateEnd;
-    }
-
-    const logs = await LessonChangeLog.findAll({
-      where: logWhere,
-      attributes: ['id', 'change_amount'],
-    });
-
-    let newRegularLessons = 0;
-
-    for (const log of logs) {
-      newRegularLessons += log.change_amount || 0;
-    }
-
-    return ResponseUtil.success(res, {
-      new_students: newStudents,
-      new_card_lessons: newCardLessons,
-      new_regular_lessons: newRegularLessons
-    }, '获取新增统计成功');
-  });
 }
 
 module.exports = StatController;

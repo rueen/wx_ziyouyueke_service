@@ -13,7 +13,4 @@ router.get('/overview', authenticateToken, StatController.getOverview);
 // 消课排行榜
 router.get('/completion-ranking', authenticateToken, StatController.getCompletionRanking);
 
-// 新增统计：新增学员、新增课时、续课数
-router.get('/growth', authenticateToken, StatController.getGrowth);
-
 module.exports = router;
