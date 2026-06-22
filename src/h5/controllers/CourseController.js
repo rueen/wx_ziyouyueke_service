@@ -304,6 +304,11 @@ class CourseController {
       const t = await sequelize.transaction();
       let booking;
       try {
+        // 补录直接完成时预算 lesson_deducted：普通课=1，卡片课=deduct_lessons_per_use
+        const supplementaryLessonDeducted = isSupplementaryComplete
+          ? (booking_type === 2 ? (cardInstance ? (cardInstance.deduct_lessons_per_use || 1) : 1) : 1)
+          : null;
+
         booking = await CourseBooking.create({
           student_id: student_id,
           coach_id: coach_id,
@@ -321,7 +326,8 @@ class CourseController {
           confirmed_at: finalConfirmedAt,
           complete_at: finalCompleteAt,
           created_by: userId,
-          is_supplementary: is_supplementary ? 1 : 0
+          is_supplementary: is_supplementary ? 1 : 0,
+          lesson_deducted: supplementaryLessonDeducted
         }, { transaction: t });
 
         if (isSupplementaryComplete) {
@@ -350,12 +356,37 @@ class CourseController {
               await t.rollback();
               return ResponseUtil.validationError(res, '该分类课时不足，无法补录');
             }
+            const beforeLessons = lessons[lessonIndex].remaining_lessons;
             lessons[lessonIndex].remaining_lessons -= 1;
             relation.lessons = lessons;
             relation.changed('lessons', true);
             relation.last_course_time = new Date();
             await relation.save({ transaction: t });
             logger.info('补录-普通课时扣除:', { relationId: relation.id, categoryId: targetCategoryId, bookingId: booking.id });
+
+            // 写课时变动日志
+            try {
+              const categories = coach.course_categories || [];
+              const catDef = categories.find(c => Number(c.id) === Number(targetCategoryId));
+              const unitPrice = catDef && catDef.unit_price !== undefined && catDef.unit_price !== null
+                ? catDef.unit_price
+                : null;
+              await LessonChangeLog.createCourseLog({
+                relationId: relation.id,
+                coachId: coach_id,
+                studentId: student_id,
+                categoryId: targetCategoryId,
+                changeType: 2,
+                beforeLessons: beforeLessons,
+                afterLessons: beforeLessons - 1,
+                unitPrice,
+                operatorId: userId,
+                remark: '补录消课',
+                transaction: t
+              });
+            } catch (logErr) {
+              logger.warn('补录课时变动日志写入失败:', { bookingId: booking.id, error: logErr.message });
+            }
           }
         } else {
           // 非补录：卡片未开启时自动开卡
